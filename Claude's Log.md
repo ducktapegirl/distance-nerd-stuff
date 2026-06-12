@@ -1,4 +1,31 @@
 
+## 12 June 2026
+
+### Migration Wrap-Up: GitHub Actions Secrets, Pages Deploy, Nav Link Fixes
+
+Completed the post-migration setup checklist for the `endurance-logs` repo (split from `Experiments` on the same day). Walked through setting GitHub Actions secrets manually via the GitHub UI — `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN` sourced from local files, plus a new fine-grained PAT for token rotation. Confirmed the `frontend-design` plugin was already active in `~/.claude/settings.json`. Replaced the deploy placeholder with a working GitHub Pages workflow (`deploy.yml`) triggered on changes to the Running Log HTML files. Fixed two broken nav links between the dashboards after the live deploy exposed them.
+
+### Iterations
+
+| # | What happened | Root cause | Fix |
+|---|---|---|---|
+| 1 | https://ducktapegirl.github.io/endurance-logs/ returned 404 after enabling Pages | Enabling Pages in the GitHub UI auto-generated `static.yml` deploying the entire repo root — no `index.html` there | Deleted `static.yml`; relied on our `deploy.yml` which correctly publishes `Running Log/` |
+| 2 | "My Strava Dashboard" link in `index.html` pointed to wrong URL | `href="/strava.html"` is root-relative — breaks under the `/endurance-logs/` subpath | Changed to relative `href="strava.html"` |
+| 3 | "← College Running Log" back-link in `strava.html` was broken | `href="/"` resolved to `https://ducktapegirl.github.io/` | Changed to relative `href="index.html"` |
+
+### Prompting lessons
+
+- **State the deploy target before touching nav links** — knowing "GitHub Pages project repo (subpath `/endurance-logs/`)" upfront would have flagged root-relative hrefs as broken before the first deploy, not after.
+- **Warn that enabling GitHub Pages auto-generates a conflicting workflow** — GitHub creates `static.yml` pointing at the repo root when you click "GitHub Actions" as the source. Knowing this would have prompted deleting it immediately rather than discovering it via a 404.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| 30 min | — | 3/5 — GitHub Pages setup required several manual correction rounds; nav link fixes only surfaced post-deploy |
+
+---
+
 ## 11 June 2026
 
 ### Strava Dashboard: SVG Calendar, Elevation Breakdown, Overview Row & Theming Fixes
