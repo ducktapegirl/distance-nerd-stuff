@@ -1,0 +1,141 @@
+name: Strava Data Fetch
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max activities to fetch (leave blank for all ~283)"
+        required: false
+        default: ""
+      since:
+        description: "Only fetch activities on/after YYYY-MM-DD (leave blank for all)"
+        required: false
+        default: ""
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit data files back to the repo
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r strava-data/requirements.txt
+
+      # Build a minimal token file from secrets.
+      # expires_at=0 forces an immediate refresh so we get a fresh access token
+      # and — critically — a new refresh token to rotate back into the secret.
+      - name: Write token file from secrets
+        env:
+          STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+        run: |
+          python - <<'PYEOF'
+          import json, os
+          json.dump({
+              "token_type": "Bearer",
+              "access_token": "",
+              "expires_at": 0,
+              "refresh_token": os.environ["STRAVA_REFRESH_TOKEN"],
+          }, open("strava-data/.strava_tokens.json", "w"))
+          PYEOF
+
+      - name: Fetch Strava data
+        env:
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+        run: |
+          ARGS=""
+          [ -n "${{ inputs.limit }}" ] && ARGS="$ARGS --limit ${{ inputs.limit }}"
+          [ -n "${{ inputs.since }}" ] && ARGS="$ARGS --since ${{ inputs.since }}"
+          python strava-data/fetch.py $ARGS
+
+      # Commit data before rotating the secret so a rotation failure never
+      # causes fetched data to be lost.
+      - name: Commit new data files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add strava-data/data/
+          if git diff --staged --quiet; then
+            echo "No new data files — nothing to commit."
+          else
+            COUNT=$(git diff --staged --name-only | wc -l | tr -d ' ')
+            git commit -m "Strava fetch: $COUNT data files ($(date -u +%Y-%m-%d))"
+            git push
+          fi
+
+      # Strava rotates the refresh token on every use. Read the new one from
+      # the token file the script just updated and store it back as a secret
+      # so the next run still works. Requires GH_PAT with Secrets: write.
+      # continue-on-error: true so a permissions mistake doesn't lose data.
+      - name: Rotate STRAVA_REFRESH_TOKEN secret
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          NEW_TOKEN=$(python -c \
+            "import json; print(json.load(open('strava-data/.strava_tokens.json'))['refresh_token'])")
+          echo "$NEW_TOKEN" | gh secret set STRAVA_REFRESH_TOKEN \
+            --repo ${{ github.repository }}
+
+      # Runs whether the fetch succeeded or failed so you're notified either way.
+      # Reuses the SMTP secrets already set up for stock-alerts.
+      - name: Send completion email
+        if: always()
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+          JOB_STATUS: ${{ job.status }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python - <<'PYEOF'
+          import os, smtplib
+          from email.mime.text import MIMEText
+          from pathlib import Path
+
+          smtp_user = os.environ.get("SMTP_USER", "")
+          smtp_pass = os.environ.get("SMTP_PASSWORD", "")
+          alert_to  = os.environ.get("ALERT_TO", "")
+          if not smtp_user or not alert_to:
+              print("SMTP not configured — skipping notification")
+              raise SystemExit(0)
+
+          status = os.environ.get("JOB_STATUS", "unknown")
+          repo   = os.environ.get("GITHUB_REPOSITORY", "")
+
+          streams_dir     = Path("strava-data/data/streams")
+          activities_file = Path("strava-data/data/activities.csv")
+          streams_count   = len(list(streams_dir.glob("*.csv"))) if streams_dir.exists() else 0
+          activities_count = (
+              sum(1 for _ in open(activities_file)) - 1
+              if activities_file.exists() else 0
+          )
+
+          emoji   = "✅" if status == "success" else "❌"
+          subject = f"{emoji} Strava fetch {status}"
+          body    = (
+              f"Strava data fetch {status}.\n\n"
+              f"Activities in CSV : {activities_count}\n"
+              f"Stream files      : {streams_count}\n\n"
+              f"https://github.com/{repo}/actions\n"
+          )
+
+          msg = MIMEText(body)
+          msg["Subject"] = subject
+          msg["From"]    = smtp_user
+          msg["To"]      = alert_to
+
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+              s.login(smtp_user, smtp_pass)
+              s.send_message(msg)
+          print(f"Notification sent to {alert_to}")
+          PYEOF

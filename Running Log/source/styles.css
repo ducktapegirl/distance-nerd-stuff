@@ -1,0 +1,46 @@
+body
+{
+	font-family:arial;
+	font-size:10pt;
+	font-weight:normal;
+	color:#FFFFFF;
+	margin:0px, 0px, 0px, 0px;
+	background-image: url(dither.gif);
+}
+
+table
+{
+	background:#009900;
+	border-color:#FFFFFF;
+	border-width:1px
+}
+
+TR
+{
+	font-family:arial;
+	font-size:10pt;
+	font-weight:normal;
+	color:#FFFFFF;
+}
+SELECT
+{
+	font-family:arial;
+	font-size:10pt;
+	font-weight:normal;
+	color:#FFFFFF;
+}
+INPUT
+{
+	font-family:arial;
+	font-size:10pt;
+	font-weight:normal;
+	color:#FFFFFF;
+	border:solid 1px #000000;
+}
+
+
+a {text-decoration : none; color:#FFFF00;}
+
+a:visited { color: #FFFF00; }
+a:hover { color: #FFFF00; }
+a:active { color: #FFFFFF; }

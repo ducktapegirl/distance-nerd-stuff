@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Running Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* Dark palette */
+    --bg-base: #0d1117;
+    --bg-surface: #161b22;
+    --bg-elevated: #1c2230;
+    --bg-glass: rgba(22, 27, 34, 0.7);
+    --border: rgba(48, 54, 61, 0.8);
+    --border-subtle: rgba(48, 54, 61, 0.4);
+
+    /* Text */
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-tertiary: #484f58;
+
+    /* Accent */
+    --accent: #58a6ff;
+    --accent-glow: rgba(88, 166, 255, 0.15);
+    --accent-dim: rgba(88, 166, 255, 0.08);
+
+    /* Workout type colors */
+    --color-easy: #2dd4bf;      /* teal */
+    --color-tempo: #f59e0b;     /* amber */
+    --color-long: #a78bfa;      /* violet */
+    --color-race: #f87171;      /* coral */
+    --color-workout: #60a5fa;   /* blue */
+    --color-rest: #374151;      /* gray */
+
+    /* Typography */
+    --font-sans: 'Geist', system-ui, sans-serif;
+    --font-mono: 'Geist Mono', 'Fira Code', monospace;
+
+    /* Sidebar */
+    --sidebar-width: 220px;
+    --sidebar-collapsed: 60px;
+
+    /* Motion */
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur-fast: 120ms;
+    --dur-med: 240ms;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg-base: #f6f8fa;
+      --bg-surface: #ffffff;
+      --bg-elevated: #f0f2f5;
+      --bg-glass: rgba(255, 255, 255, 0.8);
+      --border: rgba(208, 215, 222, 0.9);
+      --border-subtle: rgba(208, 215, 222, 0.5);
+      --text-primary: #1a2332;
+      --text-secondary: #57606a;
+      --text-tertiary: #afb8c1;
+      --accent: #0969da;
+      --accent-glow: rgba(9, 105, 218, 0.1);
+      --accent-dim: rgba(9, 105, 218, 0.05);
+    }
+  }
+
+  html, body, #root {
+    height: 100%;
+    font-family: var(--font-sans);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+  /* Keyframes */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+</style>
+<template id="__bundler_thumbnail" data-bg-color="#0d1117">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <!-- Sidebar -->
+    <rect x="0" y="0" width="180" height="800" fill="#161b22"/>
+    <rect x="20" y="20" width="140" height="12" rx="3" fill="#484f58"/>
+    <rect x="20" y="40" width="100" height="8" rx="2" fill="#8b949e"/>
+    <rect x="12" y="80" width="156" height="28" rx="6" fill="rgba(88,166,255,0.12)"/>
+    <rect x="20" y="90" width="80" height="8" rx="2" fill="#58a6ff"/>
+    <rect x="20" y="124" width="70" height="7" rx="2" fill="#484f58"/>
+    <rect x="20" y="148" width="80" height="7" rx="2" fill="#484f58"/>
+    <rect x="20" y="172" width="65" height="7" rx="2" fill="#484f58"/>
+    <rect x="20" y="196" width="55" height="7" rx="2" fill="#484f58"/>
+    <!-- Main content -->
+    <rect x="200" y="20" width="980" height="760" fill="#0d1117"/>
+    <!-- Header -->
+    <rect x="220" y="30" width="200" height="8" rx="2" fill="#484f58"/>
+    <rect x="220" y="48" width="160" height="18" rx="3" fill="#e6edf3"/>
+    <rect x="220" y="74" width="120" height="7" rx="2" fill="#8b949e"/>
+    <!-- Strava button -->
+    <rect x="900" y="44" width="160" height="28" rx="7" fill="rgba(252,76,2,0.12)" stroke="rgba(252,76,2,0.3)" stroke-width="1"/>
+    <rect x="916" y="54" width="90" height="7" rx="2" fill="#fc4c02"/>
+    <!-- Stat cards -->
+    <rect x="220" y="110" width="135" height="52" rx="10" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="365" y="110" width="135" height="52" rx="10" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="510" y="110" width="135" height="52" rx="10" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="655" y="110" width="135" height="52" rx="10" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="800" y="110" width="135" height="52" rx="10" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="945" y="110" width="115" height="52" rx="10" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <!-- Stat numbers -->
+    <rect x="234" y="122" width="60" height="14" rx="2" fill="#e6edf3"/>
+    <rect x="234" y="142" width="40" height="7" rx="2" fill="#484f58"/>
+    <rect x="379" y="122" width="30" height="14" rx="2" fill="#e6edf3"/>
+    <!-- Notes card -->
+    <rect x="220" y="176" width="840" height="90" rx="14" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="240" y="192" width="60" height="7" rx="2" fill="#484f58"/>
+    <rect x="240" y="210" width="500" height="26" rx="7" fill="#1c2230" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="250" y="220" width="120" height="6" rx="2" fill="#484f58"/>
+    <rect x="240" y="246" width="780" height="1" fill="rgba(48,54,61,0.3)"/>
+    <!-- Heatmap card -->
+    <rect x="220" y="278" width="840" height="280" rx="14" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="240" y="294" width="100" height="7" rx="2" fill="#484f58"/>
+    <!-- Heatmap dots rows -->
+    <g opacity="0.7">
+      {Array.from({length: 52}).map((_, wi) =>
+        [2,4,6,3,5,7,4].map((mi, di) => `<rect x="${260 + wi*15}" y="${330 + di*14}" width="11" height="11" rx="2" fill="#2dd4bf" opacity="${0.2 + mi/10}"/>`)
+      )}
+    </g>
+    <!-- Simple heatmap pattern -->
+    <rect x="260" y="330" width="780" height="11" rx="1" fill="none"/>
+    <!-- Row of dots representing heatmap -->
+    {[...Array(52)].map((_, i) => (
+      `<rect x="${260+i*15}" y="330" width="11" height="11" rx="2" fill="#2dd4bf" opacity="${0.15 + Math.random()*0.7}"/>`
+    ))}
+    <rect x="260" y="330" width="11" height="11" rx="2" fill="#2dd4bf" opacity="0.8"/>
+    <rect x="275" y="330" width="11" height="11" rx="2" fill="#f59e0b" opacity="0.6"/>
+    <rect x="290" y="330" width="11" height="11" rx="2" fill="#2dd4bf" opacity="0.4"/>
+    <rect x="305" y="330" width="11" height="11" rx="2" fill="#a78bfa" opacity="0.7"/>
+    <rect x="320" y="330" width="11" height="11" rx="2" fill="#2dd4bf" opacity="0.5"/>
+    <rect x="335" y="330" width="11" height="11" rx="2" fill="#f87171" opacity="0.9"/>
+    <rect x="350" y="330" width="11" height="11" rx="2" fill="#2dd4bf" opacity="0.6"/>
+    <!-- Cumulative chart -->
+    <rect x="220" y="570" width="840" height="180" rx="14" fill="#161b22" stroke="rgba(48,54,61,0.4)" stroke-width="1"/>
+    <rect x="240" y="586" width="140" height="7" rx="2" fill="#484f58"/>
+    <polyline points="240,720 340,700 440,680 540,650 640,620 700,600 780,585 860,580 940,578 1020,576" fill="none" stroke="#58a6ff" stroke-width="2.5" stroke-linejoin="round"/>
+  </svg>
+</template>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+
+// ─── DESIGN TOKENS (tweakable) ─────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentColor": "#58a6ff",
+  "easyColor": "#2dd4bf",
+  "tempoColor": "#f59e0b",
+  "longColor": "#a78bfa",
+  "raceColor": "#f87171",
+  "sidebarCollapsed": false,
+  "showGrid": true
+}/*EDITMODE-END*/;
+
+// ─── SAMPLE DATA ────────────────────────────────────────────────────────────
+const STATS = [
+  { label: "Total Miles", value: "6,120", mono: true },
+  { label: "Avg Mi/Week", value: "37", mono: true },
+  { label: "Peak Week", value: "63", mono: true },
+  { label: "Races", value: "100", mono: true },
+  { label: "Longest Streak", value: "47d", mono: true },
+  { label: "Active Days", value: "82%", mono: true },
+];
+
+// Generate heatmap data
+function generateHeatmap() {
+  const years = {};
+  const workoutTypes = ['easy','easy','easy','tempo','long','workout','race'];
+  for (let y = 2003; y <= 2007; y++) {
+    const weeks = [];
+    const start = y === 2003 ? 32 : 0;
+    const end = y === 2007 ? 20 : 52;
+    for (let w = start; w < end; w++) {
+      const days = [];
+      for (let d = 0; d < 7; d++) {
+        const hasRun = Math.random() > 0.28;
+        const miles = hasRun ? Math.round(4 + Math.random() * 10) : 0;
+        const type = hasRun ? workoutTypes[Math.floor(Math.random() * workoutTypes.length)] : 'rest';
+        days.push({ miles, type });
+      }
+      weeks.push(days);
+    }
+    years[y] = weeks;
+  }
+  return years;
+}
+const HEATMAP_DATA = generateHeatmap();
+
+// Weekly volume data
+function generateWeeklyVolume() {
+  const data = [];
+  let date = new Date('2003-08-31');
+  let baseWeek = 35;
+  for (let i = 0; i < 200; i++) {
+    const week = new Date(date);
+    week.setDate(week.getDate() + i * 7);
+    const seasonal = 1 + 0.3 * Math.sin(i / 52 * Math.PI * 2 - 1);
+    const miles = Math.max(0, Math.round((baseWeek * seasonal + (Math.random() - 0.5) * 12)));
+    data.push({ date: week, miles, week: i });
+  }
+  return data;
+}
+const WEEKLY_VOLUME = generateWeeklyVolume();
+
+// Cumulative mileage
+function generateCumulative() {
+  let cum = 0;
+  return WEEKLY_VOLUME.map(w => {
+    cum += w.miles;
+    return { ...w, cumMiles: cum };
+  });
+}
+const CUMULATIVE = generateCumulative();
+
+// Race results
+const RACES = {
+  crossCountry: [
+    { year: 2003, season: "Fall 2003", race: "Conference XC", distance: "8K", time: "26:48", pr: false, place: "42nd" },
+    { year: 2004, season: "Fall 2004", race: "Conference XC", distance: "8K", time: "25:52", pr: true, place: "28th" },
+    { year: 2005, season: "Fall 2005", race: "Regional XC", distance: "10K", time: "32:14", pr: true, place: "19th" },
+    { year: 2006, season: "Fall 2006", race: "Conference XC", distance: "8K", time: "25:11", pr: true, place: "12th" },
+  ],
+  indoorTrack: [
+    { year: 2004, season: "Winter 2004", race: "5000m Indoor", distance: "5K", time: "15:22", pr: true, place: "8th" },
+    { year: 2005, season: "Winter 2005", race: "5000m Indoor", distance: "5K", time: "14:58", pr: true, place: "5th" },
+    { year: 2006, season: "Winter 2006", race: "Mile Indoor", distance: "1 mile", time: "4:28", pr: true, place: "3rd" },
+    { year: 2007, season: "Winter 2007", race: "5000m Indoor", distance: "5K", time: "14:44", pr: true, place: "2nd" },
+  ],
+  outdoorTrack: [
+    { year: 2004, season: "Spring 2004", race: "10,000m", distance: "10K", time: "32:05", pr: true, place: "15th" },
+    { year: 2005, season: "Spring 2005", race: "10,000m", distance: "10K", time: "31:22", pr: true, place: "9th" },
+    { year: 2006, season: "Spring 2006", race: "5000m", distance: "5K", time: "14:50", pr: true, place: "6th" },
+    { year: 2007, season: "Spring 2007", race: "10,000m", distance: "10K", time: "30:44", pr: true, place: "4th" },
+  ]
+};
+
+// Training notes sample data
+const TRAINING_NOTES = [
+  { date: "2003-09-08", miles: 7, type: "easy", note: "First week of college practice. Legs felt heavy but good to be running with the team again." },
+  { date: "2003-09-15", miles: 9, type: "long", note: "Long run around campus. Gorgeous morning. Met coach after — talked race goals for XC season." },
+  { date: "2003-10-04", miles: 6, type: "tempo", note: "Tempo on the river path. 3×10 min w/ 2 min rest. Felt controlled, avg ~5:55 pace." },
+  { date: "2003-10-18", miles: 3, type: "race", note: "First college XC race. Very muddy course. Went out too fast, paid for it at mile 4. Good learning experience." },
+  { date: "2003-11-12", miles: 8, type: "easy", note: "Snow on the ground for the first time. Ran easy with Jake and Tim. Nobody wanted to stop." },
+  { date: "2004-01-20", miles: 5, type: "workout", note: "Indoor track workout: 6×800m. Averaged 2:22. Legs finally feel alive after holiday break." },
+  { date: "2004-02-07", miles: 4, type: "race", note: "5K indoor. PR — 15:22. Felt smooth through 2 miles then had to grind the last lap." },
+  { date: "2004-04-03", miles: 10, type: "long", note: "20-miler prep week. 10 today. Legs a bit dead but hit the splits. Peak week approaching." },
+  { date: "2004-05-14", miles: 6, type: "race", note: "10K outdoor. PR — 32:05. Hot day. Went through 5K in 16:10 then held on." },
+  { date: "2004-09-01", miles: 8, type: "easy", note: "Back for junior year. Team looks fast. New kid from Kenya on scholarship — going to push everyone." },
+  { date: "2004-11-06", miles: 5, type: "workout", note: "XC tune-up: fartlek on grass. 10×1 min hard. Legs feeling sharp heading into championships." },
+  { date: "2005-01-15", miles: 6, type: "easy", note: "Easy shakeout. Feeling the grind of January training. Light at end of tunnel is indoor season." },
+  { date: "2005-02-19", miles: 4, type: "race", note: "5K indoor PR — 14:58! Sub-15 finally. Negative split — 7:32/7:26. Couldn't believe the clock." },
+  { date: "2005-04-22", miles: 7, type: "tempo", note: "Tempo progression run. 8 miles total, last 4 at LT. Spring is the best time to be a runner." },
+  { date: "2005-08-28", miles: 12, type: "long", note: "Peak long run before XC season. 12 miles on the trail, solo. Good headspace day." },
+  { date: "2006-01-28", miles: 5, type: "race", note: "Mile indoor — 4:28! Big PR. Coach said go out in 64 and I went 63. Held it together somehow." },
+  { date: "2006-03-11", miles: 8, type: "workout", note: "800m reps: 8×800 averaging 2:16. Best workout I've ever had. Everything clicked." },
+  { date: "2006-09-23", miles: 6, type: "race", note: "XC conference — 25:11 over 8K. PR. Battled the whole last mile with Torres. Edged him at the line." },
+  { date: "2007-01-13", miles: 9, type: "long", note: "Long run with the seniors — their last season. Strange feeling knowing it's almost over for them." },
+  { date: "2007-02-17", miles: 4, type: "race", note: "5K indoor — 14:44 PR. Last indoor of college career. Went out in 4:41 first mile, finished strong." },
+  { date: "2007-04-28", miles: 7, type: "tempo", note: "Last hard tempo before outdoor championships. Felt effortless. Training has never been better." },
+  { date: "2007-05-05", miles: 5, type: "race", note: "10K outdoor — 30:44 final college race. Gave everything. Lap 23 was the hardest lap I've ever run." },
+  { date: "2007-05-12", miles: 4, type: "easy", note: "Last run as a college athlete. Easy 4 miles on the old cross country course. Tried to memorize every turn." },
+];
+
+// Nav items
+const NAV_ITEMS = [
+  { id: 'overview', label: 'Overview', icon: '▦' },
+  { id: 'volume', label: 'Training Volume', icon: '▲' },
+  { id: 'workout-mix', label: 'Workout Mix', icon: '◉' },
+  { id: 'performance', label: 'Performance', icon: '⬡' },
+  { id: 'races', label: 'Races', icon: '◈' },
+  { id: 'patterns', label: 'Patterns', icon: '◫' },
+];
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS = ['M','T','W','T','F','S','S'];
+
+// ─── COMPONENTS ─────────────────────────────────────────────────────────────
+
+// Interpolate hex color toward white by t (0=original, 1=white)
+function lerpHexToWhite(hex, t) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  const ri = Math.round(r + (255 - r) * t);
+  const gi = Math.round(g + (255 - g) * t);
+  const bi = Math.round(b + (255 - b) * t);
+  return `rgb(${ri},${gi},${bi})`;
+}
+
+function WorkoutDot({ type, miles, colors, heatmapMode }) {
+  const colorMap = {
+    easy: colors.easy,
+    tempo: colors.tempo,
+    long: colors.long,
+    race: colors.race,
+    workout: colors.workout || '#60a5fa',
+    rest: 'transparent',
+  };
+  const intensity = miles > 0 ? Math.min(1, miles / 14) : 0;
+
+  let bg, opacity;
+  if (miles === 0) {
+    bg = 'var(--border-subtle)';
+    opacity = 0.3;
+  } else if (heatmapMode === 'gradient') {
+    // accent color at low opacity for low miles → full opacity for high miles
+    // use accent hex directly, interpolate opacity
+    bg = colors.accent;
+    opacity = 0.15 + intensity * 0.85;
+  } else {
+    bg = colorMap[type] || 'var(--border-subtle)';
+    opacity = 0.3 + intensity * 0.7;
+  }
+
+  return (
+    <div title={miles > 0 ? `${miles} mi — ${type}` : 'rest'} style={{
+      width: 11, height: 11, borderRadius: 2,
+      background: bg,
+      opacity,
+      transition: 'transform var(--dur-fast), opacity var(--dur-fast), background var(--dur-med)',
+      cursor: miles > 0 ? 'pointer' : 'default',
+      flexShrink: 0,
+    }}
+    onMouseEnter={e => { if (miles > 0) e.target.style.transform = 'scale(1.4)'; }}
+    onMouseLeave={e => { e.target.style.transform = 'scale(1)'; }}
+    />
+  );
+}
+
+function HeatmapYear({ year, weeks, colors, heatmapMode }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, letterSpacing: '0.05em' }}>{year}</div>
+      <div style={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+        {/* Day labels */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 4, paddingTop: 16 }}>
+          {DAYS.map((d, i) => (
+            <div key={i} style={{ width: 11, height: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+              {i % 2 === 0 ? d : ''}
+            </div>
+          ))}
+        </div>
+        {/* Weeks */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+          {/* Month labels */}
+          <div style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
+            {weeks.map((_, wi) => {
+              const showMonth = wi === 0 || (wi % 4 === 0 && wi < weeks.length - 2);
+              return (
+                <div key={wi} style={{ width: 11, fontSize: 8, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', overflow: 'visible', letterSpacing: '-0.02em' }}>
+                  {showMonth ? (wi === 0 ? 'Jan' : MONTHS[Math.floor(wi / 4.33) % 12]) : ''}
+                </div>
+              );
+            })}
+          </div>
+          {/* Day rows */}
+          {DAYS.map((_, di) => (
+            <div key={di} style={{ display: 'flex', gap: 2 }}>
+              {weeks.map((week, wi) => (
+                <WorkoutDot key={wi} type={week[di]?.type || 'rest'} miles={week[di]?.miles || 0} colors={colors} heatmapMode={heatmapMode} />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, mono }) {
+  return (
+    <div style={{
+      background: 'var(--bg-glass)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      border: '1px solid var(--border-subtle)',
+      borderRadius: 12,
+      padding: '18px 20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 4,
+      flex: 1,
+      minWidth: 90,
+      animation: 'fadeUp var(--dur-med) var(--ease) both',
+      transition: 'border-color var(--dur-fast), box-shadow var(--dur-fast)',
+    }}
+    onMouseEnter={e => {
+      e.currentTarget.style.borderColor = 'var(--border)';
+      e.currentTarget.style.boxShadow = '0 0 0 1px var(--accent-dim)';
+    }}
+    onMouseLeave={e => {
+      e.currentTarget.style.borderColor = 'var(--border-subtle)';
+      e.currentTarget.style.boxShadow = 'none';
+    }}>
+      <div style={{
+        fontFamily: mono ? 'var(--font-mono)' : 'var(--font-sans)',
+        fontSize: 26, fontWeight: 600,
+        color: 'var(--text-primary)',
+        letterSpacing: '-0.03em',
+        lineHeight: 1,
+      }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+    </div>
+  );
+}
+
+function GlassCard({ title, children, style = {} }) {
+  return (
+    <div style={{
+      background: 'var(--bg-glass)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      border: '1px solid var(--border-subtle)',
+      borderRadius: 16,
+      padding: '24px',
+      animation: 'fadeUp var(--dur-med) var(--ease) both',
+      ...style,
+    }}>
+      {title && (
+        <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 20 }}>
+          {title}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+// Simple SVG bar chart
+function BarChart({ data, colorKey, colors }) {
+  const maxVal = Math.max(...data.map(d => d.miles));
+  const width = 600, height = 120;
+  const barW = Math.max(2, (width / data.length) - 1);
+  const colorMap = { easy: colors.easy, tempo: colors.tempo, long: colors.long, race: colors.race };
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 120 }} preserveAspectRatio="none">
+      {data.map((d, i) => {
+        const h = (d.miles / maxVal) * (height - 10);
+        const x = i * (width / data.length);
+        return (
+          <rect key={i} x={x} y={height - h} width={barW} height={h}
+            fill={colors.easy} opacity={0.6 + (d.miles / maxVal) * 0.4}
+            rx={1}
+          >
+            <title>{`Week ${i + 1}: ${d.miles} mi`}</title>
+          </rect>
+        );
+      })}
+    </svg>
+  );
+}
+
+// Sparkline
+function Sparkline({ data, color, width = 200, height = 50 }) {
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 6) - 3;
+    return `${x},${y}`;
+  }).join(' ');
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={`0,${height} ${pts} ${width},${height}`} fill={color} opacity={0.12} strokeWidth={0} />
+    </svg>
+  );
+}
+
+// Cumulative line chart
+function CumulativeChart({ data, accentColor }) {
+  const width = 700, height = 200;
+  const maxMiles = data[data.length - 1].cumMiles;
+  const pts = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - (d.cumMiles / maxMiles) * (height - 20) - 10;
+    return `${x},${y}`;
+  }).join(' ');
+
+  // Year markers
+  const yearMarkers = [];
+  data.forEach((d, i) => {
+    const yr = d.date.getFullYear();
+    if (i > 0 && d.date.getMonth() === 0 && data[i-1].date.getFullYear() !== yr) {
+      const x = (i / (data.length - 1)) * width;
+      yearMarkers.push({ x, yr });
+    }
+  });
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 200 }}>
+      <defs>
+        <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={accentColor} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={accentColor} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {yearMarkers.map(m => (
+        <g key={m.yr}>
+          <line x1={m.x} y1={0} x2={m.x} y2={height - 18} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3" opacity="0.5" />
+          <text x={m.x + 4} y={height - 6} fill="var(--text-tertiary)" fontSize="9" fontFamily="var(--font-mono)">{m.yr}</text>
+        </g>
+      ))}
+      <polyline points={`0,${height - 10} ${pts} ${width},${height - 10}`} fill="url(#cumGrad)" strokeWidth={0} />
+      <polyline points={pts} fill="none" stroke={accentColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Workout mix donut
+function DonutChart({ segments, size = 120 }) {
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  let angle = -Math.PI / 2;
+  const cx = size / 2, cy = size / 2, r = size * 0.38, innerR = size * 0.22;
+  const arcs = segments.map(seg => {
+    const sweep = (seg.value / total) * Math.PI * 2;
+    const startAngle = angle;
+    angle += sweep;
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(angle);
+    const y2 = cy + r * Math.sin(angle);
+    const xi1 = cx + innerR * Math.cos(startAngle);
+    const yi1 = cy + innerR * Math.sin(startAngle);
+    const xi2 = cx + innerR * Math.cos(angle);
+    const yi2 = cy + innerR * Math.sin(angle);
+    const large = sweep > Math.PI ? 1 : 0;
+    return {
+      d: `M ${xi1} ${yi1} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${innerR} ${innerR} 0 ${large} 0 ${xi1} ${yi1} Z`,
+      color: seg.color,
+      label: seg.label,
+      pct: Math.round(seg.value / total * 100),
+    };
+  });
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+      {arcs.map((arc, i) => (
+        <path key={i} d={arc.d} fill={arc.color} opacity={0.85}>
+          <title>{arc.label}: {arc.pct}%</title>
+        </path>
+      ))}
+    </svg>
+  );
+}
+
+function RaceCard({ race }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 16,
+      padding: '14px 18px',
+      borderRadius: 10,
+      background: 'var(--bg-elevated)',
+      border: '1px solid var(--border-subtle)',
+      transition: 'border-color var(--dur-fast)',
+    }}
+    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border)'}
+    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{race.race}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{race.season} · {race.distance}</div>
+      </div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', flexShrink: 0 }}>{race.time}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0, minWidth: 32, textAlign: 'right' }}>{race.place}</div>
+      {race.pr && (
+        <div style={{
+          padding: '2px 7px', borderRadius: 4,
+          background: 'rgba(248, 113, 113, 0.15)',
+          border: '1px solid rgba(248, 113, 113, 0.3)',
+          color: '#f87171', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', flexShrink: 0,
+        }}>PR</div>
+      )}
+    </div>
+  );
+}
+
+// ─── TRAINING NOTES SEARCH ───────────────────────────────────────────────────
+
+const TYPE_COLORS = {
+  easy: { bg: 'rgba(45,212,191,0.12)', border: 'rgba(45,212,191,0.3)', text: '#2dd4bf', label: 'Easy' },
+  tempo: { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', text: '#f59e0b', label: 'Tempo' },
+  long: { bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.3)', text: '#a78bfa', label: 'Long' },
+  race: { bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)', text: '#f87171', label: 'Race' },
+  workout: { bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)', text: '#60a5fa', label: 'Workout' },
+};
+
+function highlight(text, query) {
+  if (!query.trim()) return text;
+  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  return parts.map((part, i) =>
+    regex.test(part)
+      ? <mark key={i} style={{ background: 'rgba(88,166,255,0.35)', color: 'var(--text-primary)', borderRadius: 2, padding: '0 1px' }}>{part}</mark>
+      : part
+  );
+}
+
+function TrainingNotesSearch({ colors }) {
+  const [query, setQuery] = React.useState('');
+  const [filterType, setFilterType] = React.useState('all');
+  const [expanded, setExpanded] = React.useState(null);
+
+  const filtered = React.useMemo(() => {
+    return TRAINING_NOTES.filter(n => {
+      const matchType = filterType === 'all' || n.type === filterType;
+      const matchQuery = !query.trim() ||
+        n.note.toLowerCase().includes(query.toLowerCase()) ||
+        n.date.includes(query) ||
+        n.type.toLowerCase().includes(query.toLowerCase());
+      return matchType && matchQuery;
+    });
+  }, [query, filterType]);
+
+  const typeButtons = ['all', 'easy', 'tempo', 'long', 'workout', 'race'];
+
+  return (
+    <GlassCard title="Training Notes">
+      {/* Search bar */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 180, position: 'relative' }}>
+          <div style={{
+            position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+            color: 'var(--text-tertiary)', fontSize: 14, pointerEvents: 'none',
+            fontFamily: 'var(--font-mono)',
+          }}>⌕</div>
+          <input
+            type="text"
+            placeholder="Search notes, dates, keywords…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            style={{
+              width: '100%', padding: '9px 12px 9px 32px',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 8,
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-sans)', fontSize: 13,
+              outline: 'none',
+              transition: 'border-color var(--dur-fast)',
+            }}
+            onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border-subtle)'}
+          />
+          {query && (
+            <button onClick={() => setQuery('')} style={{
+              position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-tertiary)', fontSize: 14, lineHeight: 1, padding: 2,
+            }}>×</button>
+          )}
+        </div>
+
+        {/* Type filter pills */}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {typeButtons.map(t => {
+            const active = filterType === t;
+            const col = t === 'all' ? null : TYPE_COLORS[t];
+            return (
+              <button key={t} onClick={() => setFilterType(t)} style={{
+                padding: '6px 11px', borderRadius: 6, border: `1px solid ${active && col ? col.border : 'var(--border-subtle)'}`,
+                background: active ? (col ? col.bg : 'var(--accent-dim)') : 'transparent',
+                color: active ? (col ? col.text : 'var(--accent)') : 'var(--text-secondary)',
+                fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: active ? 600 : 400,
+                cursor: 'pointer', textTransform: 'capitalize',
+                transition: 'all var(--dur-fast)',
+              }}>{t === 'all' ? 'All' : TYPE_COLORS[t].label}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Results count */}
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: 'var(--font-mono)' }}>
+        {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
+        {query && <span style={{ color: 'var(--accent)' }}> matching "{query}"</span>}
+      </div>
+
+      {/* Note entries */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 218, overflowY: 'auto', paddingRight: 4 }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>
+            No entries match your search
+          </div>
+        ) : filtered.map((n, i) => {
+          const col = TYPE_COLORS[n.type] || TYPE_COLORS.easy;
+          const isOpen = expanded === i;
+          const d = new Date(n.date + 'T12:00:00');
+          const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          return (
+            <div key={i}
+              onClick={() => setExpanded(isOpen ? null : i)}
+              style={{
+                padding: '10px 14px', borderRadius: 8,
+                background: 'var(--bg-elevated)',
+                border: `1px solid ${isOpen ? col.border : 'var(--border-subtle)'}`,
+                cursor: 'pointer',
+                transition: 'border-color var(--dur-fast), background var(--dur-fast)',
+              }}
+              onMouseEnter={e => { if (!isOpen) e.currentTarget.style.borderColor = 'var(--border)'; }}
+              onMouseLeave={e => { if (!isOpen) e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {/* Type badge */}
+                <div style={{
+                  padding: '2px 7px', borderRadius: 4, flexShrink: 0,
+                  background: col.bg, border: `1px solid ${col.border}`,
+                  color: col.text, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                }}>{col.label}</div>
+
+                {/* Date */}
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>{dateStr}</div>
+
+                {/* Miles */}
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{n.miles} mi</div>
+
+                {/* Note preview */}
+                <div style={{
+                  fontSize: 12, color: 'var(--text-secondary)', flex: 1, minWidth: 0,
+                  whiteSpace: isOpen ? 'normal' : 'nowrap',
+                  overflow: isOpen ? 'visible' : 'hidden',
+                  textOverflow: isOpen ? 'unset' : 'ellipsis',
+                  lineHeight: 1.5,
+                }}>
+                  {highlight(n.note, query)}
+                </div>
+
+                {/* Expand indicator */}
+                <div style={{ color: 'var(--text-tertiary)', fontSize: 10, flexShrink: 0, transition: 'transform var(--dur-fast)', transform: isOpen ? 'rotate(180deg)' : 'none' }}>▾</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </GlassCard>
+  );
+}
+
+// ─── SECTIONS ────────────────────────────────────────────────────────────────
+
+function OverviewSection({ colors }) {
+  const [heatmapMode, setHeatmapMode] = React.useState('type');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Stats row */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {STATS.map((s, i) => <StatCard key={i} {...s} />)}
+      </div>
+
+      {/* Training Notes Search */}
+      <TrainingNotesSearch colors={colors} />
+
+      {/* Heatmap */}
+      <GlassCard title="Training Calendar">
+        {/* Mode toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Color by</span>
+          <div style={{ display: 'flex', gap: 2, padding: '3px', background: 'var(--bg-elevated)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
+            {[
+              { id: 'type', label: 'Workout Type' },
+              { id: 'gradient', label: 'Miles Intensity' },
+            ].map(opt => (
+              <button key={opt.id} onClick={() => setHeatmapMode(opt.id)} style={{
+                padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: heatmapMode === opt.id ? 600 : 400,
+                background: heatmapMode === opt.id ? 'var(--bg-glass)' : 'transparent',
+                color: heatmapMode === opt.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                boxShadow: heatmapMode === opt.id ? '0 1px 3px rgba(0,0,0,0.25)' : 'none',
+                transition: 'all var(--dur-fast)',
+              }}>{opt.label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          {Object.entries(HEATMAP_DATA).map(([yr, weeks]) => (
+            <HeatmapYear key={yr} year={yr} weeks={weeks} colors={colors} heatmapMode={heatmapMode} />
+          ))}
+        </div>
+
+        {/* Legend — shows different content per mode */}
+        {heatmapMode === 'type' ? (
+          <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Easy', color: colors.easy },
+              { label: 'Tempo', color: colors.tempo },
+              { label: 'Long', color: colors.long },
+              { label: 'Workout', color: '#60a5fa' },
+              { label: 'Race', color: colors.race },
+            ].map(({ label, color }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>0 mi</span>
+            <div style={{ flex: 1, maxWidth: 160, height: 8, borderRadius: 4, background: `linear-gradient(to right, ${colors.accent}26, ${colors.accent})` }} />
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>14+ mi</span>
+          </div>
+        )}
+      </GlassCard>
+
+      {/* Cumulative chart */}
+      <GlassCard title="Cumulative Mileage · Fall 2003 – Spring 2007">
+        <CumulativeChart data={CUMULATIVE} accentColor={colors.accent} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 700, color: colors.accent, letterSpacing: '-0.04em' }}>
+            6,120 <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>total miles</span>
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+const SEASON_SPARKLINES = ['Fall', 'Winter', 'Spring', 'Summer'].map(() =>
+  Array.from({length: 20}, () => Math.round(20 + Math.random() * 35))
+);
+const SEASON_AVGS = ['Fall', 'Winter', 'Spring', 'Summer'].map(() =>
+  Math.round(30 + Math.random() * 18)
+);
+
+function VolumeSection({ colors }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <GlassCard title="Weekly Mileage">
+        <BarChart data={WEEKLY_VOLUME} colors={{ ...colors, easy: colors.accent }} />
+        <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>
+          {[
+            { label: 'Avg Week', value: '37 mi' },
+            { label: 'Peak Week', value: '63 mi' },
+            { label: 'Total Weeks', value: '200' },
+          ].map(s => (
+            <div key={s.label}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 600, color: 'var(--text-primary)' }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {['Fall', 'Winter', 'Spring', 'Summer'].map((season, i) => (
+          <GlassCard key={season} title={`${season} Average`}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 32, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
+              {SEASON_AVGS[i]} <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 400 }}>mi/wk</span>
+            </div>
+            <div style={{ marginTop: 8, height: 40 }}>
+              <Sparkline data={SEASON_SPARKLINES[i]} color={colors.accent} height={40} />
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WorkoutMixSection({ colors }) {
+  const segments = [
+    { label: 'Easy', value: 62, color: colors.easy },
+    { label: 'Long', value: 14, color: colors.long },
+    { label: 'Tempo', value: 12, color: colors.tempo },
+    { label: 'Workout', value: 8, color: '#60a5fa' },
+    { label: 'Race', value: 4, color: colors.race },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
+        <GlassCard title="Run Type Mix">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <DonutChart segments={segments} size={140} />
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {segments.map(s => (
+                <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{s.label}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-primary)' }}>{s.value}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </GlassCard>
+
+        <GlassCard title="Easy Run Pace Over Time">
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
+            <svg viewBox="0 0 400 150" style={{ width: '100%', height: 150 }}>
+              <defs>
+                <linearGradient id="paceGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={colors.accent} stopOpacity="0.3" />
+                  <stop offset="100%" stopColor={colors.accent} stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              {(() => {
+                const paceData = Array.from({length: 40}, (_, i) => 8.5 - i * 0.05 + (Math.random() - 0.5) * 0.4);
+                const min = Math.min(...paceData) - 0.2;
+                const max = Math.max(...paceData) + 0.2;
+                const pts = paceData.map((v, i) => {
+                  const x = (i / (paceData.length - 1)) * 400;
+                  const y = 140 - ((v - min) / (max - min)) * 130;
+                  return `${x},${y}`;
+                }).join(' ');
+                return (
+                  <>
+                    <polyline points={`0,140 ${pts} 400,140`} fill="url(#paceGrad)" />
+                    <polyline points={pts} fill="none" stroke={colors.accent} strokeWidth="2.5" strokeLinejoin="round" />
+                  </>
+                );
+              })()}
+              <text x="4" y="12" fill="var(--text-tertiary)" fontSize="9" fontFamily="var(--font-mono)">8:30/mi</text>
+              <text x="4" y="145" fill="var(--text-tertiary)" fontSize="9" fontFamily="var(--font-mono)">7:00/mi</text>
+            </svg>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center' }}>
+              Avg easy pace improved by ~1:30/mi over 4 years
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        {[
+          { label: 'Easy Runs', count: 789, color: colors.easy },
+          { label: 'Tempo Runs', count: 153, color: colors.tempo },
+          { label: 'Long Runs', count: 178, color: colors.long },
+        ].map(s => (
+          <GlassCard key={s.label}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>{s.count}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+              </div>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: s.color, marginTop: 4 }} />
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PerformanceSection({ colors }) {
+  const raceData = Array.from({length: 40}, (_, i) => ({
+    x: i,
+    fiveK: 1040 - i * 3.5 + (Math.random() - 0.5) * 20,
+    tenK: 2180 - i * 7 + (Math.random() - 0.5) * 40,
+  }));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {[
+          { label: '5K PR', value: '14:44', sub: 'Winter 2007', color: colors.race },
+          { label: '10K PR', value: '30:44', sub: 'Spring 2007', color: colors.tempo },
+          { label: '8K XC PR', value: '25:11', sub: 'Fall 2006', color: colors.long },
+          { label: 'Mile PR', value: '4:28', sub: 'Winter 2006', color: colors.easy },
+        ].map(s => (
+          <GlassCard key={s.label}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{s.label}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 30, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>{s.sub}</div>
+              </div>
+              <div style={{ width: 4, borderRadius: 2, background: s.color, height: 48, flexShrink: 0 }} />
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+
+      <GlassCard title="5K Progression">
+        <svg viewBox="0 0 600 160" style={{ width: '100%', height: 160 }}>
+          {(() => {
+            const data = raceData.filter(d => d.x % 4 === 0).map(d => d.fiveK);
+            const min = Math.min(...data) - 30;
+            const max = Math.max(...data) + 30;
+            const pts = data.map((v, i) => {
+              const x = 20 + (i / (data.length - 1)) * 560;
+              const y = 140 - ((v - min) / (max - min)) * 120;
+              return { x, y, v };
+            });
+            const ptStr = pts.map(p => `${p.x},${p.y}`).join(' ');
+            return (
+              <>
+                <polyline points={ptStr} fill="none" stroke={colors.accent} strokeWidth="2" strokeLinejoin="round" />
+                {pts.map((p, i) => (
+                  <circle key={i} cx={p.x} cy={p.y} r="4" fill={colors.accent} opacity="0.8">
+                    <title>{Math.floor(p.v / 60)}:{String(Math.round(p.v % 60)).padStart(2,'0')}</title>
+                  </circle>
+                ))}
+              </>
+            );
+          })()}
+        </svg>
+      </GlassCard>
+    </div>
+  );
+}
+
+function RacesSection({ colors }) {
+  const [activeTab, setActiveTab] = React.useState('crossCountry');
+  const tabs = [
+    { id: 'crossCountry', label: 'Cross Country' },
+    { id: 'indoorTrack', label: 'Indoor Track' },
+    { id: 'outdoorTrack', label: 'Outdoor Track' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', gap: 4, padding: '4px', background: 'var(--bg-elevated)', borderRadius: 10, border: '1px solid var(--border-subtle)', width: 'fit-content' }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+            padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
+            fontSize: 12, fontWeight: 500, fontFamily: 'var(--font-sans)',
+            background: activeTab === t.id ? 'var(--bg-glass)' : 'transparent',
+            color: activeTab === t.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+            boxShadow: activeTab === t.id ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+            transition: 'all var(--dur-fast)',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      <GlassCard title={`${tabs.find(t => t.id === activeTab).label} Results`}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {RACES[activeTab].map((race, i) => <RaceCard key={i} race={race} />)}
+        </div>
+        <div style={{ marginTop: 20, padding: '14px 18px', background: 'var(--accent-dim)', border: '1px solid rgba(88, 166, 255, 0.15)', borderRadius: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>4 PRs</span> set in this event · Most improved: {tabs.find(t => t.id === activeTab).label}
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+function PatternsSection({ colors }) {
+  // Day of week pattern
+  const dowLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dowData = [38, 42, 44, 41, 36, 58, 52];
+  const maxDow = Math.max(...dowData);
+
+  // Monthly average
+  const monthData = [32, 30, 36, 40, 44, 38, 36, 34, 40, 44, 42, 36];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <GlassCard title="Avg Miles by Day of Week">
+          <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 100 }}>
+            {dowData.map((v, i) => (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: '100%', borderRadius: '3px 3px 0 0', background: colors.accent, opacity: 0.4 + (v / maxDow) * 0.6, height: `${(v / maxDow) * 80}px`, transition: 'height 0.3s var(--ease)' }} />
+                <div style={{ fontSize: 9, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>{dowLabels[i].slice(0,2)}</div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+
+        <GlassCard title="Avg Weekly Miles by Month">
+          <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 100 }}>
+            {monthData.map((v, i) => {
+              const max = Math.max(...monthData);
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: '100%', borderRadius: '3px 3px 0 0', background: colors.accent, opacity: 0.4 + (v / max) * 0.6, height: `${(v / max) * 80}px` }} />
+                  <div style={{ fontSize: 8, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>{MONTHS[i].slice(0,1)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </GlassCard>
+      </div>
+
+      <GlassCard title="Streak Analysis">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          {[
+            { label: 'Longest Streak', value: '47', unit: 'days' },
+            { label: 'Current Streak', value: '12', unit: 'days' },
+            { label: 'Total Streaks 7d+', value: '28', unit: 'streaks' },
+          ].map(s => (
+            <div key={s.label}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 32, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
+                {s.value}
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 4 }}>{s.unit}</span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+// ─── APP ─────────────────────────────────────────────────────────────────────
+function App() {
+  const [activeSection, setActiveSection] = React.useState('overview');
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const colors = {
+    accent: tweaks.accentColor,
+    easy: tweaks.easyColor,
+    tempo: tweaks.tempoColor,
+    long: tweaks.longColor,
+    race: tweaks.raceColor,
+    workout: '#60a5fa',
+  };
+
+  // Apply accent CSS var
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--accent', tweaks.accentColor);
+    document.documentElement.style.setProperty('--accent-glow', tweaks.accentColor + '26');
+    document.documentElement.style.setProperty('--accent-dim', tweaks.accentColor + '14');
+  }, [tweaks.accentColor]);
+
+  const sectionMap = {
+    overview: <OverviewSection colors={colors} />,
+    volume: <VolumeSection colors={colors} />,
+    'workout-mix': <WorkoutMixSection colors={colors} />,
+    performance: <PerformanceSection colors={colors} />,
+    races: <RacesSection colors={colors} />,
+    patterns: <PatternsSection colors={colors} />,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg-base)', position: 'relative' }}>
+
+      {/* Background texture */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(88,166,255,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 110%, rgba(167,139,250,0.04) 0%, transparent 60%)',
+      }} />
+
+      {/* Top nav bar */}
+      <header style={{
+        flexShrink: 0,
+        position: 'sticky', top: 0, zIndex: 20,
+        background: 'var(--bg-glass)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--border-subtle)',
+      }}>
+        {/* Top strip: wordmark + strava button */}
+        <div style={{
+          maxWidth: 1100, margin: '0 auto',
+          padding: '0 32px',
+          height: 48,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 16,
+        }}>
+          {/* Wordmark */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+              College Running Log
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-tertiary)', letterSpacing: '0.06em' }}>
+              2003 – 2007
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-secondary)' }}>
+              · 6,120 mi
+            </span>
+          </div>
+
+          {/* Strava button */}
+          <a
+            href="https://www.strava.com/dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '6px 12px',
+              borderRadius: 7,
+              background: 'rgba(252, 76, 2, 0.08)',
+              border: '1px solid rgba(252, 76, 2, 0.25)',
+              color: '#fc4c02',
+              fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 600,
+              textDecoration: 'none',
+              flexShrink: 0,
+              transition: 'all var(--dur-fast)',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(252, 76, 2, 0.14)';
+              e.currentTarget.style.borderColor = 'rgba(252, 76, 2, 0.5)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'rgba(252, 76, 2, 0.08)';
+              e.currentTarget.style.borderColor = 'rgba(252, 76, 2, 0.25)';
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#fc4c02">
+              <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.599h4.172L10.463 0l-7 13.828h4.169"/>
+            </svg>
+            Strava API Dashboard
+          </a>
+        </div>
+
+        {/* Nav tabs row */}
+        <div style={{
+          maxWidth: 1100, margin: '0 auto',
+          padding: '0 32px',
+          display: 'flex', alignItems: 'flex-end', gap: 0,
+        }}>
+          {NAV_ITEMS.map(item => {
+            const isActive = activeSection === item.id;
+            return (
+              <button key={item.id} onClick={() => setActiveSection(item.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '10px 16px 11px',
+                border: 'none', borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                background: 'transparent',
+                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: isActive ? 600 : 400,
+                cursor: 'pointer',
+                transition: 'all var(--dur-fast)',
+                whiteSpace: 'nowrap',
+                marginBottom: -1,
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              >
+                <span style={{ fontSize: 13 }}>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main style={{ flex: 1, overflow: 'hidden auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 32px 80px' }}>
+          {/* Page header */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 6 }}>
+              Strava Before Strava · Aug 31, 2003 – May 12, 2007
+            </div>
+            <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
+              {NAV_ITEMS.find(n => n.id === activeSection)?.label}
+            </h1>
+          </div>
+
+          {sectionMap[activeSection]}
+        </div>
+      </main>
+
+      {/* Tweaks panel */}
+      <TweaksPanel>
+        <TweakSection title="Accent Color">
+          <TweakColor id="accentColor" label="Primary Accent" value={tweaks.accentColor} onChange={v => setTweak('accentColor', v)} />
+        </TweakSection>
+        <TweakSection title="Workout Colors">
+          <TweakColor id="easyColor" label="Easy Run" value={tweaks.easyColor} onChange={v => setTweak('easyColor', v)} />
+          <TweakColor id="tempoColor" label="Tempo" value={tweaks.tempoColor} onChange={v => setTweak('tempoColor', v)} />
+          <TweakColor id="longColor" label="Long Run" value={tweaks.longColor} onChange={v => setTweak('longColor', v)} />
+          <TweakColor id="raceColor" label="Race" value={tweaks.raceColor} onChange={v => setTweak('raceColor', v)} />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

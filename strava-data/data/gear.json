@@ -1,0 +1,73 @@
+{
+  "b16859878": {
+    "id": "b16859878",
+    "primary": false,
+    "name": "Wile E. Coyote",
+    "nickname": "Wile E. Coyote",
+    "resource_state": 3,
+    "retired": false,
+    "distance": 402592,
+    "converted_distance": 250.2,
+    "brand_name": "Specialized",
+    "model_name": "Stumpjumper",
+    "frame_type": 1,
+    "description": null,
+    "weight": 30.0
+  },
+  "g27182744": {
+    "id": "g27182744",
+    "primary": false,
+    "name": "Altra Experience Flow 2",
+    "nickname": null,
+    "resource_state": 3,
+    "retired": false,
+    "distance": 198470,
+    "converted_distance": 123.3,
+    "brand_name": "Altra",
+    "model_name": "Experience Flow 2",
+    "description": null,
+    "notification_distance": 400
+  },
+  "g21225297": {
+    "id": "g21225297",
+    "primary": false,
+    "name": "Altra Timp 4 Trail Shoes",
+    "nickname": "Trail Shoes",
+    "resource_state": 3,
+    "retired": false,
+    "distance": 135471,
+    "converted_distance": 84.2,
+    "brand_name": "Altra",
+    "model_name": "Timp 4",
+    "description": null,
+    "notification_distance": 0
+  },
+  "g20583632": {
+    "id": "g20583632",
+    "primary": false,
+    "name": "ASICS DS Trainer - New shoes",
+    "nickname": "- New shoes",
+    "resource_state": 3,
+    "retired": false,
+    "distance": 756351,
+    "converted_distance": 470.0,
+    "brand_name": "ASICS",
+    "model_name": "DS Trainer",
+    "description": "last of its kind. I've purchased the same shoe for 15 years",
+    "notification_distance": 450
+  },
+  "g20583636": {
+    "id": "g20583636",
+    "primary": false,
+    "name": "ASICS DS Trainer - Old shoes ",
+    "nickname": "- Old shoes ",
+    "resource_state": 3,
+    "retired": true,
+    "distance": 88826,
+    "converted_distance": 55.2,
+    "brand_name": "ASICS",
+    "model_name": "DS Trainer",
+    "description": null,
+    "notification_distance": 0
+  }
+}
