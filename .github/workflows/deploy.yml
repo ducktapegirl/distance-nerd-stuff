@@ -1,47 +1,36 @@
-# Deploy placeholder — replaces the old local Netlify hook.
-#
-# This is a STUB. It does not deploy anything yet. Finish wiring it to your
-# chosen target, then remove the `if: false` guard on the job.
-#
-# Decisions to make:
-#   1. WHAT to publish — the generated dashboards are:
-#        strava-data/strava.html   (also mirrored to Running Log/strava.html)
-#        Running Log/index.html
-#      Pick a publish directory or assemble a small `public/` folder.
-#   2. WHERE to deploy — pick one and fill in the TODO step:
-#        - Netlify   (needs NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID secrets; use `netlify deploy --prod`)
-#        - GitHub Pages (use actions/upload-pages-artifact + actions/deploy-pages; set Pages source = Actions)
-#        - Cloudflare Pages (use cloudflare/pages-action with CF_API_TOKEN)
-#   3. WHEN to run — on push to main, after strava-fetch commits data, or manual.
-#
-# See MIGRATION.md for the full handoff checklist.
-
 name: Deploy dashboards
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "Running Log/index.html"
+      - "Running Log/strava.html"
   workflow_dispatch: {}
-  # push:
-  #   branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
-    if: false   # TODO: remove once the deploy step below is filled in
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
-      # Optional: rebuild the Strava dashboard from committed data before deploying.
-      # - uses: actions/setup-python@v5
-      #   with:
-      #     python-version: "3.11"
-      # - run: pip install -r strava-data/requirements.txt
-      # - run: python strava-data/build_dashboard.py
+      - uses: actions/configure-pages@v4
 
-      # TODO: assemble what you want to publish into a directory, e.g.:
-      # - run: |
-      #     mkdir -p public
-      #     cp strava-data/strava.html public/
-      #     cp -r "Running Log" public/running-log
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: "Running Log"
 
-      # TODO: deploy step for your chosen target (Netlify / Pages / Cloudflare).
-      - run: echo "deploy.yml is a placeholder — see comments above and MIGRATION.md"
+      - uses: actions/deploy-pages@v4
+        id: deployment
