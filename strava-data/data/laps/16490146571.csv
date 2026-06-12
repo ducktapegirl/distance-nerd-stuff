@@ -1,0 +1,4 @@
+activity_id,lap_index,name,elapsed_time_s,moving_time_s,distance_km,average_speed_kmh,max_speed_kmh,average_heartrate,max_heartrate,average_watts,average_cadence,total_elevation_gain_m,start_date_local
+16490146571,1,Lap 1,547,547,1.609,10.58,14.4,148.5,161.0,302.2,81.3,46.8,2025-11-17 16:05:53
+16490146571,2,Lap 2,519,519,1.609,11.16,13.9,153.3,159.0,293.6,81.1,7.2,2025-11-17 16:15:02
+16490146571,3,Lap 3,438,438,1.457,11.99,14.26,152.3,162.0,299.5,81.1,11.8,2025-11-17 16:23:42

@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en" data-recording-src="ClaudeDesign720.webm">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>20 Years of Unfinished Data</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg-base: #0d1117;
+    --bg-surface: #161b22;
+    --bg-elevated: #1c2230;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-dim: rgba(88,166,255,0.18);
+    --c-easy: #2dd4bf;
+    --c-tempo: #f59e0b;
+    --c-long: #a78bfa;
+    --c-race: #f87171;
+    --border: rgba(48,54,61,0.8);
+  }
+
+  html, body, .reveal {
+    background: var(--bg-base) !important;
+    color: var(--text-primary);
+    font-family: 'Geist', system-ui, -apple-system, Segoe UI, sans-serif;
+    font-weight: 400;
+  }
+  .reveal {
+    font-size: 30px;
+    --r-main-font: 'Geist', system-ui, sans-serif;
+    --r-heading-font: 'Geist', system-ui, sans-serif;
+    --r-code-font: 'Geist Mono', ui-monospace, monospace;
+    --r-main-color: var(--text-primary);
+    --r-heading-color: var(--text-primary);
+    --r-link-color: var(--accent);
+  }
+  .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+    color: var(--text-primary);
+    text-transform: none;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; margin-bottom: 0.6em; }
+  .reveal h3 { font-size: 1.1em; color: var(--accent); font-weight: 500; }
+
+  .reveal .subtitle {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.7em;
+    margin-top: 0.4em;
+  }
+  .reveal .muted { color: var(--text-secondary); }
+  .reveal .accent { color: var(--accent); }
+  .reveal .easy { color: var(--c-easy); }
+  .reveal .tempo { color: var(--c-tempo); }
+  .reveal .long { color: var(--c-long); }
+  .reveal .race { color: var(--c-race); }
+
+  .reveal code, .reveal pre code {
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 6px;
+    color: var(--text-primary);
+  }
+  .reveal pre {
+    box-shadow: none;
+    background: transparent;
+  }
+  .reveal pre code {
+    display: block;
+    padding: 16px 20px;
+    font-size: 0.55em;
+    line-height: 1.5;
+    max-height: 60vh;
+  }
+
+  .reveal .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  }
+  .reveal .glass {
+    background: linear-gradient(135deg, rgba(28,34,48,0.85), rgba(22,27,34,0.75));
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+  }
+
+  .reveal .quote {
+    border-left: 3px solid var(--accent);
+    background: var(--bg-elevated);
+    padding: 14px 22px;
+    margin: 18px 0;
+    font-style: italic;
+    color: var(--text-primary);
+    border-radius: 0 8px 8px 0;
+  }
+  .reveal .quote .who {
+    display: block;
+    font-style: normal;
+    color: var(--text-secondary);
+    font-size: 0.7em;
+    margin-top: 8px;
+  }
+
+  .reveal .mileage-strings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 24px 0;
+  }
+  .reveal .mileage-strings code {
+    font-size: 0.9em;
+    padding: 6px 12px;
+    background: var(--bg-elevated);
+    border-color: var(--border);
+  }
+  .reveal .mileage-strings code:nth-child(3n+1) { color: var(--c-easy); }
+  .reveal .mileage-strings code:nth-child(3n+2) { color: var(--c-tempo); }
+  .reveal .mileage-strings code:nth-child(3n) { color: var(--c-long); }
+
+  /* Original 2003-era log table styling — preserved from spring04log.html */
+  .reveal .legacy-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin: 16px 0 10px;
+  }
+  .reveal .legacy-log {
+    background: #FFFFFF;
+    color: #000000;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    border-collapse: collapse;
+    width: 100%;
+    line-height: 1.35;
+  }
+  .reveal .legacy-log td {
+    padding: 2px 4px;
+    vertical-align: top;
+    color: #000000;
+    border: none;
+    background: transparent;
+  }
+  .reveal .legacy-log .header td {
+    background: #0033FF;
+    color: #FFFFFF;
+    font-weight: bold;
+    height: 17px;
+    padding: 2px 6px;
+  }
+  .reveal .legacy-log .strip td {
+    background: #FFFFCC;
+    height: 6px;
+  }
+  .reveal .legacy-log .row td {
+    background: #CCCCCC;
+  }
+  .reveal .legacy-log b, .reveal .legacy-log strong { font-weight: 700; }
+  .reveal .caption-blue { color: #0033FF; font-weight: 600; font-family: Verdana, Arial, Helvetica, sans-serif; }
+
+  .reveal table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7em;
+    margin: 0;
+  }
+  .reveal thead th {
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding: 10px 12px;
+  }
+  .reveal tbody td {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+  .reveal tbody tr:last-child td { border-bottom: none; }
+
+  .reveal .pill {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 2px 12px;
+    font-size: 0.6em;
+    font-family: 'Geist Mono', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+
+  .reveal .placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-family: 'Geist Mono', monospace;
+    font-size: 0.7em;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .reveal .placeholder .icon {
+    font-size: 2em;
+    color: var(--accent);
+  }
+  .reveal video {
+    max-height: 70vh;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+  }
+
+  .reveal .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+    text-align: left;
+  }
+  .reveal .grid-2 h3 { margin-top: 0; }
+
+  .reveal .tokens {
+    font-family: 'Geist Mono', monospace;
+    font-size: 0.6em;
+    text-align: left;
+    line-height: 1.7;
+  }
+  .reveal .tokens .k { color: var(--text-secondary); }
+  .reveal .tokens .v { color: var(--accent); }
+  .reveal .tokens .c1 { color: var(--c-easy); }
+  .reveal .tokens .c2 { color: var(--c-tempo); }
+  .reveal .tokens .c3 { color: var(--c-long); }
+  .reveal .tokens .c4 { color: var(--c-race); }
+
+  .reveal .footer-note {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.5em;
+    font-family: 'Geist Mono', monospace;
+  }
+
+  .reveal section { text-align: left; }
+  .reveal section.center { text-align: center; }
+
+  .reveal .controls { color: var(--accent); }
+  .reveal .progress { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- 1. Title -->
+    <section class="center">
+      <span class="pill">A Claude Code Story · Mar–May 2026</span>
+      <h1>20 Years of <span class="accent">Unfinished Data</span></h1>
+      <p class="subtitle">Rebuilding a 2003 college running log with Claude Code</p>
+    </section>
+
+    <!-- 2. The data -->
+    <section>
+      <h2>The data was a <span class="accent">diary</span>, not a database</h2>
+      <p class="muted" style="font-size:0.7em;margin-top:-4px;">Hand-written HTML, 2003–2007. Verbatim entries below, original styling preserved.</p>
+
+      <div class="legacy-strip">
+
+        <!-- 2007-05-09 — the 4.5+.5 entry -->
+        <table class="legacy-log">
+          <tr class="header"><td colspan="6">Wednesday, May 9th</td></tr>
+          <tr class="strip"><td colspan="6"></td></tr>
+          <tr class="row">
+            <td>Workout:</td><td>run</td>
+            <td>Minutes:</td><td>36:56</td>
+            <td><b>Miles:</b></td><td><strong>4.5+.5</strong></td>
+          </tr>
+          <tr class="row">
+            <td>Comments:</td>
+            <td colspan="5">ran with Coach H through the Fens, just wandering. Legs a little tight from yesterday; I didn't have time to stretch and I'm not running in the mornings.</td>
+          </tr>
+          <tr class="row">
+            <td>Extras:</td>
+            <td colspan="5">.5 mile over hurdles</td>
+          </tr>
+        </table>
+
+        <!-- 2005-07-04 — the ~8 entry -->
+        <table class="legacy-log">
+          <tr class="header"><td colspan="6">Monday, July 4th</td></tr>
+          <tr class="strip"><td colspan="6"></td></tr>
+          <tr class="row">
+            <td>Workout:</td><td>run</td>
+            <td>Minutes:</td><td>65:15</td>
+            <td><b>Miles:</b></td><td><b>~8</b></td>
+          </tr>
+          <tr class="row">
+            <td>Comments:</td>
+            <td colspan="5">ran over to Government Center via Sci Museum to see the 4th of July festivities, but I guess i got there too early, nothing was going on yet. built in some strides at the end</td>
+          </tr>
+          <tr class="row">
+            <td>Extras:</td>
+            <td colspan="5">situps, pushups</td>
+          </tr>
+        </table>
+
+        <!-- 2004-09-19 — the 1:45:52 long run (foreshadows slide 13) -->
+        <table class="legacy-log">
+          <tr class="header"><td colspan="6">Sunday, September 19th</td></tr>
+          <tr class="strip"><td colspan="6"></td></tr>
+          <tr class="row">
+            <td>Workout:</td><td>long run</td>
+            <td>Minutes:</td><td>1:45:52</td>
+            <td><b>Miles:</b></td><td><b>12.5+</b></td>
+          </tr>
+          <tr class="row">
+            <td>Comments:</td>
+            <td colspan="5">drove to the Blue Hills Reservation. Hillier than Boston (in a good way) and slightly loose footing in parts, but it was nice. Cool today</td>
+          </tr>
+          <tr class="row">
+            <td>Extras:</td>
+            <td colspan="5">&nbsp;</td>
+          </tr>
+        </table>
+
+      </div>
+
+      <p class="muted" style="text-align:center;font-size:0.65em;margin-top:6px;">
+        <span class="accent"><code>4.5+.5</code></span> = 4.5 main + 0.5 over hurdles &nbsp;·&nbsp;
+        <span class="accent"><code>~8</code></span> = "about eight" &nbsp;·&nbsp;
+        <span class="accent"><code>1:45:52</code></span> = a value the parser would mis-read 20 years later
+      </p>
+    </section>
+
+    <!-- 3. The itch -->
+    <section>
+      <h2>"I've wanted to visualize this since <span class="accent">2012</span>."</h2>
+      <div class="grid-2" style="margin-top:36px;">
+        <div class="card">
+          <h3>Why it never happened</h3>
+          <ul>
+            <li>Data was too informal for a parser</li>
+            <li>Edge cases everywhere — relay splits, multi-event meets, freetext notes</li>
+            <li>Every weekend project hit the same wall</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Why now</h3>
+          <ul>
+            <li>Claude reads the mess <em>and</em> infers intent</li>
+            <li>Not just parsing — interpreting</li>
+            <li>Loop-closer for the hundred tiny seams</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. March 4 — the spark -->
+    <section>
+      <span class="pill">Mar 4 · The Spark</span>
+      <h2>Raw HTML → live dashboard in <span class="accent">90 minutes</span></h2>
+      <p class="muted" style="font-size:0.75em;">Beautiful Soup parser, Plotly charts, Netlify deploy. One session.</p>
+      <h3 style="margin-top:24px;">What Claude figured out without being told</h3>
+      <ul>
+        <li>Track meets as <em>multi-event days</em></li>
+        <li>Relay splits attributed to the right person</li>
+        <li>Race detection from freetext ("XC", "Inv.", "Champ.")</li>
+        <li>Trendline placement decisions</li>
+      </ul>
+    </section>
+
+    <!-- 5. What went wrong -->
+    <section>
+      <h2>What went wrong (of course)</h2>
+      <div class="card">
+        <h3>The zoom coupling bug</h3>
+        <p>Five date-axis charts, all listening to <code>plotly_relayout</code>. When chart A relayouts, it tells B, C, D, E to relayout — which fire their own <code>relayout</code> events — which fire A's again.</p>
+        <pre><code class="language-javascript">// the fix: an early-return guard
+chart.on('plotly_relayout', (e) =&gt; {
+  if (e['xaxis.autorange']) return;        // ignore spurious
+  if (syncing) return;                     // ignore our own echo
+  syncing = true;
+  syncOthers(e);
+  syncing = false;
+});</code></pre>
+      </div>
+    </section>
+
+    <!-- 6. First dashboard live -->
+    <section class="center">
+      <span class="pill">Live · v0</span>
+      <h2>"<span class="accent">Strava Before Strava</span>"</h2>
+      <p class="subtitle">90 minutes after starting · deployed to ducktape.netlify.app</p>
+      <img src="screenshots/dashboard-v0.png"
+           alt="Original v0 running log dashboard"
+           style="max-width:88%;max-height:62vh;border-radius:12px;border:1px solid var(--border);margin-top:14px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+    </section>
+
+    <!-- 7. GitHub from the phone -->
+    <section>
+      <span class="pill">Mar 11</span>
+      <h2>GitHub from the <span class="accent">phone</span></h2>
+      <p>First mobile Claude Code session. PR #1 opened, reviewed, merged — all from a screen smaller than a paperback.</p>
+      <div class="quote">
+        The novel thing wasn't that the code got written on a phone. It was that the <em>code review</em> got done on a phone, by the same person who wrote it, while waiting somewhere.
+      </div>
+    </section>
+
+    <!-- 8. Auto-deploy hooks -->
+    <section>
+      <span class="pill">Mar 18</span>
+      <h2>Wiring the seams nobody wants to wire</h2>
+      <p class="muted" style="font-size:0.75em;">Two hooks in <code>~/.claude/settings.json</code>:</p>
+      <pre><code class="language-json">{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Write|Edit",
+      "hooks": [{ "type": "command",
+        "command": "case \"$file\" in *Running\\ Log/index.html)
+                      touch ~/.claude/running-log-deploy-pending ;; esac" }]
+    }],
+    "Stop": [{
+      "hooks": [{ "type": "command",
+        "command": "[ -f ~/.claude/running-log-deploy-pending ] &amp;&amp;
+                    netlify deploy --prod --dir='Running Log' &amp;&amp;
+                    rm ~/.claude/running-log-deploy-pending" }]
+    }]
+  }
+}</code></pre>
+      <p class="muted" style="font-size:0.7em;margin-top:14px;">
+        Any edit to <code>index.html</code> ships to Netlify when the turn ends. No CI to set up, no remembering.
+      </p>
+    </section>
+
+    <!-- 9. Redesign trigger -->
+    <section class="center">
+      <span class="pill">May · Design Thinking</span>
+      <h2>The redesign trigger</h2>
+      <div class="quote" style="font-size:1.05em;">
+        "I want to import a design from Claude Design and update my running log dashboard to match that design."
+        <span class="who">— me, kicking it off</span>
+      </div>
+      <p class="muted" style="font-size:0.7em;margin-top:24px;">
+        One sentence. Two tools. A cross-system handoff begins.
+      </p>
+    </section>
+
+    <!-- 10. Claude Design output (recording placeholder) -->
+    <section>
+      <h2>Claude Design output</h2>
+      <p class="muted" style="font-size:0.7em;">Dark glass · Geist fonts · workout-type palette · React tweaks panel</p>
+      <div id="recording-slot" class="placeholder">
+        <div class="icon">▶</div>
+        <div>Claude Design session recording</div>
+        <div style="font-size:0.85em;">Set <code>data-recording-src</code> on <code>&lt;html&gt;</code> at the top of the file<br/>to your recording's path or URL.</div>
+      </div>
+    </section>
+
+    <!-- 11. The handoff as spec -->
+    <section>
+      <h2>The handoff <em>is</em> the spec</h2>
+      <div class="grid-2">
+        <div>
+          <p>Claude Design didn't just produce a mockup. It produced a <strong>specification document</strong>: design tokens, component decisions, a README — ready to feed back into Claude Code as instructions.</p>
+        </div>
+        <div class="card tokens">
+<span class="k">--bg-base:</span>      <span class="v">#0d1117;</span><br/>
+<span class="k">--bg-surface:</span>   <span class="v">#161b22;</span><br/>
+<span class="k">--bg-elevated:</span>  <span class="v">#1c2230;</span><br/>
+<span class="k">--text-primary:</span> <span class="v">#e6edf3;</span><br/>
+<span class="k">--accent:</span>       <span class="v">#58a6ff;</span><br/>
+<br/>
+<span class="k">--c-easy:</span>  <span class="c1">#2dd4bf;</span><br/>
+<span class="k">--c-tempo:</span> <span class="c2">#f59e0b;</span><br/>
+<span class="k">--c-long:</span>  <span class="c3">#a78bfa;</span><br/>
+<span class="k">--c-race:</span>  <span class="c4">#f87171;</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. May 4 — big redesign -->
+    <section>
+      <span class="pill">May 4 · The Big Redesign</span>
+      <h2><span class="accent">3,749</span> insertions in one session</h2>
+      <p><code>visualize_log.py</code> rewritten end-to-end against the Claude Design spec. Six sections, SVG heatmap, race classifier, PR cards.</p>
+      <div class="card" style="margin-top:20px;">
+        <h3>The lesson that cost the most</h3>
+        <p><code>visualize_log.py</code> is the source of truth. <code>index.html</code> is a <em>generated artifact</em>. Early fixes were applied directly to <code>index.html</code> — and silently wiped on the next regeneration.</p>
+        <p class="muted" style="font-size:0.85em;margin-bottom:0;">→ Name your build system at the start of the session.</p>
+      </div>
+    </section>
+
+    <!-- 13. The pace bug -->
+    <section>
+      <h2>The data was fine. The <span class="accent">parser</span> wasn't.</h2>
+      <p class="muted" style="font-size:0.75em;">Long-run times were written as <code>H:MM:SS</code> — perfectly readable. The parser only handled <code>MM:SS</code>, so it silently dropped the hours digit.</p>
+      <pre><code class="language-python">def parse_minutes(s):
+    # "7:42"  -> 7.70 minutes  ✓
+    # "1:45:52" -> ??? this never happened, right?
+    h, m, sec = ...   # nope. m, sec = ... only.
+    return m + sec/60</code></pre>
+      <table style="margin-top:16px;">
+        <thead><tr><th>Input</th><th>Parsed as</th><th>Pace</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><code>1:45:52</code></td><td>1.75 min</td><td><span class="race">0.13 /mi</span></td><td class="muted">corrupted</td></tr>
+          <tr><td><code>1:45:52</code> ✓</td><td>105.87 min</td><td><span class="easy">7:33 /mi</span></td><td class="muted">recovered</td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="font-size:0.7em;margin-top:14px;">
+        The original log was <em>fine</em>. The bug only existed once we started treating notes-to-self as data.
+      </p>
+    </section>
+
+    <!-- 14. The long tail of theming -->
+    <section>
+      <h2>The long tail of <span class="accent">theming</span></h2>
+      <div class="quote">
+        "The light mode colors are very low contrast and hard to see. In Claude Design, the colors were more vibrant."
+      </div>
+      <div class="quote">
+        "There seems to be one lingering visual issue in light mode. The zoom slider on training volume chart is showing in dark mode."
+      </div>
+      <p class="muted" style="font-size:0.7em;">
+        Every hardcoded hex baked into a Python f-string is a future bug. The contract: <strong>every color a <code>var(--…)</code></strong> — state it up front, save yourself three round trips.
+      </p>
+    </section>
+
+    <!-- 15. QA script -->
+    <section>
+      <span class="pill">qa.py</span>
+      <h2>Claude wrote tests so the bugs couldn't come back</h2>
+      <div class="quote">
+        "If I want to make a QA agent to self-check most of the issues that I brought up, can you help me write a plan?"
+      </div>
+      <table>
+        <thead><tr><th>Check</th><th>Rescued bug</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>check_detail_panel_no_hex</code></td>
+            <td>Hardcoded hex colors that broke in light mode</td>
+          </tr>
+          <tr>
+            <td><code>check_easy_pace_no_fill</code></td>
+            <td><code>fill:"tozeroy"</code> on a reversed y-axis painted a blue cap upward</td>
+          </tr>
+          <tr>
+            <td><code>check_race_count_consistency</code></td>
+            <td>"I thought there were only 99 races." (the donut said 100)</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 16. Pain / time / money -->
+    <section>
+      <h2>What it actually cost</h2>
+      <table>
+        <thead>
+          <tr><th>Session</th><th>Time</th><th>Pain (1–5)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Mar 4 — The spark</td><td>~90 min</td><td>2</td></tr>
+          <tr><td>Mar 11 — Mobile + zoom sync</td><td>~45 min</td><td>1</td></tr>
+          <tr><td>Mar 18 — Auto-deploy hook</td><td>~30 min</td><td>2</td></tr>
+          <tr><td>May 4 — Big redesign</td><td>~3 hrs</td><td>2</td></tr>
+          <tr><td>May 12 — Polish + QA</td><td>~3 hrs</td><td>2</td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="font-size:0.7em;margin-top:18px;">
+        Without AI: a project I'd been "going to do" for <strong>14 years</strong>.
+        With AI: a few weekends of fun.
+      </p>
+    </section>
+
+    <!-- 17. Final dashboard -->
+    <section class="center">
+      <span class="pill">Today</span>
+      <h2 style="margin-bottom:8px;"><a href="https://ducktape.netlify.app" class="accent">ducktape.netlify.app</a></h2>
+      <p class="subtitle">2003–2007 college log · light / dark / system · click-to-detail · QA-tested</p>
+      <img src="screenshots/dashboard-dark.png"
+           alt="College Running Log dashboard"
+           style="max-width:88%;max-height:62vh;border-radius:12px;border:1px solid var(--border);margin-top:14px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+    </section>
+
+    <!-- 18. Meta callback — the deck itself -->
+    <section>
+      <span class="pill">Meta</span>
+      <h2>And this deck? <span class="accent">Under an hour.</span></h2>
+      <div class="grid-2" style="margin-top:24px;">
+        <div class="card">
+          <h3>What Claude did</h3>
+          <ul style="font-size:0.85em;">
+            <li>Mined session JSONLs for quotes</li>
+            <li>Wrote 19 slides of Reveal.js</li>
+            <li>Screenshotted the v0 + final dashboards via Chrome headless</li>
+            <li>Embedded the Claude Design recording</li>
+            <li>Committed, merged, deployed to Netlify</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>What I did</h3>
+          <ul style="font-size:0.85em;">
+            <li>Approved a plan</li>
+            <li>Answered three multiple-choice questions</li>
+            <li>Caught one bad headline ("hid for 20 years")</li>
+            <li>Said "redeploy"</li>
+          </ul>
+        </div>
+      </div>
+      <p class="muted" style="font-size:0.65em;font-style:italic;margin-top:22px;text-align:center;">
+        The talk about Claude Code is, of course, a Claude Code artifact.
+      </p>
+    </section>
+
+    <!-- 19. Closing -->
+    <section class="center">
+      <h1>Legacy data →<br/><span class="accent">modern interactive tool</span><br/>in a day.</h1>
+      <p class="subtitle" style="margin-top:36px;">10 minutes of Claude Code fixed what 10 years of Python procrastination couldn't.</p>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script>
+  // If a recording path was set on <html data-recording-src="...">, swap the placeholder for a <video>.
+  (function () {
+    var src = document.documentElement.getAttribute('data-recording-src');
+    var slot = document.getElementById('recording-slot');
+    if (src && slot) {
+      slot.outerHTML =
+        '<video controls preload="metadata" style="width:100%;max-height:70vh;">' +
+          '<source src="' + src + '">' +
+        '</video>';
+    }
+  })();
+
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    controlsTutorial: false,
+    width: 1280,
+    height: 800,
+    margin: 0.06,
+    plugins: [RevealHighlight]
+  });
+</script>
+</body>
+</html>

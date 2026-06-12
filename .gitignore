@@ -1,0 +1,24 @@
+# Claude local config (machine-specific; not shared)
+.claude/settings.json
+.claude/settings.local.json
+.claude/launch.json
+
+# Strava secrets & generated/runtime artifacts
+strava-data/.env
+strava-data/.strava_tokens.json
+strava-data/data/segments_map.html
+strava-export/.env
+strava-export/.strava_tokens.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Netlify local link (deploy handled by GitHub Action)
+.netlify
+
+# Editor / temp / backups
+*.bak-*
+*.asv
+*.autosave
+Untitled.*

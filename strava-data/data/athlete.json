@@ -1,0 +1,21 @@
+{
+  "id": 151287162,
+  "username": null,
+  "resource_state": 2,
+  "firstname": "alisha",
+  "lastname": "schor",
+  "bio": "I'm the joggernaut, bitch",
+  "city": "San Diego",
+  "state": "California",
+  "country": "United States",
+  "sex": "F",
+  "premium": true,
+  "summit": true,
+  "created_at": "2024-11-02T00:15:11Z",
+  "updated_at": "2026-03-28T01:34:15Z",
+  "badge_type_id": 1,
+  "profile_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/151287162/33920449/1/medium.jpg",
+  "profile": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/151287162/33920449/1/large.jpg",
+  "friend": null,
+  "follower": null
+}
