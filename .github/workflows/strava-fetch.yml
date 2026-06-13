@@ -1,6 +1,8 @@
 name: Strava Data Fetch
 
 on:
+  schedule:
+    - cron: "0 6 1,15 * *"   # 6 AM UTC on the 1st and 15th of each month (~every 2 weeks)
   workflow_dispatch:
     inputs:
       limit:
