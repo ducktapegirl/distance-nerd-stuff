@@ -2264,6 +2264,7 @@ main {{
   margin-bottom: 20px;
 }}
 .attribution {{ font-size:13.5px; color:var(--text-secondary); line-height:1.65; margin:0; }}
+.plot-caption {{ font-size:13.5px; color:var(--text-secondary); line-height:1.65; margin:12px 0 0; }}
 
 /* Activity calendar (hand-built SVG, ported from the College Running Log) */
 .hm-grid {{ display: flex; flex-direction: column; gap: 10px; overflow-x: auto; }}
@@ -3043,14 +3044,46 @@ def build_page(rows, segs):
     <div class="card-title">About This Section</div>
     <p class="attribution">This section was created entirely by Claude — Anthropic's <strong>Claude Fable 5</strong> model (<code>claude-fable-5</code>) acting as orchestrator, dispatching the strava-data-analyst, strava-creativity, strava-viz-design, strava-developer, and strava-qa subagents. Every analysis, statistical test, and line of code below was produced autonomously.</p>
   </div>
-  <div class="card"><div class="card-title">The Temperature Mirage</div>{fig_html(v1,460,"chart-x-mirage")}</div>
-  <div class="card"><div class="card-title">Athlete Archetypes</div>{fig_html(v2,520,"chart-x-archetypes")}</div>
-  <div class="card"><div class="card-title">Two Cardiac Worlds</div>{fig_html(v3,420,"chart-x-cardiac")}</div>
-  <div class="card"><div class="card-title">She Pays Pace, Not Heart, for Heat</div>{fig_html(v4,460,"chart-x-heat")}</div>
-  <div class="card"><div class="card-title">The Seasonal Handoff</div>{fig_html(v5,440,"chart-x-seasonal")}</div>
-  <div class="card"><div class="card-title">Cadence Is the Gearbox</div>{fig_html(v6,460,"chart-x-cadence")}</div>
-  <div class="card"><div class="card-title">The Metronome and Its Tail</div>{fig_html(v7,420,"chart-x-metronome")}</div>
-  <div class="card"><div class="card-title">Load, Monotony &amp; the Spike Zone</div>{fig_html(v8,480,"chart-x-load")}</div>
+  <div class="card">
+    <div class="card-title">The Temperature Mirage</div>
+    {fig_html(v1,460,"chart-x-mirage")}
+    <p class="plot-caption">When the weather cools down, runners often feel like they're getting fitter — but is that real? This chart tracks aerobic efficiency (pace per heartbeat) over time: the dashed line is the raw trend, the solid line adjusts for temperature using a statistical technique called OLS regression. The annotation in the top-right corner shows two correlation values (r) and their p-values — one before and one after the temperature correction. If the adjusted r is smaller or less significant, some of your apparent fitness gains were weather-driven, not true fitness gains.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Athlete Archetypes</div>
+    {fig_html(v2,520,"chart-x-archetypes")}
+    <p class="plot-caption">A technique called PCA compresses 8 workout metrics — distance, elevation, pace, heart rate, calories, and more — into two summary axes, then k-means clustering groups activities into 3 natural archetypes. Think of it as a map where nearby dots are workouts with similar effort profiles. The arrows show which original metrics pull in each direction; longer arrows mean that metric has more influence on the layout. The convex hull outlines and legend show how many activities fall into each cluster.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Two Cardiac Worlds</div>
+    {fig_html(v3,420,"chart-x-cardiac")}
+    <p class="plot-caption">These overlapping histograms compare average heart rate across all runs (teal) vs. mountain bike rides (amber). The vertical dashed lines mark the mean heart rate for each sport. The annotation box shows the gap (Δ bpm) between those means plus a Welch t-test result — a statistical check that confirms whether the difference is real or could be random chance (p &lt; 0.05 means it's real). The triangle markers at the top track max heart rate: despite the sustained intensity gap, your cardiovascular ceiling is nearly identical across both sports.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">She Pays Pace, Not Heart, for Heat</div>
+    {fig_html(v4,460,"chart-x-heat")}
+    <p class="plot-caption">Each violin shape shows the spread of run paces across three temperature bands — cool, mid, and warm. Wider = more spread in that band; the box inside marks the middle 50% of runs. The teal line (right axis) tracks average heart rate across those same bands. The bottom annotation gives the exact average pace for the coolest and warmest conditions, plus two p-values: one confirming pace does change significantly with temperature, and one showing heart rate does not — meaning in the heat you move slower without working cardiovascularly harder.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">The Seasonal Handoff</div>
+    {fig_html(v5,440,"chart-x-seasonal")}
+    <p class="plot-caption">The teal filled area shows total running distance per month; the amber bars show MTB ride counts; the faint dot-dash line is average temperature. Where one sport rises, the other falls. The shaded "MTB blackout" annotation marks a stretch where ride counts dropped to near zero — the label inside it shows how few MTB rides occurred that month, likely due to trail conditions rather than preference.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Cadence Is the Gearbox</div>
+    {fig_html(v6,460,"chart-x-cadence")}
+    <p class="plot-caption">Each dot is a run, colored by heart rate intensity (darker teal = higher HR). The dashed trendline shows the OLS-fitted relationship between cadence and pace. The annotation box in the top-left reports two correlations: cadence→pace (r and p-value) and cadence→heart rate (r and p-value). A strong cadence–pace r with a weak cadence–HR r means cadence functions like a mechanical gear ratio — spinning faster makes you go faster without necessarily driving your heart harder. The vertical dotted line marks the median cadence.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">The Metronome and Its Tail</div>
+    {fig_html(v7,420,"chart-x-metronome")}
+    <p class="plot-caption">Two side-by-side distributions: run pace in min/mi (left) and mountain bike speed in mph (right). The shaded band on the left covers the middle 80% of runs (p10 to p90 — the 10th and 90th percentiles); the vertical dashed lines on the right mark the same percentile boundaries for MTB. The annotation on the left's slow tail identifies what those outlier runs actually are — trail workouts with heavy elevation gain, or group social runs where pace takes a back seat.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Load, Monotony &amp; the Spike Zone</div>
+    {fig_html(v8,480,"chart-x-load")}
+    <p class="plot-caption">The violet line (left axis) is your 7-day rolling suffer score — a Strava-derived measure of cumulative training stress. The gray line (right axis) is the ACWR ratio: your current week's training divided by your 4-week rolling average. A ratio near 1.0 means you're training consistently; the colored bands show risk zones — teal is the sweet spot, amber is elevated risk, and red is the spike zone (&gt;1.5) where injury risk rises sharply. The labeled arrow marks your highest single-week training peak; the counter at the top shows how many days you spent in the spike zone.</p>
+  </div>
 </section>
 
 </main>
