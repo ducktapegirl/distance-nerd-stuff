@@ -2013,6 +2013,316 @@ def chart_x_load(rows):
                      total_suffer=total_suffer)
 
 
+# ─── New Segments-section views ───────────────────────────────────────────────
+# Three additions to the Segments tab, built from segment_efforts.csv:
+#   (1) pace-consistency box plots (most/least consistent per sport)
+#   (2) top-3 fastest segments by average pace (HTML stat cards)
+#   (3) grade vs avg pace, run vs MTB, over geographically-overlapping segments,
+#       with the grade at which running overtakes mountain biking.
+# Conventions reused: Run+TrailRun = Running (teal), MountainBikeRide = MTB
+# (amber); running effort shown as pace min/mi (faster = lower), MTB as mph;
+# distance in mi, grade in %. Annotations use X_SLATE text + X_ANN_BG pill so
+# applyChartTheme() retints them in light mode. ASCII-only on-chart text.
+
+RUN_EMOJI = "\U0001f3c3‍♀️"   # woman running
+MTB_EMOJI = "\U0001f6b5‍♀️"   # woman mountain biking
+
+
+def _esc(s):
+    """Minimal HTML-text escape for segment names injected into card markup."""
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def compute_seg_rollups(seg_efforts, act_by_id):
+    """Per-segment rollup keyed by segment_id. Groups Run+TrailRun -> 'Running',
+    MountainBikeRide -> 'MTB'; everything else ignored. `metric` holds the
+    per-effort DISPLAY value (pace min/mi for Running, speed mph for MTB)."""
+    roll = {}
+    for e in seg_efforts:
+        a  = act_by_id.get(str(e.get("activity_id", "")), {})
+        st = a.get("sport_type", "")
+        g  = ("Running" if st in ("Run", "TrailRun")
+              else "MTB" if st == "MountainBikeRide" else None)
+        if g is None:
+            continue
+        dist = mf(e.get("segment_distance_m")) or 0
+        el   = mf(e.get("elapsed_time_s")) or 0
+        if dist <= 0 or el <= 0:
+            continue
+        sid = e.get("segment_id", "")
+        s = roll.get(sid)
+        if s is None:
+            s = roll[sid] = dict(
+                group=g, name=e.get("segment_name", ""), dist_m=dist,
+                grade=mf(e.get("segment_avg_grade")),
+                lat=mf(e.get("segment_start_lat")), lng=mf(e.get("segment_start_lng")),
+                times=[], metric=[])
+        if s["group"] != g:          # Strava segments are sport-specific; guard anyway
+            continue
+        s["times"].append(el)
+        if g == "MTB":
+            s["metric"].append((dist / el) * 3.6 * KM_TO_MI)        # mph
+        else:
+            s["metric"].append((el / dist) * (1000 / 60) / KM_TO_MI)  # min/mi
+    return roll
+
+
+def _cv(vals):
+    """Coefficient of variation (population std / mean) of a value list."""
+    a = np.array(vals, dtype=float)
+    m = a.mean()
+    return float(a.std(ddof=0) / m) if m else float("inf")
+
+
+def _mi_pace_ticks(vals, target=6):
+    """Adaptive M:SS tick vals/text for a min/mi axis spanning min(vals)..max(vals).
+    Picks a 'nice' step so tight and very wide distributions both read cleanly."""
+    if not vals:
+        return [], []
+    lo, hi = min(vals), max(vals)
+    if hi <= lo:
+        hi = lo + 0.5
+    raw = (hi - lo) / max(1, target)
+    step = 60.0
+    for cand in (0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60):
+        if cand >= raw:
+            step = cand
+            break
+    start = math.floor(lo / step) * step
+    out, v = [], start
+    while v <= hi + step * 0.5:
+        if v >= lo - step * 0.5:
+            out.append(round(v, 4))
+        v += step
+    return out, [fmt_pace(x) for x in out]
+
+
+# ── 1. Pace consistency ──────────────────────────────────────────────────────
+
+def seg_consistency_picks(roll, group, min_eff=3):
+    """(most, least) consistent segments for a group, each (cv, sid, seg), using
+    the coefficient of variation of the per-effort display metric. Segments need
+    >= min_eff efforts. Returns (None, None) if none qualify."""
+    scored = sorted(
+        ((_cv(s["metric"]), sid, s) for sid, s in roll.items()
+         if s["group"] == group and len(s["metric"]) >= min_eff),
+        key=lambda x: x[0])
+    if not scored:
+        return None, None
+    return scored[0], scored[-1]
+
+
+def chart_consistency_box(s, group):
+    """Horizontal box (with all efforts shown) of one segment's pace/speed spread.
+    Running: min/mi, x REVERSED so faster reads to the right. MTB: mph (faster is
+    naturally to the right)."""
+    vals  = s["metric"]
+    color = RUN_COLOR if group == "Running" else MTB_COLOR
+    if group == "Running":
+        labels = [f"{fmt_pace(v)} /mi" for v in vals]
+    else:
+        labels = [f"{v:.1f} mph" for v in vals]
+
+    fig = go.Figure()
+    fig.add_trace(go.Box(
+        x=vals, orientation="h", name="",
+        boxpoints="all", jitter=0.6, pointpos=0, whiskerwidth=0.4,
+        marker=dict(color=color, size=7, opacity=0.75, line=dict(width=0)),
+        line=dict(color=color, width=1.5),
+        fillcolor=_x_rgba(color, 0.18),
+        text=labels, hoverinfo="text",
+    ))
+    tidy_dark(fig)
+    fig.update_layout(showlegend=False, margin=dict(t=12, b=46, l=14, r=18))
+    fig.update_yaxes(showticklabels=False, showgrid=False, zeroline=False)
+    if group == "Running":
+        tv, tt = _mi_pace_ticks(vals)
+        fig.update_xaxes(title_text="Pace (min/mi, faster ->)", autorange="reversed",
+                         tickvals=tv, ticktext=tt)
+    else:
+        fig.update_xaxes(title_text="Speed (mph, faster ->)")
+    return fig
+
+
+def _cons_card_html(scored, group, label, div_id):
+    """One consistency card: emoji + tag, segment name, the box plot, a stat line."""
+    if scored is None:
+        return ""
+    cv, _sid, s = scored
+    emoji = RUN_EMOJI if group == "Running" else MTB_EMOJI
+    n  = len(s["metric"])
+    lo, hi = min(s["metric"]), max(s["metric"])
+    rng = (f"{fmt_pace(lo)}–{fmt_pace(hi)} /mi" if group == "Running"
+           else f"{lo:.1f}–{hi:.1f} mph")
+    fig = chart_consistency_box(s, group)
+    return (
+        '<div class="seg-cardlet">'
+        f'<div class="seg-cardlet-head"><span class="seg-emoji">{emoji}</span>'
+        f'<span class="seg-cardlet-tag">{label} consistent &middot; {group}</span></div>'
+        f'<div class="seg-cardlet-name">{_esc(s["name"])}</div>'
+        f'{fig_html(fig, 200, div_id)}'
+        f'<div class="seg-cardlet-meta">{n} efforts &middot; {rng} &middot; CV {cv*100:.1f}%</div>'
+        '</div>')
+
+
+# ── 2. Fastest segments by average pace ──────────────────────────────────────
+
+def seg_fastest_picks(roll, group, top=3):
+    """Top-N segments by average display metric (lowest min/mi for Running,
+    highest mph for MTB). Returns list of (avg, sid, seg)."""
+    rows = [(float(np.mean(s["metric"])), sid, s)
+            for sid, s in roll.items() if s["group"] == group]
+    rows.sort(key=lambda x: -x[0] if group == "MTB" else x[0])
+    return rows[:top]
+
+
+def _grade_txt(g):
+    if g is None:
+        return "n/a"
+    t = f"{g:+.1f}%"
+    return "0.0%" if t in ("+0.0%", "-0.0%") else t
+
+
+def fast_seg_card(rank, group, avg, s):
+    """One 'fastest segment' stat card: name + avg pace, distance (mi), grade."""
+    emoji = RUN_EMOJI if group == "Running" else MTB_EMOJI
+    if group == "Running":
+        pace = f"{fmt_pace(avg)}<span class='u'>/mi</span>"
+    else:
+        pace = f"{avg:.1f}<span class='u'>mph</span>"
+    dist_mi = s["dist_m"] * KM_TO_MI / 1000
+    n = len(s["metric"])
+    return (
+        '<div class="fast-card">'
+        f'<div class="fast-rank">{emoji} #{rank}</div>'
+        f'<div class="fast-name">{_esc(s["name"])}</div>'
+        '<div class="fast-stats">'
+        f'<div class="fast-stat"><div class="fast-val">{pace}</div>'
+        '<div class="fast-lbl">avg pace</div></div>'
+        f'<div class="fast-stat"><div class="fast-val">{dist_mi:.2f}<span class="u">mi</span></div>'
+        '<div class="fast-lbl">distance</div></div>'
+        f'<div class="fast-stat"><div class="fast-val">{_grade_txt(s["grade"])}</div>'
+        '<div class="fast-lbl">grade</div></div>'
+        '</div>'
+        f'<div class="fast-foot">avg of {n} effort{"s" if n != 1 else ""}</div>'
+        '</div>')
+
+
+# ── 3. Grade vs pace: where running overtakes mountain biking ─────────────────
+
+def seg_overlap_pairs(roll, max_start_m=60.0, ratio_lo=0.70, ratio_hi=1.43):
+    """Geographically-overlapping run/MTB segment pairs: start points within
+    `max_start_m` AND segment distances within [ratio_lo, ratio_hi] (so the two
+    cover essentially the same ground -> 'subsegments are ok'). Returns list of
+    (start_dist_m, run_seg, mtb_seg)."""
+    runs = [s for s in roll.values()
+            if s["group"] == "Running" and s["lat"] and s["lng"] and s["grade"] is not None]
+    mtbs = [s for s in roll.values()
+            if s["group"] == "MTB" and s["lat"] and s["lng"] and s["grade"] is not None]
+    pairs = []
+    for rs in runs:
+        for ms in mtbs:
+            d = _haversine_m(rs["lat"], rs["lng"], ms["lat"], ms["lng"])
+            if d > max_start_m:
+                continue
+            if ratio_lo <= rs["dist_m"] / ms["dist_m"] <= ratio_hi:
+                pairs.append((d, rs, ms))
+    return pairs
+
+
+def _seg_avg_pace_mi(s):
+    """Average completion time normalized to pace (min/mi) so segments of
+    different lengths compare fairly on a shared run-vs-MTB axis."""
+    avg_t = float(np.mean(s["times"]))
+    return (avg_t / s["dist_m"]) * (1000 / 60) / KM_TO_MI
+
+
+def chart_seg_grade_vs_time(pairs):
+    """Scatter: segment grade (x) vs average pace per mile (y, REVERSED), Running
+    vs MTB as separate datasets drawn from the overlapping segments. Linear fit
+    per sport; the crossover grade (where running's pace overtakes MTB's) is
+    marked. Returns (fig_or_None, info, ok)."""
+    run_u = {id(rs): rs for _d, rs, _ms in pairs}
+    mtb_u = {id(ms): ms for _d, _rs, ms in pairs}
+    run = list(run_u.values())
+    mtb = list(mtb_u.values())
+    info = dict(n_run=len(run), n_mtb=len(mtb), cross=None)
+    if len(run) < 2 or len(mtb) < 2:
+        return None, info, False
+
+    def pts(segs):
+        xs = [s["grade"] for s in segs]
+        ys = [_seg_avg_pace_mi(s) for s in segs]
+        return xs, ys
+
+    rx, ry = pts(run)
+    mx, my = pts(mtb)
+    rb, ra = np.polyfit(rx, ry, 1)      # pace = ra + rb*grade
+    mb, ma = np.polyfit(mx, my, 1)
+    cross = (ma - ra) / (rb - mb) if abs(rb - mb) > 1e-9 else None
+    info.update(cross=cross, run_slope=rb, mtb_slope=mb)
+
+    fig = go.Figure()
+    # Shade the "running faster" half-plane (grade > crossover) faint teal.
+    gmin = min(min(rx), min(mx))
+    gmax = max(max(rx), max(mx))
+    pad  = max(1.0, (gmax - gmin) * 0.06)
+    x0, x1 = gmin - pad, gmax + pad
+    if cross is not None and x0 < cross < x1 and rb < mb:
+        fig.add_vrect(x0=cross, x1=x1, fillcolor=_x_rgba(RUN_COLOR, 0.07),
+                      line_width=0, layer="below")
+
+    def cd(segs):
+        out = []
+        for s in segs:
+            p = _seg_avg_pace_mi(s)
+            mph = s["dist_m"] / 1000 * KM_TO_MI / (float(np.mean(s["times"])) / 3600)
+            out.append([_esc(s["name"]), _grade_txt(s["grade"]), fmt_pace(p),
+                        f"{mph:.1f}", fmt_seg_time(float(np.mean(s["times"])))])
+        return out
+
+    fig.add_trace(go.Scatter(
+        x=rx, y=ry, mode="markers", name="Running",
+        marker=dict(color=RUN_COLOR, size=9, opacity=0.8, symbol="circle",
+                    line=dict(width=0)),
+        customdata=cd(run),
+        hovertemplate=("%{customdata[0]}<br>grade %{customdata[1]}<br>"
+                       "%{customdata[2]} /mi<br>avg %{customdata[4]}<extra></extra>"),
+    ))
+    fig.add_trace(go.Scatter(
+        x=mx, y=my, mode="markers", name="MTB",
+        marker=dict(color=MTB_COLOR, size=9, opacity=0.8, symbol="diamond",
+                    line=dict(width=0)),
+        customdata=cd(mtb),
+        hovertemplate=("%{customdata[0]}<br>grade %{customdata[1]}<br>"
+                       "%{customdata[2]} /mi (%{customdata[3]} mph)<br>"
+                       "avg %{customdata[4]}<extra></extra>"),
+    ))
+    # Fit lines across each sport's own grade span.
+    for xs, b, a, col in ((rx, rb, ra, RUN_COLOR), (mx, mb, ma, MTB_COLOR)):
+        xa, xb = min(xs), max(xs)
+        fig.add_trace(go.Scatter(
+            x=[xa, xb], y=[a + b * xa, a + b * xb], mode="lines",
+            line=dict(color=col, width=1.5, dash="dash"),
+            showlegend=False, hoverinfo="skip"))
+
+    tidy_dark(fig)
+    fig.update_layout(showlegend=True, margin=dict(t=20, b=44, l=64, r=20))
+    fig.update_xaxes(title_text="Segment grade (%)", range=[x0, x1], zeroline=True)
+    allp = ry + my
+    tv, tt = _mi_pace_ticks(allp)
+    fig.update_yaxes(title_text="Avg pace (min/mi, faster = up)", autorange="reversed",
+                     tickvals=tv, ticktext=tt)
+    if cross is not None and x0 < cross < x1:
+        fig.add_vline(x=cross, line=dict(color=X_SLATE, dash="dot", width=1.5))
+        fig.add_annotation(
+            x=cross, y=1.0, yref="paper", yanchor="bottom", xanchor="center",
+            text=f"running overtakes MTB at ~{cross:.1f}% grade", showarrow=False,
+            font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
+            bgcolor=X_ANN_BG)
+    return fig, info, True
+
+
 # ─── Stats ────────────────────────────────────────────────────────────────────
 
 def compute_stats(rows):
@@ -2339,6 +2649,102 @@ main {{
   .topnav-row {{ padding: 0 16px; }}
   main {{ padding: 24px 16px 60px; }}
   .page-header h1 {{ font-size: 22px; }}
+}}
+
+/* Segment consistency cardlets (Section 1) */
+.seg-cons-grid {{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}}
+.seg-cardlet {{
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 18px 18px 14px;
+  min-width: 0;
+  animation: fadeUp 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}}
+.seg-cardlet .plotly-graph-div {{ max-width: 100%; }}
+.seg-cardlet-head {{ display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }}
+.seg-emoji {{ font-size: 17px; line-height: 1; }}
+.seg-cardlet-tag {{
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-secondary);
+}}
+.seg-cardlet-name {{
+  font-size: 15px; font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}}
+.seg-cardlet-meta {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px; color: var(--text-tertiary);
+  margin-top: 2px;
+}}
+
+/* Fastest-segment stat cards (Section 2) */
+.fast-grid {{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}}
+.fast-card {{
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px 18px;
+  min-width: 0;
+  animation: fadeUp 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}}
+.fast-rank {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}}
+.fast-name {{
+  font-size: 15px; font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  line-height: 1.3;
+  min-height: 2.6em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}}
+.fast-stats {{ display: flex; gap: 8px; }}
+.fast-stat {{ flex: 1 1 0; text-align: center; }}
+.fast-val {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 17px; font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.1;
+  white-space: nowrap;
+}}
+.fast-val .u {{
+  font-size: 0.62em; color: var(--text-tertiary);
+  margin-left: 2px; letter-spacing: 0;
+}}
+.fast-lbl {{
+  margin-top: 4px;
+  font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-secondary);
+}}
+.fast-foot {{
+  margin-top: 12px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 10.5px; color: var(--text-tertiary);
+}}
+
+@media (max-width: 760px) {{
+  .seg-cons-grid {{ grid-template-columns: 1fr; }}
+  .fast-grid {{ grid-template-columns: 1fr; }}
 }}
 
 /* Segment filter pills */
@@ -2835,6 +3241,82 @@ def build_page(rows, segs):
     print("  MTB seg HR vs grade...")
     mtb_hr_grade  = chart_mtb_seg_hr_vs_grade(mtb_seg_data)
 
+    # ── New Segments-section views (consistency, fastest, grade-vs-pace) ───────
+    print("  building segment rollups...")
+    seg_roll = compute_seg_rollups(seg_efforts, act_by_id)
+
+    print("  segment pace consistency...")
+    cons_run_most, cons_run_least = seg_consistency_picks(seg_roll, "Running")
+    cons_mtb_most, cons_mtb_least = seg_consistency_picks(seg_roll, "MTB")
+    for tag, pk in (("run most", cons_run_most), ("run least", cons_run_least),
+                    ("mtb most", cons_mtb_most), ("mtb least", cons_mtb_least)):
+        if pk:
+            cvv, _sid, s = pk
+            print("    %-9s CV=%.4f n=%2d '%s'" % (tag, cvv, len(s["metric"]), s["name"]))
+
+    print("  fastest segments by avg pace...")
+    fast_run = seg_fastest_picks(seg_roll, "Running")
+    fast_mtb = seg_fastest_picks(seg_roll, "MTB")
+    for tag, rows_ in (("run", fast_run), ("mtb", fast_mtb)):
+        for avg, _sid, s in rows_:
+            print("    %-3s avg=%.2f grade=%s '%s'" % (tag, avg, s["grade"], s["name"]))
+
+    print("  segment grade-vs-pace overlap (run vs MTB)...")
+    ov_pairs = seg_overlap_pairs(seg_roll)
+    grade_time_fig, gt_info, gt_ok = chart_seg_grade_vs_time(ov_pairs)
+    print("    overlap pairs=%d run_segs=%d mtb_segs=%d build=%s crossover=%s"
+          % (len(ov_pairs), gt_info["n_run"], gt_info["n_mtb"], gt_ok,
+             ("%.2f%%" % gt_info["cross"]) if gt_info.get("cross") is not None else "n/a"))
+
+    cons_cards_html = (
+        '<div class="section-anchor" style="margin-top:32px">Segment Pace Consistency</div>'
+        '<div class="seg-cons-grid">'
+        + _cons_card_html(cons_run_most,  "Running", "Most",  "chart-seg-cons-run-most")
+        + _cons_card_html(cons_run_least, "Running", "Least", "chart-seg-cons-run-least")
+        + _cons_card_html(cons_mtb_most,  "MTB",     "Most",  "chart-seg-cons-mtb-most")
+        + _cons_card_html(cons_mtb_least, "MTB",     "Least", "chart-seg-cons-mtb-least")
+        + '</div>')
+
+    fast_cards_html = (
+        f'<div class="section-anchor" style="margin-top:32px">{RUN_EMOJI} Running &middot; '
+        'Fastest 3 Segments</div><div class="fast-grid">'
+        + "".join(fast_seg_card(i + 1, "Running", avg, s)
+                  for i, (avg, _sid, s) in enumerate(fast_run))
+        + '</div>'
+        f'<div class="section-anchor" style="margin-top:24px">{MTB_EMOJI} MTB &middot; '
+        'Fastest 3 Segments</div><div class="fast-grid">'
+        + "".join(fast_seg_card(i + 1, "MTB", avg, s)
+                  for i, (avg, _sid, s) in enumerate(fast_mtb))
+        + '</div>')
+
+    if gt_ok:
+        cross = gt_info["cross"]
+        cap = (
+            "Strava segments are sport-specific, so to compare running against "
+            "mountain biking on the same dirt I matched run and MTB segments whose "
+            "start points fall within 60&nbsp;m of each other and whose lengths are "
+            "within ~40% &mdash; the same trails, run and ridden. Each dot is one such "
+            "segment, placed by its grade (x) and its average pace per mile "
+            "(y, faster&nbsp;=&nbsp;up); using pace per mile normalizes the different "
+            "segment lengths so the run-vs-bike comparison is fair. The dashed lines "
+            "are linear fits per sport.")
+        if cross is not None:
+            cap += (
+                f" They cross near <strong>{cross:.1f}% grade</strong>: on flatter or "
+                "downhill terrain (left) the bike is faster, but on climbs steeper than "
+                f"that, running overtakes mountain biking (shaded) &mdash; grinding a bike "
+                "uphill costs more than it saves.")
+        grade_time_html = (
+            '<div class="section-anchor" style="margin-top:32px">Running vs MTB &middot; '
+            'Speed by Grade</div>'
+            '<div class="card">'
+            '<div class="card-title">Where Running Overtakes Mountain Biking</div>'
+            + fig_html(grade_time_fig, 460, "chart-seg-grade-time")
+            + f'<p class="plot-caption">{cap}</p>'
+            '</div>')
+    else:
+        grade_time_html = ""
+
     # ── Exploratory tab (V1-V8) ────────────────────────────────────────────────
     print("  exploratory V1 temperature mirage...")
     v1, v1m = chart_x_mirage(rows)
@@ -3033,6 +3515,9 @@ def build_page(rows, segs):
     </div>
     {fig_html(segs_c, 540, div_id="chart-segs")}
   </div>
+  {cons_cards_html}
+  {fast_cards_html}
+  {grade_time_html}
 </section>
 
 <section id="view-map" class="view">
