@@ -1,6 +1,6 @@
 ---
 name: strava-qa
-description: Validates a freshly built Strava dashboard — build integrity, spec compliance, units policy, data accuracy, edge cases, HTML sanity, label-overlap detection, and a light/dark theme audit. Runs and inspects but never edits code. Use in the QA stage of the Strava dashboard pipeline.
+description: Validates a freshly built Strava dashboard — build integrity, spec compliance, units policy, data accuracy, edge cases, HTML sanity, label-overlap and edge-clipping detection, and a light/dark theme audit. Runs and inspects but never edits code. Use in the QA stage of the Strava dashboard pipeline.
 tools: Read, Bash, Grep, Glob, mcp__Claude_Preview__preview_start, mcp__Claude_Preview__preview_screenshot, mcp__Claude_Preview__preview_console_logs, mcp__Claude_Preview__preview_stop, mcp__Claude_Preview__preview_eval, mcp__Claude_Preview__preview_click, mcp__Claude_Preview__preview_snapshot
 model: sonnet
 ---
@@ -69,8 +69,11 @@ always filter to visible charts (`el.offsetParent !== null`) in any `preview_eva
 ## 6.5 Label-overlap detection (Preview MCP)
 
 Goal: find legends/annotations that **obscure plotted data** or **collide with each other**.
-**Labels positioned outside the plot area are acceptable — never flag a label merely for its
-position.** Only actual intersection with data marks or other labels counts.
+**Labels positioned outside the plot *area* are acceptable — never flag a label merely for
+sitting in the margin.** Only actual intersection with data marks or other labels counts here.
+(Sitting in the margin is fine; spilling past the *figure's own edge* so the text is cut off is
+NOT — that clipping is a separate FAIL caught by 6.5b below. "Outside the plot area" and
+"outside the figure" are different things: the first is allowed, the second is a defect.)
 
 For each tab, click the tab button, then run via `preview_eval`:
 
@@ -159,10 +162,66 @@ Evaluate:
 - Maps/calendars without standard layers → note as N/A.
 
 For FAIL items suggest a concrete fix: move the annotation outside the plot area
-(`xref/yref="paper"`, coordinates beyond [0,1], with margin to make room), reposition to an
-empty quadrant, or push the legend further below (`y=-0.35`).
+(`xref/yref="paper"`, coordinates beyond [0,1], **with the margin on that side deepened enough
+to keep the whole label inside the figure** — verify with 6.5b, an offset like `y=-0.20`
+clips if the margin is too shallow), reposition to an empty quadrant, or push the legend
+further below (`y=-0.35`).
 
 Report one row per chart: | Chart ID | Tab | Status | Detail |
+
+## 6.5b Edge-clipping / truncation detection (Preview MCP)
+
+A label placed in the margin (`yref="paper"` with y<0 or y>1, an `xanchor` overhang, etc.) is
+only acceptable if it still renders **inside the figure's SVG viewport**. When the margin is
+too shallow for the offset, Plotly draws the text past the `svg.main-svg` edge and the browser
+clips it: the label is fully present in the DOM and in `data-unformatted`, but the user sees
+only a sliver or nothing. The 6.5 overlap scan does **not** catch this (the clipped text
+overlaps no data and no other label), so run this separate pass on **every** tab.
+
+For each tab, click the tab button, then run via `preview_eval`:
+
+```javascript
+(function() {
+  var out = [];
+  document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
+    if (el.offsetParent === null) return;                 // visible charts only
+    var svg = el.querySelector('svg.main-svg'); if (!svg) return;
+    var sv = svg.getBoundingClientRect();                 // the clip viewport
+    el.querySelectorAll('.infolayer .annotation').forEach(function(a, i) {
+      var t = a.querySelector('text');
+      var txt = (t ? t.textContent : a.textContent).trim();
+      var r = a.getBoundingClientRect(); if (!r.width && !r.height) return;
+      var over = {left: Math.round(sv.left - r.left), right: Math.round(r.right - sv.right),
+                  top: Math.round(sv.top - r.top),    bottom: Math.round(r.bottom - sv.bottom)};
+      var sides = Object.keys(over).filter(function(k) { return over[k] > 2; }); // >2px = clipped
+      if (sides.length) {
+        var vl = Math.max(r.left, sv.left), vr = Math.min(r.right, sv.right),
+            vt = Math.max(r.top, sv.top),   vb = Math.min(r.bottom, sv.bottom);
+        var hidden = Math.round((1 - (Math.max(0, vr - vl) * Math.max(0, vb - vt)) /
+                                 (r.width * r.height)) * 100);
+        out.push({chart: el.id, ann: i, text: txt.slice(0, 45),
+                  clippedSides: sides, overflowPx: over, hiddenPct: hidden});
+      }
+    });
+  });
+  return JSON.stringify({clippedCount: out.length, items: out}, null, 2);
+})()
+```
+
+Evaluate:
+- `clippedCount: 0` → PASS.
+- Any item → **FAIL**: the label text is cut off by the figure edge. Cite the chart, the
+  side(s), and `hiddenPct`, and `preview_screenshot` the offending chart as proof.
+- **Subplot titles count.** `subplot_titles=[...]` render as annotations at the top of each
+  subplot, so a too-shallow **top** margin (the `tidy_dark` default is `t=20`, tight for the
+  size-16 title font) clips their tops — this pass catches that as a `top` overflow.
+
+Suggested fix: deepen the margin on the clipped side enough to contain the label
+(`fig.update_layout(margin=dict(b=...))` for a bottom stat line, `dict(t=...)` for clipped
+subplot titles) and/or pull the paper offset back toward [0,1]. After the fix the label must
+sit fully inside `svg.main-svg`; re-run this pass until `clippedCount: 0`.
+
+Report one row per clipped label: | Chart ID | Tab | Side(s) | Hidden % | Status |
 
 ## 6.6 Theme audit — light AND dark (mandatory)
 
@@ -236,5 +295,6 @@ Report per theme: | Chart ID | Tab | Theme | Worst contrast | Status |
 
 ## Report format
 A markdown checklist with PASS / FAIL / WARN per item. For each FAIL/WARN add a one-sentence
-description and, if obvious, a suggested fix. Include the overlap table (6.5) and the theme
-audit table (6.6). End with the screenshots taken and which theme/tab each shows.
+description and, if obvious, a suggested fix. Include the overlap table (6.5), the
+edge-clipping table (6.5b), and the theme audit table (6.6). End with the screenshots taken
+and which theme/tab each shows.

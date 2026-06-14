@@ -1693,19 +1693,22 @@ def chart_x_heat(rows):
                      tickvals=pv, ticktext=pt, secondary_y=False)
     fig.update_yaxes(title_text="Mean HR (bpm)", range=[145, 160], secondary_y=True)
     # Bottom margin holds both the x-axis title and the stat annotation below it.
-    fig.update_layout(margin=dict(b=80))
+    # b=96 (was 80) gives the y=-0.16 stat line room to sit fully inside the
+    # 460px figure; at b=80 + y=-0.20 the text rendered past the SVG bottom edge.
+    fig.update_layout(margin=dict(b=96))
     fig.add_annotation(x=0.02, y=0.98, xref="paper", yref="paper",
                        text="teal line = mean HR (right axis)", showarrow=False,
                        xanchor="left", yanchor="top",
                        font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
                        bgcolor=X_ANN_BG)
     # Annotation per spec, recomputed in min/mi (M:SS). HR-flat clause pinned.
-    # Moved fully BELOW the plot area (was y=0.02 inside, crossed the Mid violin's
-    # long lower tail). y=-0.20 sits under the "Temperature tercile" axis title.
+    # Sits fully BELOW the plot area (was y=0.02 inside, crossed the Mid violin's
+    # long lower tail). y=-0.16 clears the "Temperature tercile" axis title while
+    # staying inside the figure's bottom margin (b=96); y=-0.20 clipped at the edge.
     cool_mss = fmt_pace(float(pace_cool_mi.mean()))
     warm_mss = fmt_pace(float(pace_warm_mi.mean()))
     fig.add_annotation(
-        x=0.5, y=-0.20, xref="paper", yref="paper", xanchor="center", yanchor="top",
+        x=0.5, y=-0.16, xref="paper", yref="paper", xanchor="center", yanchor="top",
         text=(f"Cool {cool_mss} vs Warm {warm_mss} /mi | "
               f"t={t:.2f} | p={p:.4f} | HR flat (t={hrt:.2f}, p={hrp:.2f})"),
         showarrow=False, font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
@@ -1907,7 +1910,9 @@ def chart_x_metronome(rows):
         fig.add_vline(x=v, line=dict(color=X_AMBER, dash="dash", width=1.5), row=1, col=2)
 
     tidy_dark(fig)
-    fig.update_layout(showlegend=False)
+    # Size-16 subplot titles ("Run pace"/"MTB speed") need headroom; the default
+    # t=20 margin from tidy_dark clips their tops against the SVG viewport.
+    fig.update_layout(showlegend=False, margin=dict(t=44))
     # min/mi pace ticks (M:SS) on left axis.
     pv, pt = _pace_ticks(run_pace_mi.tolist())
     fig.update_xaxes(title_text="Pace (min/mi)", tickvals=pv, ticktext=pt, row=1, col=1)
@@ -3042,7 +3047,7 @@ def build_page(rows, segs):
   <div class="section-anchor">Exploratory</div>
   <div class="card">
     <div class="card-title">About This Section</div>
-    <p class="attribution">This section was created entirely by Claude — Anthropic's <strong>Claude Fable 5</strong> model (<code>claude-fable-5</code>) acting as orchestrator, dispatching the strava-data-analyst, strava-creativity, strava-viz-design, strava-developer, and strava-qa subagents. Every analysis, statistical test, and line of code below was produced autonomously.</p>
+    <p class="attribution">This section was created entirely by Claude — Anthropic's <strong>Claude Fable 5</strong> model (<code>claude-fable-5</code>) acting as orchestrator, dispatching the strava-data-analyst, strava-creativity, strava-viz-design, strava-developer, and strava-qa subagents.</p>
   </div>
   <div class="card">
     <div class="card-title">The Temperature Mirage</div>
