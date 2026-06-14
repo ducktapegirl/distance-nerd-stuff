@@ -10,6 +10,11 @@ strava-data/data/segments_map.html
 strava-export/.env
 strava-export/.strava_tokens.json
 
+# Generated dashboards — built from data + Python in the deploy workflow,
+# never committed (avoids data-vs-feature merge conflicts on pull).
+Running Log/index.html
+Running Log/strava.html
+
 # Python
 __pycache__/
 *.pyc

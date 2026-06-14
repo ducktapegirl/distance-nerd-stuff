@@ -25,12 +25,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v5
 
       - name: Install dependencies
-        run: pip install -r strava-data/requirements.txt
+        run: uv sync
 
       # Build a minimal token file from secrets.
       # expires_at=0 forces an immediate refresh so we get a fresh access token
@@ -39,7 +37,7 @@ jobs:
         env:
           STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
         run: |
-          python - <<'PYEOF'
+          uv run python - <<'PYEOF'
           import json, os
           json.dump({
               "token_type": "Bearer",
@@ -57,18 +55,19 @@ jobs:
           ARGS=""
           [ -n "${{ inputs.limit }}" ] && ARGS="$ARGS --limit ${{ inputs.limit }}"
           [ -n "${{ inputs.since }}" ] && ARGS="$ARGS --since ${{ inputs.since }}"
-          python strava-data/fetch.py $ARGS
+          uv run python strava-data/fetch.py $ARGS
 
-      - name: Build dashboard
-        run: python strava-data/build_dashboard.py
+      - name: Analyze segments
+        run: uv run python strava-data/analyze_segments.py
 
       # Commit data before rotating the secret so a rotation failure never
-      # causes fetched data to be lost.
+      # causes fetched data to be lost. Data only — the dashboard HTML is
+      # built and published by deploy.yml (triggered by this push).
       - name: Commit new data files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add strava-data/data/ strava-data/strava.html
+          git add strava-data/data/
           if git diff --staged --quiet; then
             echo "No new data files — nothing to commit."
           else
@@ -86,7 +85,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          NEW_TOKEN=$(python -c \
+          NEW_TOKEN=$(uv run python -c \
             "import json; print(json.load(open('strava-data/.strava_tokens.json'))['refresh_token'])")
           echo "$NEW_TOKEN" | gh secret set STRAVA_REFRESH_TOKEN \
             --repo ${{ github.repository }}
@@ -102,7 +101,7 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          python - <<'PYEOF'
+          uv run python - <<'PYEOF'
           import os, smtplib
           from email.mime.text import MIMEText
           from pathlib import Path

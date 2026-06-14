@@ -1,11 +1,21 @@
 name: Deploy dashboards
 
+# Builds the dashboards from source (data + Python) and publishes to GitHub
+# Pages. Triggers on any push to main that changes the data, the build
+# scripts, the running-log source, or the Python environment — including the
+# data-only commits pushed by strava-fetch.yml.
 on:
   push:
     branches: [main]
     paths:
-      - "Running Log/index.html"
-      - "Running Log/strava.html"
+      - "strava-data/data/**"
+      - "strava-data/build_dashboard.py"
+      - "Running Log/src/**"
+      - "Running Log/running_log.csv"
+      - "Running Log/running_log_story.html"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -25,6 +35,17 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build Strava dashboard
+        run: uv run python strava-data/build_dashboard.py
+
+      - name: Build Running Log dashboard
+        run: uv run python "Running Log/src/visualize_log.py"
 
       - uses: actions/configure-pages@v4
 

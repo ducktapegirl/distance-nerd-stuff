@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build Strava activity dashboard → strava-data/strava.html + Running Log/strava.html
+"""Build Strava activity dashboard → Running Log/strava.html
 
 Styled to match the College Running Log dashboard (dark-glass + CSS-variable
 theming, light/dark/system toggle, frosted cards). All chart-card UI is
@@ -26,10 +26,8 @@ SEG_CSV      = os.path.join(DATA_DIR, "segments_summary.csv")
 SEG_EFF_CSV  = os.path.join(DATA_DIR, "segment_efforts.csv")
 STREAMS_DIR  = os.path.join(DATA_DIR, "streams")
 
-# Source-controlled copy
-OUT_HTML       = os.path.join(_HERE, "strava.html")
-# Netlify publish target (the Running Log dir is the publish root for ducktape.netlify.app)
-DEPLOY_HTML    = os.path.normpath(os.path.join(_HERE, "..", "Running Log", "strava.html"))
+# Generated output (gitignored). The Running Log dir is the GitHub Pages publish root.
+OUT_HTML = os.path.normpath(os.path.join(_HERE, "..", "Running Log", "strava.html"))
 
 PLOTLY_CDN = (
     '<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>'
@@ -3608,17 +3606,10 @@ def main():
     print("Building dashboard...")
     html = build_page(rows, segs)
 
-    # Source-controlled copy
+    os.makedirs(os.path.dirname(OUT_HTML), exist_ok=True)
     with open(OUT_HTML, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"-> {OUT_HTML}")
-
-    # Netlify publish copy (the Running Log dir is the publish root)
-    os.makedirs(os.path.dirname(DEPLOY_HTML), exist_ok=True)
-    with open(DEPLOY_HTML, "w", encoding="utf-8") as f:
-        f.write(html)
-    print(f"-> {DEPLOY_HTML}")
-
     print(f"   {len(html):,} bytes")
 
 
