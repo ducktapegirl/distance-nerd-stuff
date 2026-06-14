@@ -18,39 +18,40 @@ Running Log/        index.html, running_log.csv, src/ (parse/visualize), strava.
 Claude Design/      design handoff for the running-log dashboard
 .claude/agents/     strava-* specialist agents (creativity, data-analyst, developer, maintenance, qa, viz-design)
 .claude/commands/   strava, strava-segments, requirements
-.github/workflows/  strava-fetch.yml (Strava API → data/), deploy.yml (placeholder)
+.github/workflows/  strava-fetch.yml (Strava API → data/), deploy.yml (build + publish to Pages)
 ```
 
-## Python environments — two different executables
+## Python environment
 
-| Project | Executable | Notes |
-|---|---|---|
-| Strava dashboard | bare `python` | 3.13 venv with plotly/pandas/numpy |
-| Running Log | `C:\Users\Alisha\Anaconda3\python.exe` | bare `python` resolves to Anaconda2 (Python 2) on this machine |
+All scripts use a single UV-managed venv at the repo root (`pyproject.toml`). Always use `uv run` — bare `python` resolves to Anaconda2 (Python 2) on this machine.
+
+```bash
+uv sync   # install/update all deps
+```
 
 ## Build the Strava dashboard
 
 ```bash
-python strava-data/build_dashboard.py   # regenerates strava-data/strava.html + Running Log/strava.html
+uv run python strava-data/build_dashboard.py   # regenerates Running Log/strava.html
 ```
 
-`build_dashboard.py` reads CSVs in `strava-data/data/`. **Imports are restricted to stdlib + plotly + numpy — no pandas.** All data wrangling uses plain dicts/lists.
+`build_dashboard.py` reads CSVs in `strava-data/data/` and writes `Running Log/strava.html` (the Pages publish root). **Imports are restricted to stdlib + plotly + numpy — no pandas.** All data wrangling uses plain dicts/lists.
 
 Full data pipeline (run in order if refreshing from scratch):
 ```bash
-python strava-data/fetch.py                                   # pull from Strava API
-python strava-data/analyze_segments.py                        # write segments_summary.csv
-python strava-data/build_dashboard.py                         # build HTML
+uv run python strava-data/fetch.py                                   # pull from Strava API
+uv run python strava-data/analyze_segments.py                        # write segments_summary.csv
+uv run python strava-data/build_dashboard.py                         # build HTML
 ```
 
 ## Build the Running Log dashboard
 
 ```bash
 # Regenerate CSV from source HTML logs (only needed if parse_log.py changed):
-C:\Users\Alisha\Anaconda3\python.exe "Running Log/src/parse_log.py"
+uv run python "Running Log/src/parse_log.py"
 
 # Regenerate index.html:
-C:\Users\Alisha\Anaconda3\python.exe "Running Log/src/visualize_log.py"
+uv run python "Running Log/src/visualize_log.py"
 ```
 
 ## Preview
@@ -58,8 +59,8 @@ C:\Users\Alisha\Anaconda3\python.exe "Running Log/src/visualize_log.py"
 `.claude/launch.json` defines preview servers (`strava-dashboard` on :8765, `running-log` on :8766), or run manually:
 
 ```bash
-python -m http.server 8765 --directory strava-data     # open strava.html
-python -m http.server 8766 --directory "Running Log"   # open index.html
+uv run python -m http.server 8765 --directory strava-data     # open strava.html
+uv run python -m http.server 8766 --directory "Running Log"   # open index.html
 ```
 
 ## Strava dashboard architecture
@@ -77,9 +78,17 @@ python -m http.server 8766 --directory "Running Log"   # open index.html
 
 Sport types in data: `Running`, `TrailRun` (both teal `#2dd4bf`), `MountainBikeRide` (amber `#f59e0b`).
 
+## Source-of-truth split (avoid merge conflicts)
+
+The generated dashboards (`Running Log/index.html`, `Running Log/strava.html`) are **gitignored** — never committed. This keeps two sources of truth cleanly separated:
+- **Data** is owned by the fetch workflow → commits only `strava-data/data/`.
+- **Features** (page structure/styling) are owned by the Python build scripts, committed locally.
+
+Because the HTML is never in git, a `git pull` of fresh remote data can't conflict with local feature work. The HTML is rebuilt from data + Python by the deploy workflow.
+
 ## Data refresh
 
-Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (manual `workflow_dispatch`), which commits new files under `strava-data/data/`. It needs repo secrets — see `MIGRATION.md`. Running locally is possible with a `strava-data/.env` + `.strava_tokens.json` (gitignored).
+Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manual `workflow_dispatch`), which commits new files under `strava-data/data/` only — **it does not build or commit HTML**. That push triggers `deploy.yml`, which rebuilds and publishes. It needs repo secrets — see `MIGRATION.md`. Running locally is possible with a `strava-data/.env` + `.strava_tokens.json` (gitignored).
 
 ## Logging
 
@@ -87,4 +96,4 @@ Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (manual `work
 
 ## Deploy
 
-`.github/workflows/deploy.yml` publishes to **GitHub Pages** on every push to `main` that touches `Running Log/index.html` or `Running Log/strava.html`. The publish root is `Running Log/`. It also supports `workflow_dispatch` for manual deploys.
+`.github/workflows/deploy.yml` **builds both dashboards from source** (`uv sync` → `build_dashboard.py` + `visualize_log.py`) and publishes the `Running Log/` dir to **GitHub Pages**. It triggers on pushes to `main` that touch the data, build scripts, running-log source, or the Python env (`pyproject.toml`/`uv.lock`) — including the data-only commits from `strava-fetch.yml` — plus `workflow_dispatch` for manual deploys.
