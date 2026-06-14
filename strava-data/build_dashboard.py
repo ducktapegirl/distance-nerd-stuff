@@ -3415,7 +3415,7 @@ def build_page(rows, segs):
       <span class="wordmark-meta">{date_range}</span>
     </div>
     <div class="topnav-actions">
-      <a class="back-link" href="/" title="College Running Log">
+      <a class="back-link" href="index.html" title="College Running Log">
         <span>←</span><span>College Running Log</span>
       </a>
       <div class="theme-toggle" role="group" aria-label="Theme">{theme_buttons}</div>

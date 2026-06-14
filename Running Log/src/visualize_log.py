@@ -2927,7 +2927,7 @@ def build_html(rows):
               <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
             </button>
           </div>
-          <a class="strava-btn" href="/strava.html">
+          <a class="strava-btn" href="strava.html">
             {strava_chevron}<span>My Strava Dashboard</span>
           </a>
         </div>
