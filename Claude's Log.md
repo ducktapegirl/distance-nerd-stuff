@@ -1,4 +1,71 @@
 
+## 14 June 2026
+
+### CLAUDE.md Refresh + Interactive Inline Review
+
+Reviewed and updated the project's `CLAUDE.md` to fill gaps that would trip up a cold-start agent. Additions included a Python environment table (the critical detail that bare `python` resolves to Python 2 for the Running Log on this machine), Running Log build commands, the `build_dashboard.py` import restriction (no pandas), the full Strava data pipeline in order, Strava dashboard architecture conventions (`tidy_dark`, `fig_html`, `applyChartTheme`), and a consolidated units policy. The Deploy section was corrected to reflect the live GitHub Pages workflow rather than the stale Netlify/placeholder description.
+
+A new interaction pattern emerged: asking Claude to "show it to me so I can interactively comment on it" caused the assistant to render the document section-by-section as an HTML widget with per-section text boxes and a submit button, allowing inline review and delivering all comments in a single follow-up message. No explicit instruction to use a widget was given — it was inferred from the phrasing.
+
+### Iterations
+
+| # | What happened | Root cause | Fix |
+|---|---|---|---|
+| 1 | Deploy section described Netlify as publish target and called the workflow a placeholder | `deploy.yml` had since been wired up to GitHub Pages; CLAUDE.md wasn't updated | User flagged it; corrected from reading the live `deploy.yml` |
+
+### Prompting lessons
+
+- **Read the actual workflow file before describing deploy setup** — `deploy.yml` is a ground-truth source; describing it from memory or prior context risks stale information, as it was here.
+- **"Show it to me so I can interactively comment on it" triggers a widget review UI** — this phrasing causes the assistant to render a document as a per-section HTML form rather than printing raw markdown. Useful for any file edit where you want to give targeted feedback without copying and pasting.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| 5 min | $0 | 1/5 — smooth; one stale Deploy section caught by user |
+
+---
+
+## 14 June 2026
+
+### Strava Dashboard: Segment Consistency, Fastest Segments & Grade-vs-Speed Analysis
+
+Added three new visualization groups to the Segments tab. Section 1 produces four
+cards (most/least consistently-paced for Running and MTB, ≥3 efforts) with
+horizontal box plots of pace/speed distributions, ranked by coefficient of
+variation. Section 2 produces six cards showing the top 3 fastest segments by
+average pace per sport — name, pace, distance, and grade. Section 3 renders a
+conditional scatter plot comparing running vs MTB speed across segment grade, with
+linear fits and an annotation marking the grade at which running overtakes biking;
+geographic overlap detection (start ≤60m, distance ratio 0.70–1.43) identifies
+shared run/MTB trails. All three sections integrated into `build_dashboard.py` and
+rebuilt cleanly.
+
+### Iterations
+
+| # | What happened | Root cause | Fix |
+|---|---|---|---|
+| 1 | Screenshot tool timed out on full 25-chart page | Page renders all charts; tool couldn't capture the full load | Created a lightweight QA page with only the 5 new charts; extracted PNG via Plotly client-side export |
+| 2 | `git pull` produces merge conflicts on `strava.html` | `strava-fetch.yml` rebuilds and commits the dashboard remotely on a timer; local feature sessions also commit the built HTML | Discovered mid-session; not resolved this session — structural tension between CI-generated and locally-generated artifacts |
+
+### Prompting lessons
+
+- **State whether CI rebuilds generated artifacts before any local build session** —
+  `strava-fetch.yml` commits a rebuilt `strava.html` on every data fetch. A local
+  session that also commits the built HTML creates a dual source of truth: `git pull`
+  after a remote run will conflict on the generated file. Saying "the fetch action
+  also rebuilds the dashboard — here's the conflict risk" at session start prompts a
+  decision upfront: either stop committing the HTML locally, or have CI skip the
+  rebuild, or treat the HTML as untracked.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| 1.5 hrs | — | 2/5 — Session delivered everything asked; friction came from discovering a pre-existing CI/local conflict that Claude was not aware of |
+
+---
+
 ## 12 June 2026
 
 ### Migration Wrap-Up: GitHub Actions Secrets, Pages Deploy, Nav Link Fixes
