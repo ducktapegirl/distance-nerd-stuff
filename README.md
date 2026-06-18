@@ -33,7 +33,12 @@ each stage along the way. It's equal parts "I wanted these specific charts"
 and "I wanted to see how far an agentic build pipeline could go." Curious
 how it works under the hood? See [`strava-data/AGENTS.md`](strava-data/AGENTS.md).
 
-## Running it yourself
+## Poking at the code
+
+The data here is mine — the Strava dashboard is built from CSVs pulled
+through my personal Strava API credentials, so you can't just clone this and
+get a working dashboard with your own data. But the build scripts themselves
+are plain Python and free to read or borrow from.
 
 Needs [uv](https://docs.astral.sh/uv/) for Python dependencies (plotly +
 numpy, no pandas).
