@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# endurance-logs — Claude workspace guide
+# distance-nerd-stuff — Claude workspace guide
 
 Two endurance-data dashboards extracted from the old `Experiments` repo:
 
