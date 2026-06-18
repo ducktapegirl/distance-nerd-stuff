@@ -1,4 +1,4 @@
-# endurance-logs
+# distance-nerd-stuff
 
 Personal endurance-data dashboards: a **Strava** activity dashboard and a **Running Log** dashboard, extracted from a larger experiments repo into their own home.
 

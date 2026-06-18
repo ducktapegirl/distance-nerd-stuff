@@ -91,7 +91,7 @@ wheels = [
 ]
 
 [[package]]
-name = "endurance-logs"
+name = "distance-nerd-stuff"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

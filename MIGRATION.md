@@ -25,16 +25,16 @@ Fresh git history — the old history stays in `Experiments`.
 
 ## Manual setup checklist
 
-1. **GitHub Actions secrets** — recreate on `ducktapegirl/endurance-logs` for `strava-fetch.yml`
+1. **GitHub Actions secrets** — recreate on `ducktapegirl/distance-nerd-stuff` for `strava-fetch.yml`
    (they previously lived only on the `Experiments` repo):
    ```bash
-   gh secret set STRAVA_CLIENT_ID      --repo ducktapegirl/endurance-logs
-   gh secret set STRAVA_CLIENT_SECRET  --repo ducktapegirl/endurance-logs
-   gh secret set STRAVA_REFRESH_TOKEN  --repo ducktapegirl/endurance-logs
-   gh secret set GH_PAT                --repo ducktapegirl/endurance-logs   # PAT with Secrets: write (token rotation)
-   gh secret set SMTP_USER            --repo ducktapegirl/endurance-logs
-   gh secret set SMTP_PASSWORD        --repo ducktapegirl/endurance-logs
-   gh secret set ALERT_TO             --repo ducktapegirl/endurance-logs
+   gh secret set STRAVA_CLIENT_ID      --repo ducktapegirl/distance-nerd-stuff
+   gh secret set STRAVA_CLIENT_SECRET  --repo ducktapegirl/distance-nerd-stuff
+   gh secret set STRAVA_REFRESH_TOKEN  --repo ducktapegirl/distance-nerd-stuff
+   gh secret set GH_PAT                --repo ducktapegirl/distance-nerd-stuff   # PAT with Secrets: write (token rotation)
+   gh secret set SMTP_USER            --repo ducktapegirl/distance-nerd-stuff
+   gh secret set SMTP_PASSWORD        --repo ducktapegirl/distance-nerd-stuff
+   gh secret set ALERT_TO             --repo ducktapegirl/distance-nerd-stuff
    ```
 2. **`frontend-design` plugin** — enable via `/plugin` so the Strava viz/ideation agents can use it.
 3. **Deploy workflow** — finish `.github/workflows/deploy.yml` (pick Netlify / GitHub Pages / Cloudflare Pages, add its secret, remove the `if: false` guard).
