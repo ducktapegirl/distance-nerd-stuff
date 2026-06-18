@@ -3403,6 +3403,7 @@ def build_page(rows, segs):
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=Geist+Mono:wght@400;600&display=swap" rel="stylesheet">
   {PLOTLY_CDN}
   <style>{CSS}</style>
+  <script data-goatcounter="https://ducktapegirl.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 
