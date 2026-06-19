@@ -18,7 +18,7 @@ fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  strava-data/st
 | **Data analyst** | `strava-data-analyst` agent | Discovery (what's interesting) + verification (transform recipe). Runs Python for EDA; no Edit/Write. |
 | **Creativity** | `strava-creativity` agent | Ranked menu of view ideas. Read-only + web. |
 | **Viz design** | `strava-viz-design` agent | Build-ready spec. Read-only; returns spec text, orchestrator writes the file. Uses the `frontend-design` skill. |
-| **Developer** | `strava-developer` agent | The only agent that edits `build_dashboard.py`. |
+| **Developer** | `strava-developer` agent | The only agent that edits the `strava-data/dashboard/` package (and its thin entrypoint, `build_dashboard.py`). |
 | **QA** | `strava-qa` agent | Build/spec/data/edge/HTML + visual smoke test (Preview MCP). Runs but doesn't edit. |
 | **Code review** | `/code-review` + `/security-review` skills | Quality & safety gate, run by the orchestrator. No agent file. |
 

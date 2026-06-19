@@ -65,7 +65,7 @@ uv run python -m http.server 8766 --directory "Running Log"   # open index.html
 
 ## Strava dashboard architecture
 
-`build_dashboard.py` renders all charts with Plotly in dark-theme defaults. At runtime, page JS (`applyChartTheme()`) re-styles charts via CSS custom properties for the light/dark/system toggle. Key conventions:
+`build_dashboard.py` is a thin entrypoint; the actual chart builders, data helpers, and page assembly live in the `strava-data/dashboard/` package (`config.py`, `data.py`, `geometry_stats.py`, `theme.py`, `charts_production.py`, `charts_exploratory.py`, `rollups_cards.py`, `template.py`, `page.py`) — add new `chart_*` functions there, not in `build_dashboard.py` itself. It renders all charts with Plotly in dark-theme defaults. At runtime, page JS (`applyChartTheme()`) re-styles charts via CSS custom properties for the light/dark/system toggle. Key conventions:
 - Every figure must use `tidy_dark(fig)` then per-chart overrides, wrapped with `fig_html(fig, H, div_id=...)`.
 - Any color introduced in a chart must be covered by `applyChartTheme()` so both themes work.
 - `strava-data/dashboard-spec.md` is the source of truth for what views exist and their build recipes.
