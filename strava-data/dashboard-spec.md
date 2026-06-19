@@ -15,7 +15,8 @@ strava-developer (build) → strava-qa (validation).
 
 ## Exploratory Tab — Build-Ready Spec (V1–V8)
 
-Source of truth for all conventions: `strava-data/build_dashboard.py`. Reuse `tidy_dark(fig)`
+Source of truth for all conventions: the `strava-data/dashboard/` package (chart builders live
+in `charts_production.py`/`charts_exploratory.py`, styling in `theme.py`). Reuse `tidy_dark(fig)`
 then per-chart overrides AFTER it; wrap every figure in `fig_html(fig, H, div_id=...)`.
 Charts are built with dark-theme defaults and restyled at runtime by `applyChartTheme()`
 (page JS, CSS-variable driven) — **every chart must be legible in BOTH light and dark mode**,
@@ -41,7 +42,7 @@ internal verification — convert before comparing (mi = km × 0.621371; min/mi 
   sums, ACWR) precomputed in Python at build time. Transforms are verified — implement per
   Appendix A recipes; do not re-derive. Pin the named values called out under each view.
 - **Color constants by NAME** (do not hardcode new palette hex): the running teal, MTB amber,
-  other slate, elevation violet, and accent constants already defined in build_dashboard.py.
+  other slate, elevation violet, and accent constants already defined in `dashboard/config.py`.
   For shades, derive teal-dark / teal-light as `rgba` of the running hex (state the rgba in
   code comments), never a new palette.
 - **ASCII only** in all Python `print()` and all on-chart text. Use `->` not arrows, `delta`

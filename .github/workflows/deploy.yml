@@ -10,6 +10,7 @@ on:
     paths:
       - "strava-data/data/**"
       - "strava-data/build_dashboard.py"
+      - "strava-data/dashboard/**"
       - "Running Log/src/**"
       - "Running Log/running_log.csv"
       - "Running Log/running_log_story.html"
