@@ -86,8 +86,8 @@ source headers. If placement is ever needed, look for it in `comments`
 - **Omitted**: `2004-06-06` (Camp Pendleton Mud Run, summer road race)
 
 ### Workout-type mapping (CSV → 5 design types)
-See `WORKOUT_TYPE_MAP` in `visualize_log.py`. Anything not listed falls back
-to `easy`.
+See `WORKOUT_TYPE_MAP` in `src/dashboard/config.py`. Anything not listed
+falls back to `easy`.
 
 ### Design tokens (subset)
 ```
