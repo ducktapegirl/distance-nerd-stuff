@@ -63,6 +63,10 @@ uv run python -m http.server 8765 --directory strava-data     # open strava.html
 uv run python -m http.server 8766 --directory "Running Log"   # open index.html
 ```
 
+## Running Log dashboard architecture
+
+`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `Running Log/src/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself.
+
 ## Strava dashboard architecture
 
 `build_dashboard.py` is a thin entrypoint; the actual chart builders, data helpers, and page assembly live in the `strava-data/dashboard/` package (`config.py`, `data.py`, `geometry_stats.py`, `theme.py`, `charts_production.py`, `charts_exploratory.py`, `rollups_cards.py`, `template.py`, `page.py`) — add new `chart_*` functions there, not in `build_dashboard.py` itself. It renders all charts with Plotly in dark-theme defaults. At runtime, page JS (`applyChartTheme()`) re-styles charts via CSS custom properties for the light/dark/system toggle. Key conventions:
