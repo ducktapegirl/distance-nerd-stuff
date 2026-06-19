@@ -11,13 +11,20 @@ design decisions the spec doesn't cover — if something is ambiguous, pick the 
 and note it in a comment.
 
 ## What already exists (reconcile to reality — do not recreate)
-- `strava-data/build_dashboard.py` is the real, current build script. Extend it.
-- It outputs `strava-data/strava.html` and copies it to `Running Log/strava.html`
-  (the Netlify deploy copy). There is no `dashboard.html`.
-- It already has modular helpers — reuse them: `tidy_dark(fig, title)` for theming,
-  `fig_html(fig, height, div_id)` for embedding, `chart_*` functions per chart, and
-  `build_page(activities, segments)` as the assembler. Add new `chart_*` functions and wire
-  them into `build_page` rather than restructuring.
+- `strava-data/build_dashboard.py` is a thin entrypoint — it just loads CSVs and calls
+  `build_page()` from the `strava-data/dashboard/` package. Extend the package, not this file.
+- It writes `Running Log/strava.html` (the GitHub Pages publish root).
+- The `dashboard/` package is split by concern — add new `chart_*` functions in the right module
+  and wire them into `build_page()` (in `page.py`) rather than restructuring:
+  - `dashboard/theme.py` — `tidy_dark(fig, title)`, `fig_html(fig, height, div_id)`
+  - `dashboard/charts_production.py` — the main/segment-scatter charts wired into `build_page()`
+  - `dashboard/charts_exploratory.py` — the `chart_x_*()` Exploratory-tab charts
+  - `dashboard/rollups_cards.py` — `compute_stats`, segment rollups, HTML card builders
+  - `dashboard/config.py` — paths, conversions, color/font constants
+  - `dashboard/data.py` — CSV loaders and row-level formatting helpers
+  - `dashboard/geometry_stats.py` — haversine, OLS regression, validated numerics, tortuosity
+  - `dashboard/template.py` — CSS/JS string constants
+  - `dashboard/page.py` — `build_page(activities, segments)`, the assembler
 
 ## Inputs
 - The spec block(s) for the new view(s) in `strava-data/dashboard-spec.md`.
@@ -66,11 +73,11 @@ from a metric string.
 - When an annotation must sit inside, anchor it in a region with no data marks.
 
 ## When done — self-check before handoff
-Run `python strava-data/build_dashboard.py`; confirm it exits cleanly and regenerates
-`strava-data/strava.html` (and the `Running Log/strava.html` copy).
+Run `uv run python strava-data/build_dashboard.py`; confirm it exits cleanly and regenerates
+`Running Log/strava.html`.
 
 Then verify the units policy yourself (don't leave it for QA): grep the generated
-`strava-data/strava.html` for `min/km`, `km/h`, `kph`, and `°C` — all must be 0 hits.
+`Running Log/strava.html` for `min/km`, `km/h`, `kph`, and `°C` — all must be 0 hits.
 
 Report:
 - Any spec items you couldn't implement and why.
