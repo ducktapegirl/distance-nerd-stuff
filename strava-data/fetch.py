@@ -40,7 +40,7 @@ import requests
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from weather import fetch_weather_temp
+from weather import fetch_weather
 
 # ---------------------------------------------------------------------------
 # Config
@@ -77,6 +77,7 @@ ACTIVITIES_FIELDS = [
     "average_heartrate", "max_heartrate",
     "average_watts", "max_watts", "device_watts",
     "suffer_score", "calories", "average_cadence", "average_temp_c",
+    "apparent_temp_c", "uv_index",
     "workout_type",
     "start_latlng", "city", "state", "country",
     "gear_id",
@@ -515,8 +516,10 @@ def main():
 
             act_row = flatten_activity(detail)
 
-            # Fill temperature from Open-Meteo when the device didn't record it
-            if not act_row.get("average_temp_c") and act_row.get("start_latlng"):
+            # Fill temperature (when the device didn't record it) plus
+            # apparent temperature and UV index (no device equivalent) from
+            # Open-Meteo.
+            if act_row.get("start_latlng"):
                 parts = str(act_row["start_latlng"]).split(",")
                 if len(parts) == 2:
                     try:
@@ -525,9 +528,13 @@ def main():
                         dt_local = datetime.strptime(
                             str(act_row["start_date_local"])[:19], "%Y-%m-%d %H:%M:%S"
                         )
-                        temp = fetch_weather_temp(lat, lon, dt_local)
-                        if temp is not None:
-                            act_row["average_temp_c"] = temp
+                        weather = fetch_weather(lat, lon, dt_local)
+                        if not act_row.get("average_temp_c") and weather["temp_c"] is not None:
+                            act_row["average_temp_c"] = weather["temp_c"]
+                        if weather["apparent_temp_c"] is not None:
+                            act_row["apparent_temp_c"] = weather["apparent_temp_c"]
+                        if weather["uv_index"] is not None:
+                            act_row["uv_index"] = weather["uv_index"]
                     except (ValueError, AttributeError):
                         pass
 

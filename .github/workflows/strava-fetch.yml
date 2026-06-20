@@ -57,6 +57,9 @@ jobs:
           [ -n "${{ inputs.since }}" ] && ARGS="$ARGS --since ${{ inputs.since }}"
           uv run python strava-data/fetch.py $ARGS
 
+      - name: Backfill missing weather fields
+        run: uv run python strava-data/backfill_weather.py
+
       - name: Analyze segments
         run: uv run python strava-data/analyze_segments.py
 
