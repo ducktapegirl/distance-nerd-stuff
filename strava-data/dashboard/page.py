@@ -218,9 +218,9 @@ def _build_exploratory_charts(rows):
           % (v3m["t"], v3m["df"], v3m["p"], v3m["n_run"], v3m["n_mtb"]))
     print("  exploratory V4 heat...")
     v4, v4m = chart_x_heat(rows)
-    print("    V4 welch t=%.3f p=%.5f HR=%s n=%d/%d/%d q=%.2f/%.2f"
+    print("    V4 welch t=%.3f p=%.5f HR=%s n=%d/%d/%d/%d"
           % (v4m["t"], v4m["p"], ["%.2f" % h for h in v4m["hr_means"]],
-             v4m["n_cool"], v4m["n_mid"], v4m["n_warm"], v4m["q1"], v4m["q2"]))
+             v4m["n_cool"], v4m["n_mild"], v4m["n_warm"], v4m["n_hot"]))
     print("  exploratory V5 seasonal handoff...")
     v5, v5m = chart_x_seasonal(rows)
     print("    V5 total_run_km=%.1f total_mtb=%d sep_km=%.1f jul_mtb=%d"

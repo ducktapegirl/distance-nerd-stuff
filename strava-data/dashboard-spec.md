@@ -128,19 +128,20 @@ internal verification — convert before comparing (mi = km × 0.621371; min/mi 
 - **Verify vs recipe:** `V3_welch_t=15.742`, `V3_welch_df=145.56`, `V3_welch_p=3.128e-33`, n 183/54.
 
 ### V4 — She Pays Pace, Not Heart, for Heat
-- **div id:** `chart-x-heat` · **height:** 460 · **Type:** 3 Violin traces (pace) + mean-HR line on secondary y (`make_subplots` secondary_y).
-- **Data:** runs n=199 by temp tercile — cool <=9.0C n=66, mid n=65, warm >=18.1C n=68
-  (tercile cuts computed in °C internally; displayed in °F: 9.0C -> 48.2F, 18.1C -> 64.6F).
-- **X axis:** categorical "Cool (<=48°F)", "Mid", "Warm (>=65°F)" — label "Temperature tercile".
+- **div id:** `chart-x-heat` · **height:** 460 · **Type:** 4 Violin traces (pace) + mean-HR line on secondary y (`make_subplots` secondary_y).
+- **Data:** runs n=201 by **fixed °F band**, not tercile — cool <48F n=64, mild 48-62F n=55,
+  warm 62-75F n=66, hot >=75F n=16 (cuts converted to °C internally for filtering: 48F->8.89C,
+  62F->16.67C, 75F->23.89C).
+- **X axis:** categorical "Cool (<48F)", "Mild (48-62F)", "Warm (62-75F)", "Hot (>=75F)" — label "Temperature band".
 - **Y1 (pace):** "Pace (min/mi, faster = up)" — **REVERSED** (`autorange="reversed"`),
   ticks formatted `M:SS`.
 - **Y2 (HR):** "Mean HR (bpm)" — fixed range ~145..160 so the flat line reads flat.
-- **Violins:** `box_visible=True`, `meanline_visible=True`, points off; cool=slate, mid=`rgba(245,158,11,0.5)`, warm=amber; opacity 0.7.
-- **HR line:** 154.2 / 152.2 / 154.4, teal, markers+line, secondary y.
+- **Violins:** `box_visible=True`, `meanline_visible=True`, points off; cool=slate, mild=`rgba(245,158,11,0.4)`, warm=amber, hot=red (`SLOWER` #f87171); opacity 0.7.
+- **HR line:** 154.2 / 151.7 / 154.2 / 154.8, teal, markers+line, secondary y.
 - **Legend:** OFF for violins; slate annotation: `teal line = mean HR (right axis)`.
-- **Annotation:** bottom-center, recomputed in min/mi: `Cool 8:57 vs Warm 9:24 /mi | t=-3.24 | p=0.0017 | HR flat (t=-0.19, p=0.85)`.
-- **Edge cases:** missing temp excluded; cut points fixed 9.0/18.1; ties at 18.1 -> warm.
-- **Verify vs recipe:** `V4_welch_t=-3.236`, `V4_welch_p=0.00170`, HR means 154.18/152.21/154.38, n 66/65/68.
+- **Annotation:** bottom-center, recomputed in min/mi: `Cool 8:58 vs Hot 9:38 /mi | t=-1.77 | p=0.0966 | HR flat (t=-0.27, p=0.79)`.
+- **Edge cases:** missing temp excluded; cut points fixed 48/62/75°F (8.89/16.67/23.89°C); bands no longer equal-sized terciles.
+- **Verify vs recipe:** `V4_welch_t=-1.766`, `V4_welch_p=0.0966`, HR means 154.21/151.75/154.20/154.82, n 64/55/66/16.
 
 ### V5 — The Seasonal Handoff
 - **div id:** `chart-x-seasonal` · **height:** 440 · **Type:** Filled area (run km) + bars (MTB count) on secondary y + optional faint slate temp line.
@@ -241,12 +242,13 @@ the global Display-units policy (min/mi, mph, °F); convert before comparing.
   p=3.128e-33. Max-HR means: run 168.39, MTB 171.07.
 
 ### V4 recipe
-- Filter: runs with non-null temp AND speed -> n=199 (HR not required). pace=60/speed.
-- Terciles on temp: q1=9.00, q2=18.10 (33.3/66.7 percentiles). cool = temp<=9.00 (n=66),
-  warm = temp>=18.10 (n=68), mid between (n=65). Ties at boundary -> warm.
-- Pinned: cool pace mean 5.565 median 5.522; warm mean 5.839 median 5.698; Welch t=-3.236
-  p=0.00170. Mean HR per tercile (non-null HR within tercile): 154.18 / 152.21 / 154.38;
-  HR cool-vs-warm t=-0.190 p=0.849.
+- Filter: runs with non-null temp AND speed -> n=201 (HR not required). pace=60/speed.
+- Fixed °F band edges (not data-driven terciles): 48/62/75°F -> 8.89/16.67/23.89°C.
+  cool = temp<8.89 (n=64), mild = 8.89<=temp<16.67 (n=55), warm = 16.67<=temp<23.89 (n=66),
+  hot = temp>=23.89 (n=16).
+- Pinned: cool pace mean 5.570 median 5.540; hot mean 5.990 median 5.885; Welch
+  (cool vs hot) t=-1.766 p=0.0966. Mean HR per band (non-null HR within band):
+  154.21 / 151.75 / 154.20 / 154.82; HR cool-vs-hot t=-0.275 p=0.787.
 
 ### V5 recipe
 - Group by calendar month (1-12) across all years. Run km = sum distance_km (Run+TrailRun);
