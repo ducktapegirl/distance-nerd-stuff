@@ -209,11 +209,14 @@ def fast_seg_card(rank, group, avg, s):
 
 # ── 3. Grade vs pace: where running overtakes mountain biking ─────────────────
 
-def seg_overlap_pairs(roll, max_start_m=60.0, ratio_lo=1 / 1.10, ratio_hi=1.10):
+def seg_overlap_pairs(roll, max_start_m=60.0, ratio_lo=1 / 1.10, ratio_hi=1.10,
+                       grade_max_diff=3.0):
     """Geographically-overlapping run/MTB segment pairs: start points within
-    `max_start_m` AND segment distances within [ratio_lo, ratio_hi] (so the two
-    cover essentially the same ground -> 'subsegments are ok'). Returns list of
-    (start_dist_m, run_seg, mtb_seg)."""
+    `max_start_m`, segment distances within [ratio_lo, ratio_hi], AND average
+    grades within `grade_max_diff` percentage points of each other (so the two
+    cover essentially the same ground, traveled in the same direction -- a
+    reversed-direction match would show a flipped grade sign and get caught
+    here). Returns list of (start_dist_m, run_seg, mtb_seg)."""
     runs = [s for s in roll.values()
             if s["group"] == "Running" and s["lat"] and s["lng"] and s["grade"] is not None]
     mtbs = [s for s in roll.values()
@@ -224,8 +227,11 @@ def seg_overlap_pairs(roll, max_start_m=60.0, ratio_lo=1 / 1.10, ratio_hi=1.10):
             d = _haversine_m(rs["lat"], rs["lng"], ms["lat"], ms["lng"])
             if d > max_start_m:
                 continue
-            if ratio_lo <= rs["dist_m"] / ms["dist_m"] <= ratio_hi:
-                pairs.append((d, rs, ms))
+            if not (ratio_lo <= rs["dist_m"] / ms["dist_m"] <= ratio_hi):
+                continue
+            if abs(rs["grade"] - ms["grade"]) > grade_max_diff:
+                continue
+            pairs.append((d, rs, ms))
     return pairs
 
 
