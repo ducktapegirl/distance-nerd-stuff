@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Backfill average_temp_c in activities.csv using Open-Meteo historical weather.
+Backfill average_temp_c, apparent_temp_c, and uv_index in activities.csv
+using Open-Meteo historical weather.
 
-Reads the existing CSV, finds rows where average_temp_c is blank but
-start_latlng and start_date_local are present, fetches the temperature
+Reads the existing CSV, finds rows missing any of those three columns
+(but with start_latlng and start_date_local present), fetches weather
 for each, and rewrites the CSV in-place.
 
 Usage:
-    python backfill_weather.py           # all activities missing temp
+    python backfill_weather.py           # all activities missing weather fields
     python backfill_weather.py --dry-run # preview without writing
 """
 import argparse
@@ -20,11 +21,12 @@ from pathlib import Path
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from weather import fetch_weather_temp
+from weather import fetch_weather
 
-_HERE    = Path(__file__).parent
-DATA_DIR = _HERE / "data"
-ACT_CSV  = DATA_DIR / "activities.csv"
+_HERE     = Path(__file__).parent
+DATA_DIR  = _HERE / "data"
+ACT_CSV   = DATA_DIR / "activities.csv"
+WEATHER_FIELDS = ["average_temp_c", "apparent_temp_c", "uv_index"]
 
 
 def parse_latlng(s: str):
@@ -58,19 +60,26 @@ def main():
     if "average_temp_c" not in fieldnames:
         sys.exit("'average_temp_c' column not found in activities.csv — unexpected schema.")
 
-    # Identify rows that need backfill
+    # Add any new weather columns that don't exist yet, right after average_temp_c
+    insert_at = fieldnames.index("average_temp_c") + 1
+    for field in ("apparent_temp_c", "uv_index"):
+        if field not in fieldnames:
+            fieldnames.insert(insert_at, field)
+            insert_at += 1
+
+    # Identify rows that need backfill — missing any of the three weather fields
     to_fill = [
         r for r in rows
-        if not r.get("average_temp_c")          # blank / zero / None
+        if any(not r.get(f) for f in WEATHER_FIELDS)
         and r.get("start_latlng")
         and r.get("start_date_local")
     ]
 
     total   = len(rows)
     missing = len(to_fill)
-    print(f"Activities total:            {total}")
-    print(f"Missing average_temp_c:      {missing}")
-    print(f"Already have average_temp_c: {total - missing}")
+    print(f"Activities total:                 {total}")
+    print(f"Missing a weather field:          {missing}")
+    print(f"Already complete:                 {total - missing}")
 
     if missing == 0:
         print("Nothing to do.")
@@ -99,13 +108,22 @@ def main():
         except ValueError:
             continue
 
-        temp = fetch_weather_temp(lat, lon, dt_local)
+        weather = fetch_weather(lat, lon, dt_local)
 
-        status = ""
-        if temp is not None:
-            r["average_temp_c"] = temp
+        filled = []
+        if not r.get("average_temp_c") and weather["temp_c"] is not None:
+            r["average_temp_c"] = weather["temp_c"]
+            filled.append(f"{weather['temp_c']:.1f}°C")
+        if not r.get("apparent_temp_c") and weather["apparent_temp_c"] is not None:
+            r["apparent_temp_c"] = weather["apparent_temp_c"]
+            filled.append(f"feels {weather['apparent_temp_c']:.1f}°C")
+        if not r.get("uv_index") and weather["uv_index"] is not None:
+            r["uv_index"] = weather["uv_index"]
+            filled.append(f"uv {weather['uv_index']:.1f}")
+
+        if filled:
             updated += 1
-            status = f"{temp:.1f}°C"
+            status = ", ".join(filled)
         else:
             errors += 1
             status = "no data"
