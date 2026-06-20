@@ -1,6 +1,12 @@
 """
 Open-Meteo historical weather lookup — free, no API key required.
 
+Uses the Historical Forecast API rather than the ERA5-based archive
+endpoint: the archive endpoint's reanalysis dataset doesn't carry
+uv_index at all (confirmed empirically — empty for every row even when
+temperature/apparent_temperature succeeded), while the forecast-model
+archive does. It covers 2021-present, which is plenty for our data.
+
 Usage:
     from weather import fetch_weather
     weather = fetch_weather(lat, lon, datetime_local)
@@ -11,7 +17,7 @@ from datetime import datetime
 
 import requests
 
-ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
+ARCHIVE_URL = "https://historical-forecast-api.open-meteo.com/v1/forecast"
 HOURLY_VARS = "temperature_2m,apparent_temperature,uv_index"
 
 # Minimum gap between calls — stay polite to the free API
