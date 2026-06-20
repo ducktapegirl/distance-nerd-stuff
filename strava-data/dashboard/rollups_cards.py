@@ -209,7 +209,7 @@ def fast_seg_card(rank, group, avg, s):
 
 # ── 3. Grade vs pace: where running overtakes mountain biking ─────────────────
 
-def seg_overlap_pairs(roll, max_start_m=60.0, ratio_lo=0.70, ratio_hi=1.43):
+def seg_overlap_pairs(roll, max_start_m=60.0, ratio_lo=1 / 1.10, ratio_hi=1.10):
     """Geographically-overlapping run/MTB segment pairs: start points within
     `max_start_m` AND segment distances within [ratio_lo, ratio_hi] (so the two
     cover essentially the same ground -> 'subsegments are ok'). Returns list of
