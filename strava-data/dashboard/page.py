@@ -175,7 +175,7 @@ def _build_segment_rollup_section(seg_efforts, act_by_id):
             "Strava segments are sport-specific, so to compare running against "
             "mountain biking on the same dirt I matched run and MTB segments whose "
             "start points fall within 60&nbsp;m of each other and whose lengths are "
-            "within ~40% &mdash; the same trails, run and ridden. Each dot is one such "
+            "within ~10% &mdash; the same trails, run and ridden. Each dot is one such "
             "segment, placed by its grade (x) and its average pace per mile "
             "(y, faster&nbsp;=&nbsp;up); using pace per mile normalizes the different "
             "segment lengths so the run-vs-bike comparison is fair. The dashed lines "
