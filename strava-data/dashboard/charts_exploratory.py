@@ -9,7 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from .config import ELEVATION_COLOR, KM_TO_MI, PLOT_FONT_FAMILY, SPORT_COLORS, TEXT_SECONDARY
+from .config import ELEVATION_COLOR, KM_TO_MI, PLOT_FONT_FAMILY, SLOWER, SPORT_COLORS, TEXT_SECONDARY
 from .charts_production import MONTH_NAMES
 from .data import fmt_pace, mf
 from .geometry_stats import _pace_ticks, kmeans_best, ols_r_p, pca_svd, standardize, welch_ttest
@@ -376,40 +376,39 @@ def chart_x_heat(rows):
             continue
         temps.append(tp); paces.append(60.0 / sp); hrs.append(mf(r["average_heartrate"]))
     temps = np.array(temps); paces = np.array(paces)
-    # Fixed tercile cut points per recipe (rounded to 2dp to avoid float-interp
-    # drift in the linear percentile). cool = temp < 9.00 (the lone temp==9.00
-    # falls to mid); warm = temp >= 18.10 (ties at 18.10 -> warm). Yields n 66/65/68.
-    q1 = round(np.percentile(temps, 100/3.0), 2)  # 9.00
-    q2 = round(np.percentile(temps, 200/3.0), 2)  # 18.10
-    cool = temps < q1
-    warm = temps >= q2
-    mid = ~cool & ~warm
+    # Fixed °F band edges (48/62/75), converted to °C for filtering — data files
+    # stay metric, display is °F-only per policy. Bands: cool/mild/warm/hot.
+    def f_to_c(f):
+        return (f - 32) * 5 / 9
+    t48, t62, t75 = f_to_c(48), f_to_c(62), f_to_c(75)
+    cool = temps < t48
+    mild = (temps >= t48) & (temps < t62)
+    warm = (temps >= t62) & (temps < t75)
+    hot = temps >= t75
 
-    pace_cool, pace_mid, pace_warm = paces[cool], paces[mid], paces[warm]
+    pace_cool, pace_mild, pace_warm, pace_hot = paces[cool], paces[mild], paces[warm], paces[hot]
 
     def hr_mean(mask):
         vals = [hrs[i] for i in np.where(mask)[0] if hrs[i] is not None]
         return float(np.mean(vals)) if vals else None
-    hr_means = [hr_mean(cool), hr_mean(mid), hr_mean(warm)]
+    hr_means = [hr_mean(cool), hr_mean(mild), hr_mean(warm), hr_mean(hot)]
 
-    t, df, p = welch_ttest(pace_cool, pace_warm)
-    # HR cool vs warm Welch
+    t, df, p = welch_ttest(pace_cool, pace_hot)
+    # HR cool vs hot Welch
     hc = np.array([hrs[i] for i in np.where(cool)[0] if hrs[i] is not None])
-    hw = np.array([hrs[i] for i in np.where(warm)[0] if hrs[i] is not None])
-    hrt, hrdf, hrp = welch_ttest(hc, hw)
+    hh = np.array([hrs[i] for i in np.where(hot)[0] if hrs[i] is not None])
+    hrt, hrdf, hrp = welch_ttest(hc, hh)
 
     # Display in min/mi (= min/km / KM_TO_MI). Stats (Welch) stay in metric space
     # — the t/p are scale-invariant under the constant divisor, so no re-test.
     def to_mi(arr):
         return np.asarray(arr) / KM_TO_MI
-    pace_cool_mi, pace_mid_mi, pace_warm_mi = to_mi(pace_cool), to_mi(pace_mid), to_mi(pace_warm)
-    # Tercile cut temps displayed in F (q1=9.0C->48F, q2=18.1C->65F).
-    q1_f = q1 * 9 / 5 + 32
-    q2_f = q2 * 9 / 5 + 32
-    cats = [f"Cool (<={q1_f:.0f}F)", "Mid", f"Warm (>={q2_f:.0f}F)"]
+    pace_cool_mi, pace_mild_mi, pace_warm_mi, pace_hot_mi = (
+        to_mi(pace_cool), to_mi(pace_mild), to_mi(pace_warm), to_mi(pace_hot))
+    cats = ["Cool (<48F)", "Mild (48-62F)", "Warm (62-75F)", "Hot (>=75F)"]
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    viodata = [(pace_cool_mi, X_SLATE), (pace_mid_mi, "rgba(245,158,11,0.5)"),
-               (pace_warm_mi, X_AMBER)]
+    viodata = [(pace_cool_mi, X_SLATE), (pace_mild_mi, "rgba(245,158,11,0.4)"),
+               (pace_warm_mi, X_AMBER), (pace_hot_mi, SLOWER)]
     for cat, (data, col) in zip(cats, viodata):
         # customdata carries M:SS pace strings since Plotly can't format min:sec natively.
         cd = [fmt_pace(v) for v in data]
@@ -427,9 +426,10 @@ def chart_x_heat(rows):
 
     tidy_dark(fig)
     fig.update_layout(showlegend=False)
-    fig.update_xaxes(title_text="Temperature tercile")
+    fig.update_xaxes(title_text="Temperature band")
     # min/mi pace ticks (M:SS), axis REVERSED so faster reads up.
-    pv, pt = _pace_ticks(np.concatenate([pace_cool_mi, pace_mid_mi, pace_warm_mi]).tolist())
+    pv, pt = _pace_ticks(np.concatenate(
+        [pace_cool_mi, pace_mild_mi, pace_warm_mi, pace_hot_mi]).tolist())
     fig.update_yaxes(title_text="Pace (min/mi, faster = up)", autorange="reversed",
                      tickvals=pv, ticktext=pt, secondary_y=False)
     fig.update_yaxes(title_text="Mean HR (bpm)", range=[145, 160], secondary_y=True)
@@ -443,20 +443,20 @@ def chart_x_heat(rows):
                        font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
                        bgcolor=X_ANN_BG)
     # Annotation per spec, recomputed in min/mi (M:SS). HR-flat clause pinned.
-    # Sits fully BELOW the plot area (was y=0.02 inside, crossed the Mid violin's
-    # long lower tail). y=-0.16 clears the "Temperature tercile" axis title while
+    # Sits fully BELOW the plot area (was y=0.02 inside, crossed the Mild violin's
+    # long lower tail). y=-0.16 clears the "Temperature band" axis title while
     # staying inside the figure's bottom margin (b=96); y=-0.20 clipped at the edge.
     cool_mss = fmt_pace(float(pace_cool_mi.mean()))
-    warm_mss = fmt_pace(float(pace_warm_mi.mean()))
+    hot_mss = fmt_pace(float(pace_hot_mi.mean()))
     fig.add_annotation(
         x=0.5, y=-0.16, xref="paper", yref="paper", xanchor="center", yanchor="top",
-        text=(f"Cool {cool_mss} vs Warm {warm_mss} /mi | "
+        text=(f"Cool {cool_mss} vs Hot {hot_mss} /mi | "
               f"t={t:.2f} | p={p:.4f} | HR flat (t={hrt:.2f}, p={hrp:.2f})"),
         showarrow=False, font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
         bgcolor=X_ANN_BG)
     return fig, dict(t=t, p=p, hr_means=hr_means,
-                     n_cool=int(cool.sum()), n_mid=int(mid.sum()), n_warm=int(warm.sum()),
-                     q1=q1, q2=q2)
+                     n_cool=int(cool.sum()), n_mild=int(mild.sum()),
+                     n_warm=int(warm.sum()), n_hot=int(hot.sum()))
 
 
 def chart_x_seasonal(rows):
