@@ -16,7 +16,7 @@ strava-data/        fetch.py → analyze_segments.py → build_dashboard.py → 
 strava-export/      older one-off Strava CSV export tool (has its own .env/tokens)
 Running Log/        index.html, running_log.csv, src/ (parse/visualize), strava.html copy
 Claude Design/      design handoff for the running-log dashboard
-.claude/agents/     strava-* specialist agents (creativity, data-analyst, developer, maintenance, qa, viz-design)
+.claude/agents/     strava-* specialist agents (creativity, data-analyst, developer, maintenance, qa, viz-design) + running-log-qa (visual QA for the Running Log dashboard)
 .claude/commands/   strava, strava-segments, requirements
 .github/workflows/  strava-fetch.yml (Strava API → data/), deploy.yml (build + publish to Pages)
 ```

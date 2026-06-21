@@ -32,6 +32,12 @@ If you change the parser, regenerate CSV first:
 C:\Users\Alisha\Anaconda3\python.exe src/parse_log.py
 ```
 
+## QA
+Two layers: **static** is `src/qa.py` (data quality + HTML/CSS structure, run
+`uv run python "Running Log/src/qa.py"`); **visual** is the `running-log-qa` agent (Preview
+MCP) — it renders `index.html` across desktop + mobile viewports and light + dark themes
+(overlap, edge-clipping, contrast, and the mobile bottom-sheet).
+
 ## What's done in this branch
 | Item | Status |
 |------|--------|
