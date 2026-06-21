@@ -92,16 +92,24 @@ internal verification — convert before comparing (mi = km × 0.621371; min/mi 
 ---
 
 ### V1 — The Temperature Mirage
-- **div id:** `chart-x-mirage` · **height:** 460 · **Type:** Scatter (markers) + 2 line traces + 2 OLS lines.
-- **Data:** runs n=181 with HR+temp; monthly-binned z-scored aerobic efficiency (speed/HR), 20 bins 2024-11..2026-06, per recipe (raw vs temperature-adjusted residual).
-- **X axis:** month bin midpoint date — label "Month" — ticks `MMM YY`, range 2024-11..2026-06.
+- **div id:** `chart-x-mirage` · **height:** 460 · **Type:** Scatter (markers) + raw line + raw OLS + temp-adjusted line + adjusted OLS. **Carries a metric toggle: Air temp (default) ↔ Apparent temp (heat index).**
+- **Toggle control:** two-button segmented control above the chart (`.seg-filter` / `.seg-btn`, same as V4). Buttons: **Air temp** (active by default) and **Apparent temp**.
+- **Toggle semantics — keep raw fixed, swap adjusted only.** The raw/uncontrolled trend does not use temperature, so it is computed **once** on the air-temp population and never moves. Only the temperature-adjusted monthly-mean line, its OLS-over-time trend, and the r/p annotation swap between metrics. Each adjusted view filters to runs that have that metric and temp-adjusts (OLS eff~temp residuals, z-scored) on its own population; the x-origin is shared so dates line up.
+- **7 total traces (stable indices):**
+  - 0 individual runs (raw_z markers, teal `opacity=0.25` size 5), 1 raw monthly mean (slate dashed line+markers), 2 raw OLS trend (slate dashed) — **always visible**.
+  - 3 air-adjusted monthly mean (teal solid), 4 air-adjusted OLS trend (teal dashed) — `visible=True`.
+  - 5 apparent-adjusted monthly mean, 6 apparent-adjusted OLS trend — `visible=False`.
+- **Toggle JS (`toggleMirage`):** `Plotly.restyle(el, {visible:[...]}, [3,4,5,6])` (air → `[true,true,false,false]`, app → `[false,false,true,true]`) + `Plotly.relayout(el, {'annotations[0].text': MIRAGE_ANN[view]})`. Raw traces 0–2 are never touched.
+- **X axis:** month bin midpoint date — label "Month" — ticks `MMM YY`, autoranged (future months never clipped).
 - **Y axis:** z-scored aerobic efficiency — label "Aerobic efficiency (z-score)" — zeroline shown.
-- **Traces:** (1) individual runs: markers, teal, `opacity=0.25`, size 5, behind. (2) raw monthly mean: slate dashed line+markers. (3) temp-adjusted monthly mean: teal solid line+markers. (4) OLS on raw points: slate dashed. (5) OLS on adjusted points: teal dashed.
 - **Legend:** ON, bottom: "Individual runs", "Raw (uncontrolled)", "Temperature-adjusted".
-- **Annotation:** top-right paper (x=0.98,y=0.97): `Raw r=-0.183, p=0.013 -> Adjusted r=-0.063, p=0.402`.
+- **Annotation (index 0, top-right paper x=0.98,y=0.97):** raw prefix is identical across views (raw is fixed); only the Adjusted r/p differ.
+  - **Air temp:** `Raw r=-0.194, p=0.008 -> Adjusted r=-0.068, p=0.358`
+  - **Apparent temp:** `Raw r=-0.194, p=0.008 -> Adjusted r=-0.026, p=0.755 (~19% fewer than air temp)`
+- **Sample-size caveat:** apparent-temp view uses fewer runs (n=149 vs air n=184) from lower `apparent_temp_c` backfill coverage; the auto-computed `(~X% fewer than air temp)` note rides in the apparent annotation.
 - **Hover:** lines -> `%{x|%b %Y}<br>z = %{y:.2f}`; runs -> activity name + `z=%{y:.2f}`.
-- **Edge cases:** runs missing HR or temp excluded. Months with <2 runs plot as-is; guard empty bins.
-- **Verify vs recipe:** `V1_raw_r=-0.183`, `V1_raw_p=0.013`, `V1_adj_r=-0.063`, `V1_adj_p=0.402`, n=181, 20 bins.
+- **Edge cases:** runs missing HR or the relevant temp metric excluded per view; coverage differs by design. Months with <2 runs plot as-is.
+- **Verify vs recipe:** `V1_raw_r=-0.194`, `V1_raw_p=0.008`, `V1_air_adj_r=-0.068`, `V1_air_adj_p=0.358`, `V1_app_adj_r=-0.026`, `V1_app_adj_p=0.755`, n=184, n_app=149, 20 bins.
 
 ### V2 — Athlete Archetypes
 - **div id:** `chart-x-archetypes` · **height:** 520 · **Type:** PCA biplot — Scatter (markers) + 8 loading-arrow lines + labels + optional convex hulls.
@@ -331,6 +339,30 @@ y-title "Elevation Gain (ft)", per-week hovertext. Drop the single `ELEVATION_CO
 **R6 — Chart subtitles legible in light mode.** Expose `window.__applyChartTheme =
 applyChartTheme` in the theme IIFE; call it in `activateView` after the `Plotly.Plots.resize`
 loop so hidden-tab chart titles get retinted to `--text-primary` when shown.
+
+---
+
+## Temperature toggles (2026-06-21)
+
+Extends the V4 (She Pays Pace) Air temp ↔ Apparent temp toggle pattern to two more
+temperature-driven charts. Same `.seg-filter`/`.seg-btn` control, same Plotly
+`restyle` (trace visibility) + `relayout` (annotation text) mechanism, same baked-air /
+hidden-apparent precomputation. Toggles are **independent per chart** (no shared state).
+Apparent-temp views use fewer runs (lower `apparent_temp_c` backfill coverage) and surface
+an auto-computed `~X% fewer` caveat. See the **V1 — The Temperature Mirage** spec above for
+that chart's full toggle contract (raw-fixed / adjusted-only swap, 7 traces, `toggleMirage`).
+
+**Heart Rate vs Temperature** (`chart_run_hr_vs_temp`, Trends tab, div `chart-run-hr-temp`):
+- Two views built into one figure; air-temp scatter+regression per sport (`visible=True`),
+  apparent-temp per sport (`visible=False`). Trace counts can vary (a sport could be empty),
+  so the builder returns per-view `air_vis`/`app_vis` boolean arrays + `trace_idx`, and the JS
+  (`toggleHrTemp`) applies them verbatim — no hard-coded indices.
+- **Shared/union axis ranges** (x and y) across both views so air ↔ apparent reads 1:1.
+- Hover labels read "Apparent temp: X°F" in the apparent view, "Temp: X°F" in air.
+- **3 fixed annotation slots:** 0 = Run R² (teal), 1 = TrailRun R² (violet), 2 = caveat
+  (slate pill, blank for air; `apparent temp: ~X% fewer runs than air temp` for apparent).
+  `toggleHrTemp` swaps `annotations[0..2].text` from `air_anns`/`app_anns`.
+- Builder return changed from `fig` to `(fig, meta)`; `page.py` threads `meta` into `build_js`.
 
 ---
 
