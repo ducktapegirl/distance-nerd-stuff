@@ -128,20 +128,30 @@ internal verification — convert before comparing (mi = km × 0.621371; min/mi 
 - **Verify vs recipe:** `V3_welch_t=15.742`, `V3_welch_df=145.56`, `V3_welch_p=3.128e-33`, n 183/54.
 
 ### V4 — She Pays Pace, Not Heart, for Heat
-- **div id:** `chart-x-heat` · **height:** 460 · **Type:** 4 Violin traces (pace) + mean-HR line on secondary y (`make_subplots` secondary_y).
-- **Data:** runs n=201 by **fixed °F band**, not tercile — cool <48F n=64, mild 48-62F n=55,
-  warm 62-75F n=66, hot >=75F n=16 (cuts converted to °C internally for filtering: 48F->8.89C,
-  62F->16.67C, 75F->23.89C).
-- **X axis:** categorical "Cool (<48F)", "Mild (48-62F)", "Warm (62-75F)", "Hot (>=75F)" — label "Temperature band".
+- **div id:** `chart-x-heat` · **height:** 460 · **Type:** 4 Violin traces (pace) + mean-HR line on secondary y (`make_subplots` secondary_y). **Carries a metric toggle: Air temp (default) ↔ Apparent temp (heat index).**
+- **Toggle control:** two-button segmented control above the chart, reusing the existing `.seg-filter` / `.seg-btn` pattern (same markup/CSS/active-state as other segment filters). Buttons: **Air temp** (active by default) and **Apparent temp**.
+- **Two precomputed views, 10 total traces.** Each view = **5 traces** (4 Violin pace + 1 HR Scatter line):
+  - Traces 0–4 = **air-temp view** (`average_temp_c`), `visible=True`.
+  - Traces 5–9 = **apparent-temp view** (`apparent_temp_c`), `visible=False`.
+  - Both views use the **identical fixed °F band edges 48/62/75** (converted to °C: 48F→8.89C, 62F→16.67C, 75F→23.89C) and the same 4 bands Cool `<48F` / Mild `48–62F` / Warm `62–75F` / Hot `>=75F`. Fixed-edge bands, not equal-sized terciles.
+- **Toggle JS:** on click, `Plotly.restyle(el, {visible:[...]}, [0..9])` swaps which view's 5 traces show, and `Plotly.relayout(el, {...})` swaps the bottom stat annotation text (Welch numbers/n differ per view and can't ride along on `restyle`). Both annotation strings are precomputed and stored inline in a small JS object keyed by view (`air`/`app`). X-axis band labels are identical across views — not swapped.
+- **Data (air-temp view, default):** runs with `average_temp_c` present, fixed °F bands. n=202 — Cool 64, Mild 55, Warm 67, Hot 16.
+- **Data (apparent-temp view):** runs with `apparent_temp_c` present, same fixed °F bands. n=162 — Cool 62, Mild 35, Warm 44, Hot 21 (~20% fewer than air-temp due to lower `apparent_temp_c` backfill coverage). No empty bands; no low-n (<5) bands in either view.
+- **X axis:** categorical "Cool (<48F)", "Mild (48-62F)", "Warm (62-75F)", "Hot (>=75F)" — label "Temperature band". Identical category array for both views.
 - **Y1 (pace):** "Pace (min/mi, faster = up)" — **REVERSED** (`autorange="reversed"`),
-  ticks formatted `M:SS`.
-- **Y2 (HR):** "Mean HR (bpm)" — fixed range ~145..160 so the flat line reads flat.
-- **Violins:** `box_visible=True`, `meanline_visible=True`, points off; cool=slate, mild=`rgba(245,158,11,0.4)`, warm=amber, hot=red (`SLOWER` #f87171); opacity 0.7.
-- **HR line:** 154.2 / 151.7 / 154.2 / 154.8, teal, markers+line, secondary y.
+  ticks formatted `M:SS`. **Shared/union ticks:** `tickvals`/`ticktext` computed from the union of both views' pace arrays (via `_pace_ticks`) so the pace axis is identical in both toggle states.
+- **Y2 (HR):** "Mean HR (bpm)" — fixed range **[145, 160]** so the flat line reads flat. Verified valid for both views: air HR means 154.21/151.75/154.20/154.82; apparent HR means 154.3/151.6/153.6/155.9 — all within range, no widening needed.
+- **Violins:** `box_visible=True`, `meanline_visible=True`, points off; cool=slate, mild=`rgba(245,158,11,0.4)`, warm=amber, hot=red (`SLOWER` #f87171); opacity 0.7. Same colors reused for both views — no new theme entries.
+- **HR line:** air-temp means 154.2/151.7/154.2/154.8; apparent-temp means 154.3/151.6/153.6/155.9, teal, markers+line, secondary y. Skip `None` for any empty band (none occur in either view currently).
 - **Legend:** OFF for violins; slate annotation: `teal line = mean HR (right axis)`.
-- **Annotation:** bottom-center, recomputed in min/mi: `Cool 8:58 vs Hot 9:38 /mi | t=-1.77 | p=0.0966 | HR flat (t=-0.27, p=0.79)`.
-- **Edge cases:** missing temp excluded; cut points fixed 48/62/75°F (8.89/16.67/23.89°C); bands no longer equal-sized terciles.
-- **Verify vs recipe:** `V4_welch_t=-1.766`, `V4_welch_p=0.0966`, HR means 154.21/151.75/154.20/154.82, n 64/55/66/16.
+- **Annotation (bottom-center, swapped per view via `relayout`):**
+  - **Air temp:** `Cool 8:58 vs Hot 9:38 /mi | t=-1.77 | p=0.097 | HR flat (t=-0.27, p=0.79) | n=202`
+  - **Apparent temp:** `Cool 8:55 vs Hot 9:23 /mi | t=-2.35 | p=0.027 | HR flat (t=-0.98, p=0.334) | n=162 (~20% fewer than air temp)`
+- **Sample-size caveat (surfaced in both spec and chart annotation):** apparent-temp view has ~20% fewer runs than air-temp (162 vs 202) from lower `apparent_temp_c` backfill coverage. The toggle is **1:1 axis-equivalent** (identical pace ticks and HR range) but **not sample-size-equivalent** — each view's n is printed in its annotation.
+- **Thesis check across views:** "pays pace, not heart" holds in both — pace slows Cool→Hot while HR stays flat. Apparent temp makes the pace effect *stronger and significant* (t=-2.347, p=0.0273) vs air temp's non-significant trend (t=-1.766, p=0.097); HR stays flat in both (apparent HR-flat t=-0.983, p=0.334; air HR-flat t=-0.27, p=0.79).
+- **Edge cases:** missing metric excluded per view ("all available per view", coverage differs by design); cut points fixed 48/62/75°F (8.89/16.67/23.89°C) for both metrics, not recomputed per metric; bands not equal-sized terciles; empty band renders nothing and HR line skips `None` mean (none occur currently); pace ticks from the union of both views so they never shift on toggle.
+- **Verify vs recipe — air temp:** `V4_air_welch_t=-1.766`, `V4_air_welch_p=0.0966`, HR means 154.21/151.75/154.20/154.82, n 64/55/67/16, overall n=202.
+- **Verify vs recipe — apparent temp:** `V4_app_welch_t=-2.347`, `V4_app_welch_p=0.0273`, `V4_app_hrflat_t=-0.983`, `V4_app_hrflat_p=0.3335`, HR means 154.3/151.6/153.6/155.9, n 62/35/44/21, overall n=162.
 
 ### V5 — The Seasonal Handoff
 - **div id:** `chart-x-seasonal` · **height:** 440 · **Type:** Filled area (run km) + bars (MTB count) on secondary y + optional faint slate temp line.
