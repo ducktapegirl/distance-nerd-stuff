@@ -1,6 +1,6 @@
 ---
 name: strava-qa
-description: Validates a freshly built Strava dashboard — build integrity, spec compliance, units policy, data accuracy, edge cases, HTML sanity, label-overlap and edge-clipping detection, and a light/dark theme audit. Runs and inspects but never edits code. Use in the QA stage of the Strava dashboard pipeline.
+description: Validates a freshly built Strava dashboard — build integrity, spec compliance, units policy, data accuracy, edge cases, HTML sanity, label-overlap and edge-clipping detection, and a responsive (desktop + mobile) light/dark theme audit. Runs and inspects but never edits code. Use in the QA stage of the Strava dashboard pipeline.
 tools: Read, Bash, Grep, Glob, mcp__Claude_Preview__preview_start, mcp__Claude_Preview__preview_screenshot, mcp__Claude_Preview__preview_console_logs, mcp__Claude_Preview__preview_stop, mcp__Claude_Preview__preview_eval, mcp__Claude_Preview__preview_click, mcp__Claude_Preview__preview_snapshot
 model: sonnet
 ---
@@ -57,14 +57,40 @@ Confirm the dashboard handles these without crashing or blank panels:
 - [ ] No obvious JS syntax errors in source.
 - [ ] File size reasonable (< 20 MB).
 
-## 6. Visual smoke test (Preview MCP)
+## 6. Visual smoke test (Preview MCP) — desktop AND mobile (mandatory)
 Open `strava-data/strava.html` with the Preview tools, screenshot it, and check
 `preview_console_logs` for errors. Confirm new views actually render — not just that the
 source contains them. Stop the preview only after sections 6.5 and 6.6 are done.
 
+**Run the full visual suite at two viewports (a "viewport sweep"):**
+1. **Desktop — 1440×900.**
+2. **Mobile — 390×844** (an iPhone-class width, below the `@media (max-width: 640px)`
+   mobile tier).
+
+Set the viewport with the Preview tool's size option — the width/height arguments on
+`preview_start` (preferred) or `preview_screenshot`; you have the live tool schema at
+runtime, so use whichever mechanism is available. Re-open or resize the preview between
+passes and wait ~1s for relayout (the page debounces a `resize`/`visualViewport` listener
+that calls `Plotly.Plots.resize()` and toggles the mobile chart simplifications).
+
+Run **§6.5, §6.5b, and §6.6 in *each* pass** — mobile reflow (collapsed legends, a much
+narrower plot area, thinned ticks, stacked cards) routinely introduces overlap and
+edge-clipping that never appears at desktop width, so the 390px pass is not optional. Tag
+every row in the §6.5/§6.5b/§6.6 tables with a **Viewport** column (`desktop` / `mobile`).
+
 The tabs are: **overview, volume, trends, segments, map, exploratory** — switch with
 `preview_click` on `.tab[data-view="<name>"]`. Hidden tabs keep their charts in the DOM, so
 always filter to visible charts (`el.offsetParent !== null`) in any `preview_eval` audit.
+
+### 6.0 Mobile layout checklist (390px pass only)
+At 390px, confirm the intentional mobile experience (see `MOBILE-REDESIGN-PLAN.md`):
+- [ ] The tab strip scrolls horizontally without wrapping; tap targets are reachable.
+- [ ] Charts visibly resize to the narrow viewport — no horizontal overflow, no fixed-px
+      chart spilling past the card edge.
+- [ ] The simplified mobile chart variants appear (e.g. the Volume rangeslider is hidden,
+      crowded axes are thinned).
+- [ ] Tapping a detail point opens the **bottom sheet** (slides up from the bottom,
+      dismissible via backdrop tap / Escape / swipe-down) — **not** a full-screen side panel.
 
 ## 6.5 Label-overlap detection (Preview MCP)
 
@@ -167,7 +193,8 @@ to keep the whole label inside the figure** — verify with 6.5b, an offset like
 clips if the margin is too shallow), reposition to an empty quadrant, or push the legend
 further below (`y=-0.35`).
 
-Report one row per chart: | Chart ID | Tab | Status | Detail |
+Report one row per chart: | Chart ID | Tab | Viewport | Status | Detail | (run at both the
+desktop and mobile viewport — narrow-width reflow is the most common source of new overlaps.)
 
 ## 6.5b Edge-clipping / truncation detection (Preview MCP)
 
@@ -221,13 +248,17 @@ Suggested fix: deepen the margin on the clipped side enough to contain the label
 subplot titles) and/or pull the paper offset back toward [0,1]. After the fix the label must
 sit fully inside `svg.main-svg`; re-run this pass until `clippedCount: 0`.
 
-Report one row per clipped label: | Chart ID | Tab | Side(s) | Hidden % | Status |
+Report one row per clipped label: | Chart ID | Tab | Viewport | Side(s) | Hidden % | Status |
+(run at both viewports — a margin that contains a label at 1440px often clips it at 390px.)
 
 ## 6.6 Theme audit — light AND dark (mandatory)
 
 The page has a theme toggle (`.theme-toggle button[data-theme="light"|"dark"|"system"]`).
 `applyChartTheme()` in the page JS restyles charts from CSS variables when toggled. Verify
-every chart's text is legible in **both** themes.
+every chart's text is legible in **both** themes at **both** viewports — run this audit in
+the desktop pass and again in the mobile pass (4 combinations: desktop/light, desktop/dark,
+mobile/light, mobile/dark). Mobile retints the same CSS variables but the narrower layout can
+surface contrast issues the desktop pass misses.
 
 For each theme (`light`, then `dark`):
 1. Switch: `preview_eval` → `document.querySelector('.theme-toggle button[data-theme="light"]').click()`
@@ -289,12 +320,14 @@ For each theme (`light`, then `dark`):
 3. Thresholds: contrast **< 2.0 = FAIL** (effectively invisible), **2.0–3.0 = WARN**.
    Note: semi-transparent pill backgrounds composite with the page, so computed contrast is
    approximate — confirm borderline cases on the screenshot before failing them.
-4. `preview_screenshot` the **exploratory tab in both themes** as proof, plus any failing tab.
+4. `preview_screenshot` the **exploratory tab in both themes** as proof at **each viewport**
+   (desktop + mobile = 4 shots), plus any failing tab.
 
-Report per theme: | Chart ID | Tab | Theme | Worst contrast | Status |
+Report per theme: | Chart ID | Tab | Viewport | Theme | Worst contrast | Status |
 
 ## Report format
 A markdown checklist with PASS / FAIL / WARN per item. For each FAIL/WARN add a one-sentence
-description and, if obvious, a suggested fix. Include the overlap table (6.5), the
-edge-clipping table (6.5b), and the theme audit table (6.6). End with the screenshots taken
-and which theme/tab each shows.
+description and, if obvious, a suggested fix. Cover **both viewports** (desktop 1440 + mobile
+390): include the mobile checklist (6.0), the overlap table (6.5), the edge-clipping table
+(6.5b), and the theme audit table (6.6) — each with its **Viewport** column populated for both
+passes. End with the screenshots taken and which viewport/theme/tab each shows.
