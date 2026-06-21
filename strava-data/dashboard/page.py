@@ -52,6 +52,7 @@ def _activity_detail_json(rows):
             "elev_ft": round(elev),
             "elapsed": fmt_time(etime),
             "pace":    pace_str,
+            "desc":    (r.get("description") or "").strip(),
         }
     return json.dumps(act_by_id, ensure_ascii=False)
 

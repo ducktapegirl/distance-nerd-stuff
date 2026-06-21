@@ -72,14 +72,14 @@ def chart_calendar(rows):
                 x = label_w + wnum * week_w
                 y = top_pad + dow * week_w
                 rec = year_days.get((dow, wnum))
-                if rec and rec[1] > 0:
+                if rec:
                     ds, mi, cnt = rec
                     op = min(1.0, max(0.08, mi / max_mi)) if max_mi else 0.08
                     title = (f"{ds} · {mi:.1f} mi "
                              f"({cnt} {'activity' if cnt == 1 else 'activities'})")
                     cells.append(
-                        f'<rect class="hm-cell" x="{x}" y="{y}" width="{cell}" '
-                        f'height="{cell}" rx="2" fill="var(--accent)" '
+                        f'<rect class="hm-cell" data-date="{ds}" x="{x}" y="{y}" '
+                        f'width="{cell}" height="{cell}" rx="2" fill="var(--accent)" '
                         f'fill-opacity="{op:.2f}"><title>{title}</title></rect>'
                     )
                 else:
