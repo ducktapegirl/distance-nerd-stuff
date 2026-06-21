@@ -364,6 +364,28 @@ that chart's full toggle contract (raw-fixed / adjusted-only swap, 7 traces, `to
   `toggleHrTemp` swaps `annotations[0..2].text` from `air_anns`/`app_anns`.
 - Builder return changed from `fig` to `(fig, meta)`; `page.py` threads `meta` into `build_js`.
 
+## Calendar click-through (2026-06-21)
+
+Extends the shared detail panel (previously map/HR/pace charts only, via `showDetail` /
+`plotly_click` + `customdata`) to the SVG calendar (R1), which is hand-built and not a Plotly
+figure.
+
+- `chart_calendar()` (`charts_production.py`) emits `data-date="{ds}"` on every `<rect
+  class="hm-cell">` that has at least one logged activity that day — **including zero-distance
+  days** (e.g. RockClimbing, WeightTraining; opacity floors at 0.08 via the existing
+  `max(0.08, mi/max_mi)` clamp). Rest days (no activity) get no `data-date` and stay
+  non-interactive. CSS: `.hm-cell[data-date] { cursor: pointer }`, and the existing hover-scale
+  pop (`transform: scale(1.4)`) is scoped to `[data-date]` only so rest days don't look
+  clickable.
+- `_activity_detail_json()` (`page.py`) adds a `desc` field per activity (raw `description`
+  CSV column, stripped; `""` when absent).
+- `template.py`: the single-activity render path used by `showDetail` is factored into
+  `renderActivity(a)`, which also appends a `.d-desc` block (`white-space: pre-wrap`) when
+  `a.desc` is truthy. A client-built `DAY_INDEX` (date → activity-id array, grouped from
+  `ACT_DATA` at load) backs `showDay(dateStr)`, which renders every activity for that date via
+  `renderActivity`, joined by a `.d-sep` divider, and opens the panel through the same
+  `openPanel()` both paths share. Click listeners attach to `.hm-cell[data-date]`.
+
 ---
 
 ## Appendix B — Validated numeric routines (copy verbatim into build_dashboard.py)

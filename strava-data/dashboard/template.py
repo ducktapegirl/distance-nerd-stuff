@@ -251,7 +251,7 @@ main {{
 }}
 .hm-year-row svg {{ flex: 1; min-width: 800px; }}
 .hm-cell {{ transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1); transform-origin: center; transform-box: fill-box; }}
-.hm-cell:hover {{ transform: scale(1.4); }}
+.hm-cell[data-date]:hover {{ transform: scale(1.4); }}
 .hm-cell[data-date] {{ cursor: pointer; }}
 .hm-month {{ fill: var(--text-tertiary); font-size: 9px; font-family: 'Geist Mono', monospace; }}
 .hm-dow   {{ fill: var(--text-tertiary); font-size: 9px; font-family: 'Geist Mono', monospace; }}

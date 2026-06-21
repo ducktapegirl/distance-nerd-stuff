@@ -72,7 +72,7 @@ def chart_calendar(rows):
                 x = label_w + wnum * week_w
                 y = top_pad + dow * week_w
                 rec = year_days.get((dow, wnum))
-                if rec and rec[1] > 0:
+                if rec:
                     ds, mi, cnt = rec
                     op = min(1.0, max(0.08, mi / max_mi)) if max_mi else 0.08
                     title = (f"{ds} · {mi:.1f} mi "
