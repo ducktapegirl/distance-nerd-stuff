@@ -218,9 +218,12 @@ def _build_exploratory_charts(rows):
           % (v3m["t"], v3m["df"], v3m["p"], v3m["n_run"], v3m["n_mtb"]))
     print("  exploratory V4 heat...")
     v4, v4m = chart_x_heat(rows)
-    print("    V4 welch t=%.3f p=%.5f HR=%s n=%d/%d/%d/%d"
-          % (v4m["t"], v4m["p"], ["%.2f" % h for h in v4m["hr_means"]],
-             v4m["n_cool"], v4m["n_mild"], v4m["n_warm"], v4m["n_hot"]))
+    for _vk in ("air", "app"):
+        _v = v4m[_vk]
+        print("    V4 %s welch t=%.3f p=%.5f hrflat(t=%.3f,p=%.4f) HR=%s n=%d/%d/%d/%d total=%d"
+              % (_vk, _v["t"], _v["p"], _v["hrt"], _v["hrp"],
+                 ["%.2f" % h for h in _v["hr_means"]],
+                 _v["n"][0], _v["n"][1], _v["n"][2], _v["n"][3], _v["n_total"]))
     print("  exploratory V5 seasonal handoff...")
     v5, v5m = chart_x_seasonal(rows)
     print("    V5 total_run_km=%.1f total_mtb=%d sep_km=%.1f jul_mtb=%d"
@@ -444,8 +447,12 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   </div>
   <div class="card">
     <div class="card-title">She Pays Pace, Not Heart, for Heat</div>
+    <div class="seg-filter">
+      <button class="seg-btn active" onclick="toggleHeat('air',this)">Air temp</button>
+      <button class="seg-btn" onclick="toggleHeat('app',this)">Apparent temp</button>
+    </div>
     {fig_html(v4,460,"chart-x-heat")}
-    <p class="plot-caption">Each violin shape shows the spread of run paces across three temperature bands — cool, mid, and warm. Wider = more spread in that band; the box inside marks the middle 50% of runs. The teal line (right axis) tracks average heart rate across those same bands. The bottom annotation gives the exact average pace for the coolest and warmest conditions, plus two p-values: one confirming pace does change significantly with temperature, and one showing heart rate does not — meaning in the heat you move slower without working cardiovascularly harder.</p>
+    <p class="plot-caption">Each violin shape shows the spread of run paces across four fixed temperature bands — cool, mild, warm, and hot. Wider = more spread in that band; the box inside marks the middle 50% of runs. The teal line (right axis) tracks average heart rate across those same bands. The toggle above switches the whole chart between air temperature and apparent temperature (heat index, which folds in humidity) so the two can be compared 1:1. The bottom annotation gives the exact average pace for the coolest and warmest conditions, plus two p-values: one confirming pace does change significantly with temperature, and one showing heart rate does not — meaning in the heat you move slower without working cardiovascularly harder.</p>
   </div>
   <div class="card">
     <div class="card-title">The Seasonal Handoff</div>
