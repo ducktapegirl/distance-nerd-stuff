@@ -107,7 +107,7 @@ html, body {{
 
 .wordmark {{ display: flex; align-items: center; gap: 10px; }}
 .wordmark-name {{
-  font-size: 34px; font-weight: 700;
+  font-size: clamp(22px, 6vw, 34px); font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text-primary);
 }}
@@ -190,7 +190,12 @@ html, body {{
 .tabnav {{
   display: flex; gap: 4px;
   margin-bottom: -1px;
+  flex-wrap: nowrap; overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }}
+.tabnav::-webkit-scrollbar {{ display: none; }}
 .tab {{
   background: none; border: none;
   border-bottom: 2px solid transparent;
@@ -201,6 +206,7 @@ html, body {{
   cursor: pointer;
   transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-flex; align-items: center; gap: 6px;
+  scroll-snap-align: start; flex-shrink: 0;
 }}
 .tab:hover {{ color: var(--text-primary); }}
 .tab.active {{
@@ -230,7 +236,7 @@ main {{
 }}
 .page-header h1 {{
   margin: 0;
-  font-size: 26px; font-weight: 700;
+  font-size: clamp(20px, 4.5vw, 26px); font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text-primary);
 }}
@@ -291,7 +297,7 @@ main {{
 }}
 .stat-num {{
   font-family: 'Geist Mono', monospace;
-  font-size: 26px; font-weight: 600;
+  font-size: clamp(18px, 4.5vw, 26px); font-weight: 600;
   letter-spacing: -0.03em;
   color: var(--text-primary);
   line-height: 1.1;
@@ -302,15 +308,6 @@ main {{
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-secondary);
-}}
-
-@media (max-width: 900px) {{
-  .stat-grid {{ grid-template-columns: repeat(3, 1fr); }}
-}}
-@media (max-width: 560px) {{
-  .stat-grid {{ grid-template-columns: repeat(2, 1fr); }}
-  .topnav-row {{ padding: 0 16px; }}
-  main {{ padding: 24px 16px 60px; }}
 }}
 
 /* Notes search */
@@ -598,8 +595,6 @@ main {{
 .race-card[data-date]:hover {{ border-color: var(--accent); background: var(--accent-dim); }}
 .race-card[data-date]:focus {{ outline: 2px solid var(--accent); outline-offset: 2px; }}
 .hm-cell[data-date] {{ cursor: pointer; }}
-@media (max-width: 900px) {{ .pr-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
-@media (max-width: 600px) {{ .detail-panel {{ width: 100vw; }} }}
 
 /* PR cards */
 .pr-grid {{
@@ -810,8 +805,6 @@ main {{
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
   margin-bottom: 20px;
 }}
-@media (max-width: 800px) {{ .type-stat-grid {{ grid-template-columns: repeat(3, 1fr); }} }}
-@media (max-width: 500px) {{ .type-stat-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
 .type-stat-card {{
   background: var(--bg-glass);
   border: 1px solid var(--border-subtle);
@@ -875,10 +868,6 @@ main {{
 .spark-chart {{ min-width: 0; }}
 .spark-chart .plotly-graph-div {{ width: 100% !important; }}
 
-@media (max-width: 700px) {{
-  .spark-card {{ grid-template-columns: 70px 1fr; row-gap: 6px; }}
-  .spark-card .spark-chart {{ grid-column: 1 / -1; }}
-}}
 
 /* Patterns */
 .patterns-grid {{
@@ -905,6 +894,59 @@ main {{
   color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.04em;
 }}
+
+/* ── Responsive / mobile (kept last so overrides win by source order) ── */
+@media (max-width: 900px) {{
+  .stat-grid {{ grid-template-columns: repeat(3, 1fr); }}
+  .pr-grid {{ grid-template-columns: repeat(2, 1fr); }}
+  .type-stat-grid {{ grid-template-columns: repeat(3, 1fr); }}
+}}
+@media (max-width: 640px) {{
+  .stat-grid {{ grid-template-columns: repeat(2, 1fr); }}
+  .type-stat-grid {{ grid-template-columns: repeat(2, 1fr); }}
+  .spark-card {{ grid-template-columns: 70px 1fr; row-gap: 6px; }}
+  .spark-card .spark-chart {{ grid-column: 1 / -1; }}
+  main {{ padding: 20px 14px 60px; }}
+  .theme-toggle button {{ width: 36px; height: 36px; }}
+  .tab {{ min-height: 44px; }}
+  .hm-toggle {{ min-height: 40px; padding: 6px 12px; }}
+  .race-tab {{ min-height: 40px; }}
+  .filter-pill {{ min-height: 40px; padding: 6px 14px; }}
+  .chart-toggle button {{ min-height: 40px; padding: 6px 12px; }}
+  .js-plotly-plot {{ height: auto !important; aspect-ratio: 4/3; max-height: 70vh; }}
+
+  /* #1 Topnav: stack title over date, compact switch button */
+  .topnav-row {{ padding: 0 14px; }}
+  .topnav-row.row1 {{ height: auto; min-height: 48px; padding-top: 8px; padding-bottom: 8px; }}
+  .wordmark {{ flex-direction: column; align-items: flex-start; gap: 1px; }}
+  .wordmark-name {{ font-size: clamp(17px, 5vw, 24px); }}
+  .wordmark-meta {{ font-size: 11px; }}
+  .strava-btn {{ white-space: nowrap; font-size: 10px; padding: 5px 9px; }}
+
+  /* #5 Caption must not ride up into the (shorter) mobile plot */
+  .chart-caption {{ margin-top: 0; }}
+
+  /* #4 Bottom sheet */
+  .detail-panel {{
+    top: auto; left: 0;
+    width: 100%; max-width: none; max-height: 85vh;
+    transform: translateY(100%);
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+  }}
+  .detail-panel.open {{ transform: translateY(0); }}
+  .detail-panel::before {{
+    content: '';
+    display: block;
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 8px auto 0;
+    flex-shrink: 0;
+  }}
+}}
 """
 
 
@@ -918,10 +960,13 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('view-' + target).classList.add('active');
     history.replaceState(null, '', '#' + target);
+    tab.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
     // Trigger Plotly redraw on visible charts (in case sizes were 0)
     document.querySelectorAll('#view-' + target + ' .js-plotly-plot').forEach(el => {
       window.Plotly && window.Plotly.Plots.resize(el);
     });
+    // Thin crowded axes now that the view's charts have real width.
+    if (window.__thinTicks) window.__thinTicks();
   });
 });
 const initialHash = (location.hash || '#overview').slice(1);
@@ -1275,6 +1320,31 @@ DATE_CHART_IDS.forEach(id => {
   // Race cards are rendered client-side; expose openDetail so the Races
   // module can wire each card after each re-render.
   window.__openRaceDetail = openDetail;
+
+  // Bottom-sheet swipe-to-dismiss (mobile only)
+  (function() {
+    var sy = 0, drag = false;
+    panel.addEventListener('touchstart', function(e) {
+      if (!window.matchMedia('(max-width:640px)').matches) return;
+      sy = e.touches[0].clientY; drag = true;
+    }, {passive: true});
+    panel.addEventListener('touchmove', function(e) {
+      if (!drag) return;
+      var dy = e.touches[0].clientY - sy;
+      if (dy > 0) panel.style.transform = 'translateY(' + dy + 'px)';
+    }, {passive: true});
+    panel.addEventListener('touchend', function(e) {
+      if (!drag) return;
+      drag = false;
+      var dy = e.changedTouches[0].clientY - sy;
+      if (dy > 80) {
+        panel.style.transform = 'translateY(100%)';
+        setTimeout(function() { panel.style.transform = ''; closeDetail(); }, 240);
+      } else {
+        panel.style.transform = '';
+      }
+    });
+  })();
 })();
 
 // ─── Chart toggle (per-chart y-data switcher) ──────────────────────────────
@@ -1371,5 +1441,55 @@ DATE_CHART_IDS.forEach(id => {
   mq.addEventListener('change', function() {
     if (current === 'system') applyTheme('system');
   });
+})();
+
+// ─── Mobile: re-fit charts, thin crowded axes, simplify ─────────────────────
+(function() {
+  var mq = window.matchMedia('(max-width:640px)');
+  // Dense time/numeric charts: thin ticks to ~1 per 100px (x) / 80px (y).
+  // Categorical charts (mix-by-season, monthly-by-year) are excluded — nticks
+  // can drop their category labels.
+  var DENSE = ['chart-cumulative', 'chart-weekly', 'chart-easy-pace',
+               'chart-pace-timeline', 'chart-5k-prog'];
+  function thinTicks() {
+    if (!window.Plotly) return;
+    var mobile = mq.matches;
+    DENSE.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el || !el._fullLayout) return;
+      var w = el.clientWidth || 0, h = el.clientHeight || 0;
+      if (w === 0) return;  // hidden view — recomputed on activation
+      var nx = mobile ? Math.max(2, Math.floor(w / 100)) : 0;  // 0 = auto
+      var ny = mobile ? Math.max(2, Math.floor(h / 80)) : 0;
+      Plotly.relayout(el, {'xaxis.nticks': nx, 'yaxis.nticks': ny});
+    });
+  }
+  window.__thinTicks = thinTicks;
+  function simplify(mobile) {
+    if (!window.Plotly) return;
+    var pt = document.getElementById('chart-pace-timeline');
+    if (pt && pt._fullLayout) Plotly.relayout(pt, {'showlegend': !mobile});
+    var mby = document.getElementById('chart-monthly-by-year');
+    if (mby && mby._fullLayout) Plotly.relayout(mby, {'showlegend': !mobile});
+    var mix = document.getElementById('chart-mix-by-season');
+    if (mix && mix._fullLayout) Plotly.relayout(mix, {'xaxis.nticks': mobile ? 6 : 0});
+  }
+  function applyMobile() { simplify(mq.matches); thinTicks(); }
+  // Debounced resize → re-fit active charts, then re-thin ticks for new width.
+  var t;
+  function onResize() {
+    clearTimeout(t);
+    t = setTimeout(function() {
+      if (!window.Plotly) return;
+      document.querySelectorAll('.view.active .js-plotly-plot').forEach(function(el) {
+        Plotly.Plots.resize(el);
+      });
+      thinTicks();
+    }, 150);
+  }
+  window.addEventListener('resize', onResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
+  mq.addEventListener('change', applyMobile);
+  applyMobile();
 })();
 """
