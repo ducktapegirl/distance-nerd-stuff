@@ -367,11 +367,14 @@ def chart_x_cardiac(rows):
     return fig, dict(t=t, df=df, p=p, n_run=len(run), n_mtb=len(mtb))
 
 
-def chart_x_heat(rows):
-    """V4 - She Pays Pace, Not Heart, for Heat."""
+def _heat_view(rows, metric):
+    """Bin runs into the fixed Cool/Mild/Warm/Hot bands by `metric`
+    (`average_temp_c` or `apparent_temp_c`) and compute per-band pace (min/mi),
+    HR means, and the Cool-vs-Hot Welch stats. The 48/62/75°F edges are shared
+    across metrics (not recomputed per metric) so the bands are identical."""
     temps, paces, hrs = [], [], []
     for r in _x_runs(rows):
-        sp = mf(r["average_speed_kmh"]); tp = mf(r["average_temp_c"])
+        sp = mf(r["average_speed_kmh"]); tp = mf(r[metric])
         if sp is None or tp is None or sp == 0:
             continue
         temps.append(tp); paces.append(60.0 / sp); hrs.append(mf(r["average_heartrate"]))
@@ -403,33 +406,52 @@ def chart_x_heat(rows):
     # — the t/p are scale-invariant under the constant divisor, so no re-test.
     def to_mi(arr):
         return np.asarray(arr) / KM_TO_MI
-    pace_cool_mi, pace_mild_mi, pace_warm_mi, pace_hot_mi = (
-        to_mi(pace_cool), to_mi(pace_mild), to_mi(pace_warm), to_mi(pace_hot))
+    paces_mi = [to_mi(pace_cool), to_mi(pace_mild), to_mi(pace_warm), to_mi(pace_hot)]
+    n = [int(cool.sum()), int(mild.sum()), int(warm.sum()), int(hot.sum())]
+    return dict(paces_mi=paces_mi, hr_means=hr_means, t=t, p=p,
+                hrt=hrt, hrp=hrp, n=n, n_total=sum(n))
+
+
+def chart_x_heat(rows):
+    """V4 - She Pays Pace, Not Heart, for Heat.
+
+    Two precomputed views in one figure (10 traces): air-temp (visible) and
+    apparent-temp / heat index (hidden). A page-level toggle swaps which 5-trace
+    group is visible and swaps the bottom stat annotation via relayout."""
+    air = _heat_view(rows, "average_temp_c")
+    app = _heat_view(rows, "apparent_temp_c")
     cats = ["Cool (<48F)", "Mild (48-62F)", "Warm (62-75F)", "Hot (>=75F)"]
+    colors = [X_SLATE, "rgba(245,158,11,0.4)", X_AMBER, SLOWER]
+
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    viodata = [(pace_cool_mi, X_SLATE), (pace_mild_mi, "rgba(245,158,11,0.4)"),
-               (pace_warm_mi, X_AMBER), (pace_hot_mi, SLOWER)]
-    for cat, (data, col) in zip(cats, viodata):
-        # customdata carries M:SS pace strings since Plotly can't format min:sec natively.
-        cd = [fmt_pace(v) for v in data]
-        fig.add_trace(go.Violin(
-            x=[cat]*len(data), y=data, name=cat, fillcolor=_x_rgba(col, 0.4),
-            line_color=col, opacity=0.7, box_visible=True, meanline_visible=True,
-            points=False, showlegend=False, customdata=cd,
-            hovertemplate="%{x}<br>%{customdata} /mi<extra></extra>",
-        ), secondary_y=False)
-    fig.add_trace(go.Scatter(
-        x=cats, y=hr_means, mode="lines+markers", line=dict(color=X_TEAL),
-        marker=dict(color=X_TEAL), showlegend=False,
-        hovertemplate="%{x}<br>mean HR %{y:.1f}<extra></extra>",
-    ), secondary_y=True)
+
+    def add_view(view, visible):
+        for cat, col, data in zip(cats, colors, view["paces_mi"]):
+            # customdata carries M:SS pace strings since Plotly can't format min:sec natively.
+            cd = [fmt_pace(v) for v in data]
+            fig.add_trace(go.Violin(
+                x=[cat]*len(data), y=data, name=cat, fillcolor=_x_rgba(col, 0.4),
+                line_color=col, opacity=0.7, box_visible=True, meanline_visible=True,
+                points=False, showlegend=False, customdata=cd, visible=visible,
+                hovertemplate="%{x}<br>%{customdata} /mi<extra></extra>",
+            ), secondary_y=False)
+        fig.add_trace(go.Scatter(
+            x=cats, y=view["hr_means"], mode="lines+markers", line=dict(color=X_TEAL),
+            marker=dict(color=X_TEAL), showlegend=False, visible=visible,
+            hovertemplate="%{x}<br>mean HR %{y:.1f}<extra></extra>",
+        ), secondary_y=True)
+
+    # Traces 0-4 = air-temp view (default visible); 5-9 = apparent-temp (hidden).
+    add_view(air, True)
+    add_view(app, False)
 
     tidy_dark(fig)
     fig.update_layout(showlegend=False)
     fig.update_xaxes(title_text="Temperature band")
-    # min/mi pace ticks (M:SS), axis REVERSED so faster reads up.
-    pv, pt = _pace_ticks(np.concatenate(
-        [pace_cool_mi, pace_mild_mi, pace_warm_mi, pace_hot_mi]).tolist())
+    # min/mi pace ticks (M:SS) from the UNION of both views' pace arrays, so the
+    # axis is identical in both toggle states. Axis REVERSED so faster reads up.
+    union = np.concatenate(air["paces_mi"] + app["paces_mi"]).tolist()
+    pv, pt = _pace_ticks(union)
     fig.update_yaxes(title_text="Pace (min/mi, faster = up)", autorange="reversed",
                      tickvals=pv, ticktext=pt, secondary_y=False)
     fig.update_yaxes(title_text="Mean HR (bpm)", range=[145, 160], secondary_y=True)
@@ -442,21 +464,23 @@ def chart_x_heat(rows):
                        xanchor="left", yanchor="top",
                        font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
                        bgcolor=X_ANN_BG)
-    # Annotation per spec, recomputed in min/mi (M:SS). HR-flat clause pinned.
-    # Sits fully BELOW the plot area (was y=0.02 inside, crossed the Mild violin's
-    # long lower tail). y=-0.16 clears the "Temperature band" axis title while
-    # staying inside the figure's bottom margin (b=96); y=-0.20 clipped at the edge.
-    cool_mss = fmt_pace(float(pace_cool_mi.mean()))
-    hot_mss = fmt_pace(float(pace_hot_mi.mean()))
+    # Bottom stat annotation. Default shows the air-temp view; the page toggle
+    # swaps the text via relayout. Sits fully BELOW the plot area (y=-0.16 clears
+    # the "Temperature band" axis title while staying inside the b=96 margin).
+    # Default (air-temp) annotation. Formatted to match the spec's exact air
+    # string so the initial render equals the JS toggle's `air` text (no value
+    # flicker on click): p to 3 sig figs, HR-flat p to 2 dp.
+    air_cool = fmt_pace(float(air["paces_mi"][0].mean()))
+    air_hot = fmt_pace(float(air["paces_mi"][3].mean()))
+    air_text = (f"Cool {air_cool} vs Hot {air_hot} /mi | "
+                f"t={air['t']:.2f} | p={air['p']:.3f} | "
+                f"HR flat (t={air['hrt']:.2f}, p={air['hrp']:.2f}) | n={air['n_total']}")
     fig.add_annotation(
         x=0.5, y=-0.16, xref="paper", yref="paper", xanchor="center", yanchor="top",
-        text=(f"Cool {cool_mss} vs Hot {hot_mss} /mi | "
-              f"t={t:.2f} | p={p:.4f} | HR flat (t={hrt:.2f}, p={hrp:.2f})"),
+        text=air_text,
         showarrow=False, font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
         bgcolor=X_ANN_BG)
-    return fig, dict(t=t, p=p, hr_means=hr_means,
-                     n_cool=int(cool.sum()), n_mild=int(mild.sum()),
-                     n_warm=int(warm.sum()), n_hot=int(hot.sum()))
+    return fig, dict(air=air, app=app)
 
 
 def chart_x_seasonal(rows):

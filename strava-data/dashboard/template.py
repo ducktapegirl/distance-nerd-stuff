@@ -561,7 +561,32 @@ function filterSegs(type, btn) {{
             type === 'run'  ? [true,  false] :
                               [false, true];
   Plotly.restyle(el, {{visible: vis}}, [0, 1]);
-  document.querySelectorAll('.seg-btn').forEach(function(b) {{
+  // Scope active-state reset to this control's own group — the page now has
+  // more than one .seg-filter (heat toggle), so a global reset would clear it.
+  var grp = btn ? btn.parentNode : null;
+  if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
+    b.classList.remove('active');
+  }});
+  if (btn) btn.classList.add('active');
+}}
+
+// ─── Heat chart: air-temp ↔ apparent-temp toggle ──────────────────────────
+// Traces 0-4 = air-temp view, 5-9 = apparent-temp view (5 each: 4 violin + HR
+// line). Annotation index 1 = the bottom stat line (index 0 = "teal line" note).
+var HEAT_ANN = {{
+  air: 'Cool 8:58 vs Hot 9:38 /mi | t=-1.77 | p=0.097 | HR flat (t=-0.27, p=0.79) | n=202',
+  app: 'Cool 8:55 vs Hot 9:23 /mi | t=-2.35 | p=0.027 | HR flat (t=-0.98, p=0.334) | n=162 (~20% fewer than air temp)'
+}};
+function toggleHeat(view, btn) {{
+  var el = document.getElementById('chart-x-heat');
+  if (!el) return;
+  var vis = view === 'app'
+    ? [false,false,false,false,false, true,true,true,true,true]
+    : [true,true,true,true,true, false,false,false,false,false];
+  Plotly.restyle(el, {{visible: vis}}, [0,1,2,3,4,5,6,7,8,9]);
+  Plotly.relayout(el, {{'annotations[1].text': HEAT_ANN[view]}});
+  var grp = btn ? btn.parentNode : null;
+  if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
     b.classList.remove('active');
   }});
   if (btn) btn.classList.add('active');
