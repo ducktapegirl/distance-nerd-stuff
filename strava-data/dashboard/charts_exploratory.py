@@ -475,12 +475,23 @@ def chart_x_heat(rows):
     air_text = (f"Cool {air_cool} vs Hot {air_hot} /mi | "
                 f"t={air['t']:.2f} | p={air['p']:.3f} | "
                 f"HR flat (t={air['hrt']:.2f}, p={air['hrp']:.2f}) | n={air['n_total']}")
+    # Apparent-temp annotation, built the same way as air. Appends the
+    # sample-size caveat with a self-updating percentage (apparent temp drops
+    # rows lacking humidity/wind, so its n is smaller than air's).
+    app_cool = fmt_pace(float(app["paces_mi"][0].mean()))
+    app_hot = fmt_pace(float(app["paces_mi"][3].mean()))
+    app_text = (f"Cool {app_cool} vs Hot {app_hot} /mi | "
+                f"t={app['t']:.2f} | p={app['p']:.3f} | "
+                f"HR flat (t={app['hrt']:.2f}, p={app['hrp']:.2f}) | n={app['n_total']}")
+    if air["n_total"]:
+        _pct = round((air["n_total"] - app["n_total"]) / air["n_total"] * 100)
+        app_text += f" (~{_pct}% fewer than air temp)"
     fig.add_annotation(
         x=0.5, y=-0.16, xref="paper", yref="paper", xanchor="center", yanchor="top",
         text=air_text,
         showarrow=False, font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
         bgcolor=X_ANN_BG)
-    return fig, dict(air=air, app=app)
+    return fig, dict(air=air, app=app, air_text=air_text, app_text=app_text)
 
 
 def chart_x_seasonal(rows):
