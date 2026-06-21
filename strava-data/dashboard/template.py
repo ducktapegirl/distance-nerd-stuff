@@ -252,6 +252,7 @@ main {{
 .hm-year-row svg {{ flex: 1; min-width: 800px; }}
 .hm-cell {{ transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1); transform-origin: center; transform-box: fill-box; }}
 .hm-cell:hover {{ transform: scale(1.4); }}
+.hm-cell[data-date] {{ cursor: pointer; }}
 .hm-month {{ fill: var(--text-tertiary); font-size: 9px; font-family: 'Geist Mono', monospace; }}
 .hm-dow   {{ fill: var(--text-tertiary); font-size: 9px; font-family: 'Geist Mono', monospace; }}
 .hm-legend {{
@@ -469,6 +470,14 @@ main {{
   margin-bottom: 18px;
 }}
 .d-stats {{ display: flex; flex-wrap: wrap; gap: 10px; }}
+.d-desc {{
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}}
+.d-sep {{ height: 1px; background: var(--border-subtle); margin: 20px 0; }}
 .d-stat {{
   flex: 1 1 100px;
   background: var(--bg-elevated);
@@ -572,14 +581,19 @@ var SYNC_IDS  = {json.dumps(sync_ids)};
 var CLICK_IDS = {json.dumps(click_ids)};
 var syncing   = false;
 
+// Date (YYYY-MM-DD) → [activity ids], built from ACT_DATA for the calendar.
+var DAY_INDEX = {{}};
+Object.keys(ACT_DATA).forEach(function(id) {{
+  var d = ACT_DATA[id].date;
+  (DAY_INDEX[d] = DAY_INDEX[d] || []).push(id);
+}});
+
 // ─── Detail panel ───────────────────────────────────────────────────────────
 function closeDetail() {{
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('detail-backdrop').classList.remove('open');
 }}
-function showDetail(actId) {{
-  var a = ACT_DATA[String(actId)];
-  if (!a) return;
+function renderActivity(a) {{
   var esc = function(s) {{ return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }};
   var html = '';
   html += '<div class="d-name">' + esc(a.name) + '</div>';
@@ -591,9 +605,24 @@ function showDetail(actId) {{
   html += '<div class="d-stat"><div class="d-stat-val">' + a.elapsed + '</div><div class="d-stat-lbl">time</div></div>';
   if (a.pace)    html += '<div class="d-stat"><div class="d-stat-val">' + esc(a.pace) + '</div><div class="d-stat-lbl">pace/speed</div></div>';
   html += '</div>';
+  if (a.desc)    html += '<div class="d-desc">' + esc(a.desc) + '</div>';
+  return html;
+}}
+function openPanel(html) {{
   document.getElementById('detail-body').innerHTML = html;
   document.getElementById('detail-panel').classList.add('open');
   document.getElementById('detail-backdrop').classList.add('open');
+}}
+function showDetail(actId) {{
+  var a = ACT_DATA[String(actId)];
+  if (!a) return;
+  openPanel(renderActivity(a));
+}}
+function showDay(dateStr) {{
+  var ids = DAY_INDEX[dateStr] || [];
+  if (!ids.length) return;
+  openPanel(ids.map(function(id) {{ return renderActivity(ACT_DATA[id]); }})
+               .join('<div class="d-sep"></div>'));
 }}
 
 // ─── Segment filter (trace 0 = Running, trace 1 = MTB) ─────────────────────
@@ -878,6 +907,11 @@ window.addEventListener('load', function() {{
       var pt = data.points[0];
       if (pt.customdata) showDetail(String(pt.customdata));
     }});
+  }});
+
+  // Calendar cells are hand-built SVG (not Plotly) — wire them to the day view.
+  document.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {{
+    c.addEventListener('click', function() {{ showDay(c.getAttribute('data-date')); }});
   }});
 
   // Close detail panel on backdrop click or Escape

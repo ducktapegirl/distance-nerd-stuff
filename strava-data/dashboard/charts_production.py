@@ -78,8 +78,8 @@ def chart_calendar(rows):
                     title = (f"{ds} · {mi:.1f} mi "
                              f"({cnt} {'activity' if cnt == 1 else 'activities'})")
                     cells.append(
-                        f'<rect class="hm-cell" x="{x}" y="{y}" width="{cell}" '
-                        f'height="{cell}" rx="2" fill="var(--accent)" '
+                        f'<rect class="hm-cell" data-date="{ds}" x="{x}" y="{y}" '
+                        f'width="{cell}" height="{cell}" rx="2" fill="var(--accent)" '
                         f'fill-opacity="{op:.2f}"><title>{title}</title></rect>'
                     )
                 else:
