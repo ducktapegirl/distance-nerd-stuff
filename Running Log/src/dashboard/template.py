@@ -914,6 +914,9 @@ main {{
   .filter-pill {{ min-height: 40px; padding: 6px 14px; }}
   .chart-toggle button {{ min-height: 40px; padding: 6px 12px; }}
   .js-plotly-plot {{ height: auto !important; aspect-ratio: 4/3; max-height: 70vh; }}
+  /* Sparklines keep their built size — exempt from the 4/3 rule.
+     Height mirrors fig_html(fig, height=60, ...) in charts.py. */
+  .spark-chart .js-plotly-plot {{ aspect-ratio: auto; height: 60px !important; max-width: 100%; max-height: none; }}
 
   /* #1 Topnav: stack title over date, compact switch button */
   .topnav-row {{ padding: 0 14px; }}

@@ -521,6 +521,9 @@ main {{
   .tab {{ min-height: 44px; padding: 10px 12px; }}
   .seg-btn {{ min-height: 40px; padding: 6px 14px; }}
   .js-plotly-plot {{ height: auto !important; aspect-ratio: 4/3; max-height: 70vh; }}
+  /* Small in-card charts keep their built size — exempt from the 4/3 rule.
+     Height mirrors fig_html(fig, 200, ...) in rollups_cards.py. */
+  .seg-cardlet .js-plotly-plot {{ aspect-ratio: auto; height: 200px !important; max-height: none; }}
 
   /* #1 Topnav: stack title over date, compact switch button */
   .topnav-row {{ padding: 0 14px; }}
