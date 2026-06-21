@@ -98,7 +98,7 @@ html, body {{
 
 .wordmark {{ display: flex; align-items: baseline; gap: 10px; }}
 .wordmark-name {{
-  font-size: 22px; font-weight: 700;
+  font-size: clamp(16px, 4.5vw, 22px); font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text-primary);
 }}
@@ -154,8 +154,13 @@ html, body {{
 
 /* Section nav */
 .tabnav {{
-  display: flex; gap: 4px; flex-wrap: wrap;
+  display: flex; gap: 4px;
+  flex-wrap: nowrap; overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }}
+.tabnav::-webkit-scrollbar {{ display: none; }}
 .tab {{
   background: none; border: none;
   border-bottom: 2px solid transparent;
@@ -165,6 +170,7 @@ html, body {{
   padding: 8px 12px;
   cursor: pointer; text-decoration: none;
   transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  scroll-snap-align: start; flex-shrink: 0;
 }}
 .tab:hover {{ color: var(--text-primary); }}
 .tab.active {{
@@ -187,7 +193,7 @@ main {{
 .page-header {{ margin-bottom: 24px; }}
 .page-header h1 {{
   margin: 0;
-  font-size: 26px; font-weight: 700;
+  font-size: clamp(20px, 4.5vw, 26px); font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text-primary);
 }}
@@ -281,7 +287,7 @@ main {{
 }}
 .stat-num {{
   font-family: 'Geist Mono', monospace;
-  font-size: 24px; font-weight: 600;
+  font-size: clamp(18px, 4.5vw, 24px); font-weight: 600;
   letter-spacing: -0.03em;
   color: var(--text-primary);
   line-height: 1.1;
@@ -292,16 +298,6 @@ main {{
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-secondary);
-}}
-
-@media (max-width: 900px) {{
-  .stat-grid {{ grid-template-columns: repeat(3, 1fr); }}
-}}
-@media (max-width: 560px) {{
-  .stat-grid {{ grid-template-columns: repeat(2, 1fr); }}
-  .topnav-row {{ padding: 0 16px; }}
-  main {{ padding: 24px 16px 60px; }}
-  .page-header h1 {{ font-size: 22px; }}
 }}
 
 /* Segment consistency cardlets (Section 1) */
@@ -393,11 +389,6 @@ main {{
   margin-top: 12px;
   font-family: 'Geist Mono', monospace;
   font-size: 10.5px; color: var(--text-tertiary);
-}}
-
-@media (max-width: 760px) {{
-  .seg-cons-grid {{ grid-template-columns: 1fr; }}
-  .fast-grid {{ grid-template-columns: 1fr; }}
 }}
 
 /* Segment filter pills */
@@ -516,6 +507,50 @@ main {{
 .rangeslider-slidebox:active,
 .rangeslider-handle-min:active,
 .rangeslider-handle-max:active {{ cursor: grabbing; }}
+
+/* ── Responsive / mobile (kept last so overrides win by source order) ── */
+@media (max-width: 900px) {{
+  .stat-grid {{ grid-template-columns: repeat(3, 1fr); }}
+}}
+@media (max-width: 640px) {{
+  .stat-grid {{ grid-template-columns: repeat(2, 1fr); }}
+  .seg-cons-grid {{ grid-template-columns: 1fr; }}
+  .fast-grid {{ grid-template-columns: 1fr; }}
+  main {{ padding: 20px 14px 60px; }}
+  .theme-toggle button {{ width: 36px; height: 36px; }}
+  .tab {{ min-height: 44px; padding: 10px 12px; }}
+  .seg-btn {{ min-height: 40px; padding: 6px 14px; }}
+  .js-plotly-plot {{ max-width: 100%; }}
+
+  /* #1 Topnav: stack title over date, compact switch button */
+  .topnav-row {{ padding: 0 14px; }}
+  .topnav-row.row1 {{ height: auto; min-height: 48px; padding-top: 8px; padding-bottom: 8px; }}
+  .wordmark {{ flex-direction: column; align-items: flex-start; gap: 1px; }}
+  .wordmark-name {{ font-size: clamp(15px, 4.2vw, 20px); }}
+  .wordmark-meta {{ font-size: 11px; }}
+  .back-link {{ white-space: nowrap; font-size: 10px; padding: 5px 9px; }}
+
+  /* #4 Bottom sheet */
+  .detail-panel {{
+    top: auto; left: 0;
+    width: 100%; max-width: none; max-height: 85vh;
+    transform: translateY(100%);
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+  }}
+  .detail-panel.open {{ transform: translateY(0); }}
+  .detail-panel::before {{
+    content: '';
+    display: block;
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 8px auto 0;
+    flex-shrink: 0;
+  }}
+}}
 """
 
 
@@ -870,13 +905,105 @@ window.addEventListener('load', function() {{
       }});
       // Retint chart titles/axes to the current theme (resize alone won't).
       if (window.__applyChartTheme) window.__applyChartTheme();
+      // Thin crowded axes now that the view's charts have real width.
+      if (window.__thinTicks) window.__thinTicks();
       history.replaceState(null, '', '#' + name);
+      var at = document.querySelector('.tab[data-view="' + name + '"]');
+      if (at) at.scrollIntoView({{behavior: 'smooth', block: 'nearest', inline: 'center'}});
     }}
     tabs.forEach(function(t) {{
       t.addEventListener('click', function() {{ activateView(t.dataset.view); }});
     }});
     var hash = (location.hash || '').replace('#', '');
     activateView(document.getElementById('view-' + hash) ? hash : 'overview');
+  }})();
+
+  // ─── Mobile: re-fit charts, thin crowded axes, simplify ──────────────────
+  (function() {{
+    var mq = window.matchMedia('(max-width:640px)');
+    // Dense time/numeric charts: thin ticks to ~1 per 100px (x) / 80px (y).
+    // Categorical charts are excluded — nticks can drop their category labels.
+    var DENSE = [
+      {{id: 'chart-volume', dual: false}},
+      {{id: 'chart-elevation', dual: false}},
+      {{id: 'chart-hr', dual: false}},
+      {{id: 'chart-pace', dual: true}},
+      {{id: 'chart-run-pace-hr', dual: false}},
+      {{id: 'chart-run-hr-temp', dual: false}}
+    ];
+    function thinTicks() {{
+      if (!window.Plotly) return;
+      var mobile = mq.matches;
+      DENSE.forEach(function(c) {{
+        var el = document.getElementById(c.id);
+        if (!el || !el._fullLayout) return;
+        var w = el.clientWidth || 0, h = el.clientHeight || 0;
+        if (w === 0) return;  // hidden view — recomputed on activation
+        var nx = mobile ? Math.max(2, Math.floor(w / 100)) : 0;  // 0 = auto
+        var ny = mobile ? Math.max(2, Math.floor(h / 80)) : 0;
+        var upd = {{'xaxis.nticks': nx, 'yaxis.nticks': ny}};
+        if (c.dual) upd['yaxis2.nticks'] = ny;
+        Plotly.relayout(el, upd);
+      }});
+    }}
+    window.__thinTicks = thinTicks;
+    function simplify(mobile) {{
+      if (!window.Plotly) return;
+      var vol = document.getElementById('chart-volume');
+      if (vol && vol._fullLayout) Plotly.relayout(vol, {{'xaxis.rangeslider.visible': !mobile}});
+      var segs = document.getElementById('chart-segs');
+      if (segs && segs._fullLayout) Plotly.relayout(segs, {{'xaxis.tickfont.size': mobile ? 8 : 10}});
+      var arch = document.getElementById('chart-x-archetypes');
+      if (arch && arch._fullLayout) {{
+        var upd = {{}};
+        for (var i = 0; i < 8; i++) upd['annotations[' + i + '].visible'] = !mobile;
+        Plotly.relayout(arch, upd);
+      }}
+    }}
+    function applyMobile() {{ simplify(mq.matches); thinTicks(); }}
+    // Debounced resize → re-fit active charts, then re-thin ticks for new width.
+    var t;
+    function onResize() {{
+      clearTimeout(t);
+      t = setTimeout(function() {{
+        if (!window.Plotly) return;
+        document.querySelectorAll('.view.active .js-plotly-plot').forEach(function(el) {{
+          Plotly.Plots.resize(el);
+        }});
+        thinTicks();
+      }}, 150);
+    }}
+    window.addEventListener('resize', onResize);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
+    mq.addEventListener('change', applyMobile);
+    applyMobile();
+  }})();
+
+  // ─── Bottom-sheet swipe-to-dismiss ───────────────────────────────────────
+  (function() {{
+    var panel = document.getElementById('detail-panel');
+    if (!panel) return;
+    var sy = 0, drag = false;
+    panel.addEventListener('touchstart', function(e) {{
+      if (!window.matchMedia('(max-width:640px)').matches) return;
+      sy = e.touches[0].clientY; drag = true;
+    }}, {{passive: true}});
+    panel.addEventListener('touchmove', function(e) {{
+      if (!drag) return;
+      var dy = e.touches[0].clientY - sy;
+      if (dy > 0) panel.style.transform = 'translateY(' + dy + 'px)';
+    }}, {{passive: true}});
+    panel.addEventListener('touchend', function(e) {{
+      if (!drag) return;
+      drag = false;
+      var dy = e.changedTouches[0].clientY - sy;
+      if (dy > 80) {{
+        panel.style.transform = 'translateY(100%)';
+        setTimeout(function() {{ panel.style.transform = ''; closeDetail(); }}, 240);
+      }} else {{
+        panel.style.transform = '';
+      }}
+    }});
   }})();
 }});
 """

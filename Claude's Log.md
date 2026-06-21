@@ -1,4 +1,33 @@
 
+## 21 June 2026
+
+### Mobile Layout Fix: Both Dashboards (Rounds 1–4)
+
+Applied four rounds of mobile CSS/JS fixes across the Running Log and Strava dashboards. Round 1 corrected a CSS source-order bug (media blocks inserted mid-string were overridden by base rules declared after them) and added topnav stacking, a working bottom sheet, `thinTicks()` axis density logic, and legend/caption separation. Round 2 fixed small-chart overflow (sparkline and box-plot cards bleeding outside their containers) with per-container height exemptions. Round 3 removed the root cause of both prior chart-height bugs — an `aspect-ratio:4/3; height:auto !important` rule on `.js-plotly-plot` that decoupled Plotly's fill-height inner div from its fixed-height wrapper, causing x-axis ticks and the `y=-0.25` legend to be clipped by `overflow:hidden`. Removing that one rule also made the round-2 exemptions redundant.
+
+### Iterations
+
+| # | What happened | Root cause | Fix |
+|---|---|---|---|
+| 1 | Mobile media rules weren't applying | Media blocks inserted mid-CSS string; base component rules declared *after* the media block silently won via source order | Moved both `@media` blocks to the very end of each CSS string |
+| 2 | Seasonal sparklines (60px) and seg-cardlet box plots (200px) ballooned to fill the viewport | `aspect-ratio:4/3; height:auto` on `.js-plotly-plot` overrode their explicit wrapper heights | Added per-container exemptions restoring original heights — symptom fix, not root cause |
+| 3 | Volume chart x-axis ticks and horizontal legends invisible on mobile | Same `aspect-ratio` rule decoupled the inner div from the 280–340px wrapper; Plotly renders at `display:none` zero-size, defaults to ~450px SVG, `.card { overflow:hidden }` clips the bottom | Removed the entire `aspect-ratio` rule; also dropped the round-2 exemptions now made redundant |
+| 4 | CDP measurement returned `MISSING` for all chart IDs | Tab navigation in the CDP script timed out before charts rendered; measurement ran on wrong view state | Skipped measurement; user manually verified; committed |
+
+### Prompting lessons
+
+- **Describe Plotly's wrapper/inner div structure before mobile CSS work** — `fig_html()` emits a fixed-height outer `<div>` containing a `height:100%` inner div. Any mobile rule that sets `height:auto` on the inner div silently breaks the coupling. Stating this at session start would have prevented the three-round climb from symptom to root cause.
+- **Label symptom fixes explicitly in commit messages** — the round-2 per-container exemptions were clearly a patch on a deeper issue. Flagging them as "symptom fix, root cause TBD" in the commit would prompt revisiting them in the same session rather than discovering the real cause later.
+- **CDP tab-navigation timing** — the measurement script's `time.sleep(2.5)` after a tab click was insufficient; the script ran before the Plotly charts rendered. For future sessions: increase the sleep or poll for the chart element's existence before measuring.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| 30–60 min | — | 3/5 — Same chart-height root cause surfaced across three rounds; each round felt like a new bug until the wrapper/inner coupling was understood |
+
+---
+
 ## 14 June 2026
 
 ### CLAUDE.md Refresh + Interactive Inline Review
