@@ -241,7 +241,7 @@ def _build_exploratory_charts(rows):
     print("    V8 peak=%.0f on %s spike_days=%d median_acwr=%.3f days=%d total_suffer=%.0f"
           % (v8m["peak"], v8m["peak_date"], v8m["spike_days"], v8m["median_acwr"],
              v8m["days"], v8m["total_suffer"]))
-    return v1, v2, v3, v4, v5, v6, v7, v8
+    return v1, v2, v3, v4, v5, v6, v7, v8, v4m["air_text"], v4m["app_text"]
 
 
 def _build_stats_panel(rows, stats):
@@ -510,13 +510,14 @@ def build_page(rows, segs):
     cons_cards_html, fast_cards_html, grade_time_html = _build_segment_rollup_section(
         seg_efforts, act_by_id)
 
-    v1, v2, v3, v4, v5, v6, v7, v8 = _build_exploratory_charts(rows)
+    (v1, v2, v3, v4, v5, v6, v7, v8,
+     heat_air_text, heat_app_text) = _build_exploratory_charts(rows)
 
     date_range, stats_html, nav_links, theme_buttons = _build_stats_panel(rows, stats)
 
     SYNC_IDS  = ["chart-volume", "chart-hr", "chart-pace", "chart-elev"]
     CLICK_IDS = ["chart-hr", "chart-pace", "chart-map"]
-    js = build_js(act_json, SYNC_IDS, CLICK_IDS)
+    js = build_js(act_json, SYNC_IDS, CLICK_IDS, heat_air_text, heat_app_text)
 
     return _assemble_html(
         date_range=date_range, stats_html=stats_html, nav_links=nav_links,

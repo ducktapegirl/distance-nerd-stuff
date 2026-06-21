@@ -522,7 +522,11 @@ main {{
 
 # ─── JS ───────────────────────────────────────────────────────────────────────
 
-def build_js(act_json, sync_ids, click_ids):
+def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text):
+    # json.dumps produces safely-escaped JS string literals (handles quotes,
+    # backslashes) for the build-time-computed heat annotation strings.
+    heat_air_js = json.dumps(heat_air_text)
+    heat_app_js = json.dumps(heat_app_text)
     return f"""
 var ACT_DATA  = {act_json};
 var SYNC_IDS  = {json.dumps(sync_ids)};
@@ -574,8 +578,8 @@ function filterSegs(type, btn) {{
 // Traces 0-4 = air-temp view, 5-9 = apparent-temp view (5 each: 4 violin + HR
 // line). Annotation index 1 = the bottom stat line (index 0 = "teal line" note).
 var HEAT_ANN = {{
-  air: 'Cool 8:58 vs Hot 9:38 /mi | t=-1.77 | p=0.097 | HR flat (t=-0.27, p=0.79) | n=202',
-  app: 'Cool 8:55 vs Hot 9:23 /mi | t=-2.35 | p=0.027 | HR flat (t=-0.98, p=0.334) | n=162 (~20% fewer than air temp)'
+  air: {heat_air_js},
+  app: {heat_app_js}
 }};
 function toggleHeat(view, btn) {{
   var el = document.getElementById('chart-x-heat');
