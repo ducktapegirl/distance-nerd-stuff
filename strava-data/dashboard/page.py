@@ -83,7 +83,7 @@ def _build_trend_and_segment_scatter_charts(rows):
     print("  run pace vs HR...")
     run_pace_hr   = chart_run_pace_vs_hr(rows)
     print("  run HR vs temp...")
-    run_hr_temp   = chart_run_hr_vs_temp(rows)
+    run_hr_temp, run_hr_temp_meta = chart_run_hr_vs_temp(rows)
 
     print("  computing tortuosity...")
     tort_map = compute_tortuosity_map(seg_efforts, act_by_id)
@@ -117,7 +117,7 @@ def _build_trend_and_segment_scatter_charts(rows):
         run_pace_hr, run_hr_temp, run_pace_tort, run_pace_grade, run_hr_grade,
         mtb_pace_tort, mtb_pace_grade, mtb_hr_grade,
     )
-    return seg_efforts, act_by_id, scatter_charts
+    return seg_efforts, act_by_id, scatter_charts, run_hr_temp_meta
 
 
 def _build_segment_rollup_section(seg_efforts, act_by_id):
@@ -205,8 +205,11 @@ def _build_segment_rollup_section(seg_efforts, act_by_id):
 def _build_exploratory_charts(rows):
     print("  exploratory V1 temperature mirage...")
     v1, v1m = chart_x_mirage(rows)
-    print("    V1 n=%d bins=%d raw_r=%.3f raw_p=%.3f adj_r=%.3f adj_p=%.3f"
-          % (v1m["n"], v1m["bins"], v1m["raw_r"], v1m["raw_p"], v1m["adj_r"], v1m["adj_p"]))
+    print("    V1 n=%d bins=%d raw_r=%.3f raw_p=%.3f air_adj_r=%.3f air_adj_p=%.3f "
+          "app_adj_r=%.3f app_adj_p=%.3f n_app=%d"
+          % (v1m["n"], v1m["bins"], v1m["raw_r"], v1m["raw_p"],
+             v1m["air_adj_r"], v1m["air_adj_p"], v1m["app_adj_r"], v1m["app_adj_p"],
+             v1m["n_app"]))
     print("  exploratory V2 archetypes...")
     v2, v2m = chart_x_archetypes(rows)
     print("    V2 n=%d EVR PC1=%.1f%% PC2=%.1f%% scale=%.3f inertia=%.2f sizes=%s"
@@ -241,7 +244,9 @@ def _build_exploratory_charts(rows):
     print("    V8 peak=%.0f on %s spike_days=%d median_acwr=%.3f days=%d total_suffer=%.0f"
           % (v8m["peak"], v8m["peak_date"], v8m["spike_days"], v8m["median_acwr"],
              v8m["days"], v8m["total_suffer"]))
-    return v1, v2, v3, v4, v5, v6, v7, v8, v4m["air_text"], v4m["app_text"]
+    return (v1, v2, v3, v4, v5, v6, v7, v8,
+            v4m["air_text"], v4m["app_text"],
+            v1m["mirage_air_text"], v1m["mirage_app_text"])
 
 
 def _build_stats_panel(rows, stats):
@@ -368,7 +373,12 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   </div>
   <div class="card">
     <div class="card-title">Heart Rate vs Temperature</div>
+    <div class="seg-filter">
+      <button class="seg-btn active" onclick="toggleHrTemp('air',this)">Air temp</button>
+      <button class="seg-btn" onclick="toggleHrTemp('app',this)">Apparent temp</button>
+    </div>
     {fig_html(run_hr_temp, 420, div_id="chart-run-hr-temp")}
+    <p class="plot-caption">Each dot is a run, placed by the day's temperature (x) and average heart rate (y); the dashed line is a per-sport linear fit with its R&sup2;. The toggle switches the x-axis between air temperature and apparent temperature (heat index, which folds in humidity) so the two can be compared 1:1 on a shared axis. Apparent temp has lower backfill coverage, so its view uses fewer runs &mdash; the exact shortfall is noted at the bottom of that view.</p>
   </div>
 
   <div class="section-anchor" style="margin-top:32px">Running · Segment Scatter</div>
@@ -432,8 +442,12 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   </div>
   <div class="card">
     <div class="card-title">The Temperature Mirage</div>
+    <div class="seg-filter">
+      <button class="seg-btn active" onclick="toggleMirage('air',this)">Air temp</button>
+      <button class="seg-btn" onclick="toggleMirage('app',this)">Apparent temp</button>
+    </div>
     {fig_html(v1,460,"chart-x-mirage")}
-    <p class="plot-caption">When the weather cools down, runners often feel like they're getting fitter — but is that real? This chart tracks aerobic efficiency (pace per heartbeat) over time: the dashed line is the raw trend, the solid line adjusts for temperature using a statistical technique called OLS regression. The annotation in the top-right corner shows two correlation values (r) and their p-values — one before and one after the temperature correction. If the adjusted r is smaller or less significant, some of your apparent fitness gains were weather-driven, not true fitness gains.</p>
+    <p class="plot-caption">When the weather cools down, runners often feel like they're getting fitter — but is that real? This chart tracks aerobic efficiency (pace per heartbeat) over time: the dashed line is the raw trend, the solid line adjusts for temperature using a statistical technique called OLS regression. The annotation in the top-right corner shows two correlation values (r) and their p-values — one before and one after the temperature correction. If the adjusted r is smaller or less significant, some of your apparent fitness gains were weather-driven, not true fitness gains. The toggle re-runs the temperature correction against apparent temperature (heat index) instead of air temperature; the raw trend stays put since it doesn't use temperature at all.</p>
   </div>
   <div class="card">
     <div class="card-title">Athlete Archetypes</div>
@@ -503,7 +517,8 @@ def build_page(rows, segs):
 
     cal, vol, hr_c, pac, elev_c, segs_c, mp = _build_main_charts(rows, segs)
 
-    seg_efforts, act_by_id, scatter_charts = _build_trend_and_segment_scatter_charts(rows)
+    (seg_efforts, act_by_id, scatter_charts,
+     run_hr_temp_meta) = _build_trend_and_segment_scatter_charts(rows)
     (run_pace_hr, run_hr_temp, run_pace_tort, run_pace_grade, run_hr_grade,
      mtb_pace_tort, mtb_pace_grade, mtb_hr_grade) = scatter_charts
 
@@ -511,13 +526,15 @@ def build_page(rows, segs):
         seg_efforts, act_by_id)
 
     (v1, v2, v3, v4, v5, v6, v7, v8,
-     heat_air_text, heat_app_text) = _build_exploratory_charts(rows)
+     heat_air_text, heat_app_text,
+     mirage_air_text, mirage_app_text) = _build_exploratory_charts(rows)
 
     date_range, stats_html, nav_links, theme_buttons = _build_stats_panel(rows, stats)
 
     SYNC_IDS  = ["chart-volume", "chart-hr", "chart-pace", "chart-elev"]
     CLICK_IDS = ["chart-hr", "chart-pace", "chart-map"]
-    js = build_js(act_json, SYNC_IDS, CLICK_IDS, heat_air_text, heat_app_text)
+    js = build_js(act_json, SYNC_IDS, CLICK_IDS, heat_air_text, heat_app_text,
+                  mirage_air_text, mirage_app_text, run_hr_temp_meta)
 
     return _assemble_html(
         date_range=date_range, stats_html=stats_html, nav_links=nav_links,

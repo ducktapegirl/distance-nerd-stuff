@@ -522,11 +522,15 @@ main {{
 
 # ─── JS ───────────────────────────────────────────────────────────────────────
 
-def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text):
+def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text,
+             mirage_air_text, mirage_app_text, hr_temp_meta):
     # json.dumps produces safely-escaped JS string literals (handles quotes,
-    # backslashes) for the build-time-computed heat annotation strings.
+    # backslashes) for the build-time-computed annotation strings/arrays.
     heat_air_js = json.dumps(heat_air_text)
     heat_app_js = json.dumps(heat_app_text)
+    mirage_air_js = json.dumps(mirage_air_text)
+    mirage_app_js = json.dumps(mirage_app_text)
+    hr_temp_js = json.dumps(hr_temp_meta)
     return f"""
 var ACT_DATA  = {act_json};
 var SYNC_IDS  = {json.dumps(sync_ids)};
@@ -589,6 +593,48 @@ function toggleHeat(view, btn) {{
     : [true,true,true,true,true, false,false,false,false,false];
   Plotly.restyle(el, {{visible: vis}}, [0,1,2,3,4,5,6,7,8,9]);
   Plotly.relayout(el, {{'annotations[1].text': HEAT_ANN[view]}});
+  var grp = btn ? btn.parentNode : null;
+  if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
+    b.classList.remove('active');
+  }});
+  if (btn) btn.classList.add('active');
+}}
+
+// ─── Mirage chart: air-temp ↔ apparent-temp toggle ─────────────────────────
+// Traces 0-2 = raw (always visible); 3-4 = air-adjusted, 5-6 = apparent-adjusted.
+// Only the adjusted pair swaps; annotation index 0 holds the raw/adjusted r/p.
+var MIRAGE_ANN = {{
+  air: {mirage_air_js},
+  app: {mirage_app_js}
+}};
+function toggleMirage(view, btn) {{
+  var el = document.getElementById('chart-x-mirage');
+  if (!el) return;
+  var vis = view === 'app'
+    ? [false, false, true, true]
+    : [true, true, false, false];
+  Plotly.restyle(el, {{visible: vis}}, [3, 4, 5, 6]);
+  Plotly.relayout(el, {{'annotations[0].text': MIRAGE_ANN[view]}});
+  var grp = btn ? btn.parentNode : null;
+  if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
+    b.classList.remove('active');
+  }});
+  if (btn) btn.classList.add('active');
+}}
+
+// ─── HR vs Temp chart: air-temp ↔ apparent-temp toggle ─────────────────────
+// Trace counts can vary, so Python supplies per-view visibility arrays + the
+// trace index list. Annotations: index 0 Run R², 1 TrailRun R², 2 caveat.
+var HRTEMP = {hr_temp_js};
+function toggleHrTemp(view, btn) {{
+  var el = document.getElementById('chart-run-hr-temp');
+  if (!el) return;
+  var vis = view === 'app' ? HRTEMP.app_vis : HRTEMP.air_vis;
+  Plotly.restyle(el, {{visible: vis}}, HRTEMP.trace_idx);
+  var anns = view === 'app' ? HRTEMP.app_anns : HRTEMP.air_anns;
+  var rl = {{}};
+  for (var i = 0; i < anns.length; i++) rl['annotations[' + i + '].text'] = anns[i];
+  Plotly.relayout(el, rl);
   var grp = btn ? btn.parentNode : null;
   if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
     b.classList.remove('active');

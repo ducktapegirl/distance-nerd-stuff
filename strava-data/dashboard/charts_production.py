@@ -547,63 +547,126 @@ def chart_run_pace_vs_hr(rows):
 # ── 2. Running: avg HR vs temperature °F (activity-level, >1.5 km) ───────────
 
 def chart_run_hr_vs_temp(rows):
-    by = {
-        "Run":      {"x": [], "y": [], "text": []},
-        "TrailRun": {"x": [], "y": [], "text": []},
-    }
-    for r in rows:
-        st = r.get("sport_type", "")
-        if st not in ("Run", "TrailRun"):
-            continue
-        km = mf(r["distance_km"]) or 0
-        if km < 1.5:
-            continue
-        hr   = mf(r["average_heartrate"])
-        tc   = mf(r["average_temp_c"])
-        if not hr or tc is None or hr <= 0:
-            continue
-        tf   = tc * 9 / 5 + 32          # °C → °F
-        ds   = r["start_date_local"][:10]
-        by[st]["x"].append(round(tf, 1))
-        by[st]["y"].append(hr)
-        by[st]["text"].append(
-            f"{r['name']}<br>{ds}<br>{st}<br>"
-            f"Temp: {tf:.0f}°F<br>HR: {hr:.0f} bpm"
-        )
+    """Avg HR vs temperature, with an Air temp ↔ Apparent temp toggle.
+
+    Both views are built into one figure (air-temp traces visible, apparent-temp
+    hidden); a page-level toggle swaps trace visibility and the R²/caveat
+    annotation text. Trace counts can vary if a sport is empty, so the per-view
+    visibility arrays are computed here and applied verbatim by the JS (no
+    hard-coded indices). 3 annotations (fixed slots): Run R² (0), TrailRun R² (1),
+    sample-size caveat (2)."""
+    colors = {"Run": RUN_COLOR, "TrailRun": TRAIL_COLOR}
+    labels = {"Run": "Running", "TrailRun": "Trail Running"}
+
+    def collect(metric):
+        by = {"Run": {"x": [], "y": [], "text": []},
+              "TrailRun": {"x": [], "y": [], "text": []}}
+        tlabel = "Apparent temp" if metric == "apparent_temp_c" else "Temp"
+        for r in rows:
+            st = r.get("sport_type", "")
+            if st not in ("Run", "TrailRun"):
+                continue
+            km = mf(r["distance_km"]) or 0
+            if km < 1.5:
+                continue
+            hr = mf(r["average_heartrate"])
+            tc = mf(r[metric])
+            if not hr or tc is None or hr <= 0:
+                continue
+            tf = tc * 9 / 5 + 32          # °C → °F
+            ds = r["start_date_local"][:10]
+            by[st]["x"].append(round(tf, 1))
+            by[st]["y"].append(hr)
+            by[st]["text"].append(
+                f"{r['name']}<br>{ds}<br>{st}<br>"
+                f"{tlabel}: {tf:.0f}°F<br>HR: {hr:.0f} bpm"
+            )
+        return by
 
     fig = go.Figure()
-    colors  = {"Run": RUN_COLOR, "TrailRun": TRAIL_COLOR}
-    labels  = {"Run": "Running", "TrailRun": "Trail Running"}
-    r2_entries = []
 
-    for st in ("Run", "TrailRun"):
-        d = by[st]
-        if not d["x"]:
-            continue
-        xs, ys, ts = _remove_outliers(d["x"], d["y"], d["text"])
-        if not xs:
-            continue
-        fig.add_trace(go.Scatter(
-            x=xs, y=ys, mode="markers",
-            name=labels[st],
-            marker=dict(color=colors[st], size=7, opacity=0.75, line=dict(width=0)),
-            hovertext=ts, hoverinfo="text",
-        ))
-        r2 = _add_regression_line(fig, xs, ys, colors[st])
-        yp = 0.95 if st == "Run" else 0.85
-        r2_entries.append((r2, colors[st], 0.98, yp))
+    def add_view(by, visible):
+        """Add scatter + regression per sport. Returns (n_traces, {sport: r2},
+        n_points, all_x, all_y)."""
+        nt, r2s, npts, axx, ayy = 0, {"Run": None, "TrailRun": None}, 0, [], []
+        for st in ("Run", "TrailRun"):
+            d = by[st]
+            if not d["x"]:
+                continue
+            xs, ys, ts = _remove_outliers(d["x"], d["y"], d["text"])
+            if not xs:
+                continue
+            fig.add_trace(go.Scatter(
+                x=xs, y=ys, mode="markers", name=labels[st],
+                marker=dict(color=colors[st], size=7, opacity=0.75, line=dict(width=0)),
+                hovertext=ts, hoverinfo="text", visible=visible,
+            ))
+            nt += 1
+            before = len(fig.data)
+            r2 = _add_regression_line(fig, xs, ys, colors[st])
+            if len(fig.data) > before:        # regression trace was actually added
+                fig.data[-1].visible = visible
+                nt += 1
+            r2s[st] = r2
+            npts += len(xs)
+            axx += list(xs); ayy += list(ys)
+        return nt, r2s, npts, axx, ayy
+
+    air_by, app_by = collect("average_temp_c"), collect("apparent_temp_c")
+    n_air, r2_air, npts_air, ax_air, ay_air = add_view(air_by, True)
+    n_app, r2_app, npts_app, ax_app, ay_app = add_view(app_by, False)
+
+    # Per-view visibility arrays over the full (air + apparent) trace list.
+    air_vis = [True] * n_air + [False] * n_app
+    app_vis = [False] * n_air + [True] * n_app
+
+    def rng(vals, frac=0.05):
+        lo, hi = min(vals), max(vals)
+        pad = (hi - lo) * frac or 1
+        return [lo - pad, hi + pad]
+
+    all_x, all_y = ax_air + ax_app, ay_air + ay_app
+
+    def r2txt(v):
+        return f"R²={v:.2f}" if v is not None else ""
+
+    caveat = ""
+    if npts_air:
+        pct = round((npts_air - npts_app) / npts_air * 100)
+        caveat = f"apparent temp: ~{pct}% fewer runs than air temp"
+
+    # Annotation order is fixed (Run R², TrailRun R², caveat) so the JS can swap
+    # by index. Default text = air-temp view; caveat is blank for air.
+    DARK_PILL = "rgba(13,17,23,0.65)"  # themed via --ann-pill-bg by applyChartTheme
+    annotations = [
+        dict(x=0.98, y=0.95, xref="paper", yref="paper", text=r2txt(r2_air["Run"]),
+             showarrow=False, xanchor="right", yanchor="top", bgcolor="rgba(0,0,0,0)",
+             font=dict(color=colors["Run"], size=10, family=PLOT_FONT_FAMILY)),
+        dict(x=0.98, y=0.85, xref="paper", yref="paper", text=r2txt(r2_air["TrailRun"]),
+             showarrow=False, xanchor="right", yanchor="top", bgcolor="rgba(0,0,0,0)",
+             font=dict(color=colors["TrailRun"], size=10, family=PLOT_FONT_FAMILY)),
+        dict(x=0.5, y=-0.20, xref="paper", yref="paper", text="",
+             showarrow=False, xanchor="center", yanchor="top", bgcolor=DARK_PILL,
+             font=dict(color=TEXT_SECONDARY, size=10, family=PLOT_FONT_FAMILY)),
+    ]
 
     tidy_dark(fig)
     fig.update_layout(
         title=dict(text="Heart Rate vs Temperature · Running Activities",
                    font=dict(color=TEXT_PRIMARY, size=12, family=TITLE_FONT_FAMILY),
                    x=0, xanchor="left"),
-        xaxis=dict(title="Temperature (°F)"),
-        yaxis=dict(title="Avg Heart Rate (bpm)"),
-        annotations=_r2_annotations(r2_entries),
-        margin=dict(t=50, b=40, l=60, r=20),
+        # Shared/union axis ranges so air ↔ apparent reads as a 1:1 comparison.
+        xaxis=dict(title="Temperature (°F)", range=rng(all_x)),
+        yaxis=dict(title="Avg Heart Rate (bpm)", range=rng(all_y)),
+        annotations=annotations,
+        margin=dict(t=50, b=80, l=60, r=20),
     )
-    return fig
+    meta = dict(
+        air_vis=air_vis, app_vis=app_vis, trace_idx=list(range(n_air + n_app)),
+        air_anns=[r2txt(r2_air["Run"]), r2txt(r2_air["TrailRun"]), ""],
+        app_anns=[r2txt(r2_app["Run"]), r2txt(r2_app["TrailRun"]), caveat],
+    )
+    return fig, meta
 
 
 # ─── Segment data preparation ─────────────────────────────────────────────────

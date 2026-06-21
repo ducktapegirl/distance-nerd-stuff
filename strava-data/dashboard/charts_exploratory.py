@@ -64,37 +64,40 @@ def _x_month_key(date_str):
 
 
 def chart_x_mirage(rows):
-    """V1 - The Temperature Mirage."""
-    # Filter: runs with non-null speed + HR + temp -> n=181
-    eff, temp, dates, names = [], [], [], []
-    for r in _x_runs(rows):
+    """V1 - The Temperature Mirage.
+
+    Air temp ↔ apparent temp toggle. The raw/uncontrolled trend does not use
+    temperature, so it is computed ONCE on the air-temp population and never
+    moves; only the temperature-adjusted monthly-mean line + its OLS-over-time
+    trend + the r/p annotation swap between metrics. 7 traces:
+      0 individual runs, 1 raw monthly mean, 2 raw OLS trend  (always visible)
+      3 air-adjusted monthly mean, 4 air-adjusted OLS trend   (visible)
+      5 apparent-adjusted monthly mean, 6 apparent-adj OLS trend (hidden)
+    A page-level toggle swaps traces 3-4 ↔ 5-6 and the annotation text."""
+    runs = _x_runs(rows)
+
+    # ── Raw population: runs with speed + HR + air temp. Fixed (never toggled);
+    # raw efficiency does not depend on which temperature metric is shown.
+    eff, dates, names = [], [], []
+    for r in runs:
         sp = mf(r["average_speed_kmh"]); hr = mf(r["average_heartrate"]); tp = mf(r["average_temp_c"])
         if sp is None or hr is None or tp is None or hr == 0:
             continue
-        eff.append(sp / hr); temp.append(tp)
+        eff.append(sp / hr)
         dates.append(datetime.strptime(r["start_date_local"][:10], "%Y-%m-%d"))
         names.append(r["name"])
-    eff = np.array(eff); temp = np.array(temp)
+    eff = np.array(eff)
     n = len(eff)
-
-    # Temp-adjust: OLS eff ~ temp; residuals
-    b, a = np.polyfit(temp, eff, 1)
-    resid = eff - (a + b * temp)
-    # z-score both (ddof=0)
-    raw_z = (eff - eff.mean()) / eff.std()
-    adj_z = (resid - resid.mean()) / resid.std()
+    raw_z = (eff - eff.mean()) / eff.std()  # ddof=0
 
     first = min(dates)
     days = np.array([(d - first).days for d in dates], dtype=float)
-
-    # Trend lines fit on RAW per-run points (x = days since first run)
     raw_slope, raw_int, raw_r, raw_p = ols_r_p(days, raw_z)
-    adj_slope, adj_int, adj_r, adj_p = ols_r_p(days, adj_z)
 
     # Monthly bins (calendar year-month), mean per month
     mk = [_x_month_key(d.strftime("%Y-%m-%d")) for d in dates]
     months = sorted(set(mk))
-    mid_dates, raw_means, adj_means = [], [], []
+    mid_dates, raw_means = [], []
     for m in months:
         idx = [i for i, k in enumerate(mk) if k == m]
         if not idx:
@@ -102,51 +105,97 @@ def chart_x_mirage(rows):
         y, mm = int(m[:4]), int(m[5:7])
         mid_dates.append(datetime(y, mm, 15))
         raw_means.append(float(np.mean([raw_z[i] for i in idx])))
-        adj_means.append(float(np.mean([adj_z[i] for i in idx])))
+
+    def adjusted_view(metric):
+        """Temp-adjust against `metric` on that metric's own population: OLS
+        eff~temp residuals, z-scored, then monthly means + OLS-over-time trend.
+        x-origin (`first`) is shared with the raw population so dates line up."""
+        e, t, d = [], [], []
+        for r in runs:
+            sp = mf(r["average_speed_kmh"]); hr = mf(r["average_heartrate"]); tp = mf(r[metric])
+            if sp is None or hr is None or tp is None or hr == 0:
+                continue
+            e.append(sp / hr); t.append(tp)
+            d.append(datetime.strptime(r["start_date_local"][:10], "%Y-%m-%d"))
+        e = np.array(e); t = np.array(t)
+        b, a = np.polyfit(t, e, 1)
+        resid = e - (a + b * t)
+        adj_z = (resid - resid.mean()) / resid.std()
+        dd = np.array([(x - first).days for x in d], dtype=float)
+        adj_slope, adj_int, adj_r, adj_p = ols_r_p(dd, adj_z)
+        mkx = [_x_month_key(x.strftime("%Y-%m-%d")) for x in d]
+        mids, means = [], []
+        for m in sorted(set(mkx)):
+            idx = [i for i, k in enumerate(mkx) if k == m]
+            yy, mm = int(m[:4]), int(m[5:7])
+            mids.append(datetime(yy, mm, 15))
+            means.append(float(np.mean([adj_z[i] for i in idx])))
+        xline = np.array([dd.min(), dd.max()])
+        xdt = [first + timedelta(days=int(x)) for x in xline]
+        return dict(mids=mids, means=means, xdt=xdt, yline=adj_int + adj_slope * xline,
+                    adj_r=adj_r, adj_p=adj_p, n=len(e))
+
+    air = adjusted_view("average_temp_c")
+    app = adjusted_view("apparent_temp_c")
 
     fig = go.Figure()
-    # (1) individual runs (behind)
+    # (0) individual runs (behind)
     fig.add_trace(go.Scatter(
         x=dates, y=raw_z, mode="markers", name="Individual runs",
         marker=dict(color=X_TEAL, opacity=0.25, size=5),
         customdata=names,
         hovertemplate="%{customdata}<br>z=%{y:.2f}<extra></extra>",
     ))
-    # (2) raw monthly mean
+    # (1) raw monthly mean
     fig.add_trace(go.Scatter(
         x=mid_dates, y=raw_means, mode="lines+markers", name="Raw (uncontrolled)",
         line=dict(color=X_SLATE, dash="dash"), marker=dict(color=X_SLATE, size=6),
         hovertemplate="%{x|%b %Y}<br>z = %{y:.2f}<extra></extra>",
     ))
-    # (3) temp-adjusted monthly mean
+    # (2) OLS on raw points (slate dashed)
+    xline_raw = np.array([days.min(), days.max()])
+    xdt_raw = [first + timedelta(days=int(d)) for d in xline_raw]
     fig.add_trace(go.Scatter(
-        x=mid_dates, y=adj_means, mode="lines+markers", name="Temperature-adjusted",
-        line=dict(color=X_TEAL), marker=dict(color=X_TEAL, size=6),
-        hovertemplate="%{x|%b %Y}<br>z = %{y:.2f}<extra></extra>",
-    ))
-    # (4) OLS on raw points (slate dashed) / (5) OLS on adjusted points (teal dashed)
-    xline = np.array([days.min(), days.max()])
-    xdt = [first + timedelta(days=int(d)) for d in xline]
-    fig.add_trace(go.Scatter(
-        x=xdt, y=raw_int + raw_slope * xline, mode="lines",
+        x=xdt_raw, y=raw_int + raw_slope * xline_raw, mode="lines",
         line=dict(color=X_SLATE, dash="dash", width=1.5),
         showlegend=False, hoverinfo="skip",
     ))
-    fig.add_trace(go.Scatter(
-        x=xdt, y=adj_int + adj_slope * xline, mode="lines",
-        line=dict(color=X_TEAL, dash="dash", width=1.5),
-        showlegend=False, hoverinfo="skip",
-    ))
+
+    # (3,4) air-adjusted; (5,6) apparent-adjusted. Toggle swaps which pair shows.
+    def add_adjusted(v, visible):
+        fig.add_trace(go.Scatter(
+            x=v["mids"], y=v["means"], mode="lines+markers", name="Temperature-adjusted",
+            line=dict(color=X_TEAL), marker=dict(color=X_TEAL, size=6), visible=visible,
+            hovertemplate="%{x|%b %Y}<br>z = %{y:.2f}<extra></extra>",
+        ))
+        fig.add_trace(go.Scatter(
+            x=v["xdt"], y=v["yline"], mode="lines",
+            line=dict(color=X_TEAL, dash="dash", width=1.5),
+            showlegend=False, hoverinfo="skip", visible=visible,
+        ))
+    add_adjusted(air, True)
+    add_adjusted(app, False)
 
     tidy_dark(fig)
     fig.update_layout(showlegend=True)
     # Let Plotly autorange so future months are never clipped (was frozen range).
     fig.update_xaxes(title_text="Month", tickformat="%b %y")
     fig.update_yaxes(title_text="Aerobic efficiency (z-score)", zeroline=True)
-    _x_ann(fig, 0.98, 0.97,
-           f"Raw r={raw_r:.3f}, p={raw_p:.3f} -> Adjusted r={adj_r:.3f}, p={adj_p:.3f}")
+    # Annotation (index 0) defaults to the air-temp view; the page toggle swaps
+    # the text. Raw prefix is identical across views (raw is fixed); only the
+    # Adjusted r/p differ. Apparent appends a self-computing sample-size caveat.
+    air_text = (f"Raw r={raw_r:.3f}, p={raw_p:.3f} -> "
+                f"Adjusted r={air['adj_r']:.3f}, p={air['adj_p']:.3f}")
+    app_text = (f"Raw r={raw_r:.3f}, p={raw_p:.3f} -> "
+                f"Adjusted r={app['adj_r']:.3f}, p={app['adj_p']:.3f}")
+    if n:
+        pct = round((n - app["n"]) / n * 100)
+        app_text += f" (~{pct}% fewer than air temp)"
+    _x_ann(fig, 0.98, 0.97, air_text)
     return fig, dict(n=n, bins=len(months), raw_r=raw_r, raw_p=raw_p,
-                     adj_r=adj_r, adj_p=adj_p)
+                     air_adj_r=air["adj_r"], air_adj_p=air["adj_p"],
+                     app_adj_r=app["adj_r"], app_adj_p=app["adj_p"], n_app=app["n"],
+                     mirage_air_text=air_text, mirage_app_text=app_text)
 
 
 X_V2_FEATURES = ["distance_km", "moving_time_min", "total_elevation_gain_m",
