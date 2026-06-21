@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two endurance-data dashboards extracted from the old `Experiments` repo:
 
-- **`strava-data/`** — the Strava dashboard, built and maintained agentically via the `/strava` multi-agent workflow. See [`strava-data/AGENTS.md`](strava-data/AGENTS.md) for the full pipeline and agent roles.
+- **`strava-data/`** — the Strava dashboard, built and maintained agentically via the `/strava` multi-agent workflow. See [`strava-data/AGENTS.md`](strava-data/AGENTS.md) for the full pipeline and agent roles. Key rule: a subagent cannot spawn another subagent, so the orchestrator stages (Intake → Analyze → Ideate → Design → Build → QA → Review gate → Ship) must run as a top-level skill, not an agent.
 - **`Running Log/`** — the running-log dashboard (parsed from old HTML logs into an interactive page). See [`Running Log/SESSION-HANDOFF.md`](Running%20Log/SESSION-HANDOFF.md).
 
 ## Layout
