@@ -289,11 +289,19 @@ def check_strava_button_text(rows, html):
 
 
 def check_wordmark_font_size(rows, html):
-    """.wordmark-name should have font-size >= 30px."""
-    m = re.search(r'\.wordmark-name\s*\{[^}]*font-size\s*:\s*(\d+)px', html, re.DOTALL)
+    """.wordmark-name base rule should have font-size (or clamp() max) >= 30px."""
+    m = re.search(r'\.wordmark-name\s*\{[^}]*font-size\s*:\s*([^;]+);', html, re.DOTALL)
     if m is None:
         return False, '.wordmark-name font-size rule not found'
-    size = int(m.group(1))
+    value = m.group(1).strip()
+    clamp_m = re.match(r'clamp\(\s*[\d.]+px\s*,\s*[^,]+,\s*([\d.]+)px\s*\)', value)
+    if clamp_m:
+        size = float(clamp_m.group(1))
+    else:
+        plain_m = re.match(r'([\d.]+)px', value)
+        if not plain_m:
+            return False, f'.wordmark-name font-size value not understood: {value!r}'
+        size = float(plain_m.group(1))
     if size < 30:
         return False, f'.wordmark-name font-size is {size}px, expected >= 30px'
     return True, f'.wordmark-name font-size: {size}px (>= 30px)'
