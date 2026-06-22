@@ -87,6 +87,8 @@ At 390px, confirm the intentional mobile experience (see `MOBILE-REDESIGN-PLAN.m
 - [ ] The tab strip scrolls horizontally without wrapping; tap targets are reachable.
 - [ ] Charts visibly resize to the narrow viewport — no horizontal overflow, no fixed-px
       chart spilling past the card edge.
+- [ ] Charts fill the full card width — no chart **under-fills**, leaving empty space
+      beside the plot (the inverse of overflow; caught precisely by §6.5c).
 - [ ] The simplified mobile chart variants appear (e.g. the Volume rangeslider is hidden,
       crowded axes are thinned).
 - [ ] Tapping a detail point opens the **bottom sheet** (slides up from the bottom,
@@ -251,6 +253,54 @@ sit fully inside `svg.main-svg`; re-run this pass until `clippedCount: 0`.
 Report one row per clipped label: | Chart ID | Tab | Viewport | Side(s) | Hidden % | Status |
 (run at both viewports — a margin that contains a label at 1440px often clips it at 390px.)
 
+## 6.5c Width-fill / under-fill detection (Preview MCP)
+
+§6.0 catches a chart that **overflows** its card; this pass catches the inverse — a chart
+that renders **narrower than its card**, leaving dead space beside the plot so the y-axis
+labels and data don't span the available width. This is most common on **mobile** and on
+**dual-axis (`secondary_y`) charts whose right margin is too tight** for the right axis
+title/ticks, and on charts that first rendered in a hidden tab and weren't re-fit. The
+overlap (6.5) and clipping (6.5b) passes do **not** catch it (the chart occludes nothing
+and clips nothing — it's just too small). Run this in the **mobile 390px pass** (and at
+desktop too, since under-fill there is also a defect).
+
+For each tab, click the tab button, wait ~1s for relayout, then run via `preview_eval`:
+
+```javascript
+(function() {
+  var out = [];
+  document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
+    if (el.offsetParent === null) return;                 // visible charts only
+    var svg = el.querySelector('svg.main-svg'); if (!svg) return;
+    var card = el.closest('.card');                        // the chart's container
+    var host = card || el.parentElement;
+    var cs = getComputedStyle(host);
+    var inner = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var chartW = svg.getBoundingClientRect().width;
+    var fill = inner > 0 ? +(chartW / inner * 100).toFixed(1) : null;
+    out.push({chart: el.id, chartPx: Math.round(chartW), cardPx: Math.round(inner),
+              fillPct: fill, status: (fill !== null && fill < 90) ? 'FAIL' : 'OK'});
+  });
+  return JSON.stringify(out, null, 2);
+})()
+```
+
+Evaluate:
+- `fillPct >= 90` → PASS (the chart spans essentially the whole card width).
+- `fillPct < 90` → **FAIL**: the chart under-fills its card. `preview_screenshot` the chart
+  as proof and cite the fill %.
+- (A chart wider than its card — `fillPct > 100` — is the overflow case; flag it too and
+  cross-check against §6.0.)
+
+Suggested fix for FAIL: ensure the figure has **no fixed `layout.width`**; for dual-axis
+(`secondary_y`) charts deepen `margin.r` (e.g. `r=80`, as `chart_x_load` does) and set
+`automargin=True` on the y-axes so the right axis fits without squeezing the plot; and
+confirm the chart re-fits after its tab is activated (the page calls `Plotly.Plots.resize`
+on tab switch). Rebuild and re-run until `fillPct >= 90` at both viewports.
+
+Report one row per chart: | Chart ID | Tab | Viewport | Chart px | Card px | Fill % | Status |
+(run at both viewports — under-fill from a tight dual-axis margin is most visible at 390px.)
+
 ## 6.6 Theme audit — light AND dark (mandatory)
 
 The page has a theme toggle (`.theme-toggle button[data-theme="light"|"dark"|"system"]`).
@@ -329,5 +379,6 @@ Report per theme: | Chart ID | Tab | Viewport | Theme | Worst contrast | Status 
 A markdown checklist with PASS / FAIL / WARN per item. For each FAIL/WARN add a one-sentence
 description and, if obvious, a suggested fix. Cover **both viewports** (desktop 1440 + mobile
 390): include the mobile checklist (6.0), the overlap table (6.5), the edge-clipping table
-(6.5b), and the theme audit table (6.6) — each with its **Viewport** column populated for both
-passes. End with the screenshots taken and which viewport/theme/tab each shows.
+(6.5b), the width-fill table (6.5c), and the theme audit table (6.6) — each with its
+**Viewport** column populated for both passes. End with the screenshots taken and which
+viewport/theme/tab each shows.
