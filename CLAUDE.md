@@ -63,6 +63,8 @@ uv run python -m http.server 8765 --directory strava-data     # open strava.html
 uv run python -m http.server 8766 --directory "Running Log"   # open index.html
 ```
 
+**Mobile / visual checks:** the Claude Preview MCP cannot reach a local server on this machine (its Chromium lands on `chrome-error://`). Use `tools/mobile_preview.py` instead — an in-process `127.0.0.1` server plus a mobile-emulated Playwright Chromium in one host process. **Run it un-sandboxed** (the page loads `plotly.js` from the CDN). It prints chart fill/range measurements and saves screenshots; pass `--url` to check the live site. Setup once: `uv add --dev playwright` + `uv run playwright install chromium`. The deployed site is **`https://ducktapegirl.github.io/distance-nerd-stuff/`** (project page — repo subpath; the bare `ducktapegirl.github.io/strava.html` 404s).
+
 ## Running Log dashboard architecture
 
 `visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `Running Log/src/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself.
