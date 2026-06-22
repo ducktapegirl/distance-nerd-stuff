@@ -595,13 +595,14 @@ def chart_x_seasonal(rows):
 
     tidy_dark(fig)
     fig.update_layout(showlegend=True)
-    # Deepen the right margin for the secondary y-axis (mirrors chart_x_load); the
-    # tidy_dark default r=20 is too tight for the right axis title+ticks, which on a
-    # narrow mobile viewport leaves the plot under-filling its card.
-    fig.update_layout(margin=dict(t=20, b=40, l=50, r=80))
-    fig.update_xaxes(title_text="Month")
-    fig.update_yaxes(title_text="Run distance (km, summed)", secondary_y=False)
-    fig.update_yaxes(title_text="MTB rides (count)", secondary_y=True)
+    # Let each axis size its own margin (automargin) instead of a fixed desktop r=80;
+    # the fixed margin left the plot filling only ~55% of a phone-width card. automargin
+    # fits ticks+title at any width (verified ~71-92% fill from phone to desktop). Keep
+    # t=20 for the top "MTB blackout" annotation; l/r are a small base it grows from.
+    fig.update_layout(margin=dict(t=20, b=40, l=40, r=20))
+    fig.update_xaxes(title_text="Month", automargin=True)
+    fig.update_yaxes(title_text="Run distance (km, summed)", automargin=True, secondary_y=False)
+    fig.update_yaxes(title_text="MTB rides (count)", automargin=True, secondary_y=True)
     # MTB blackout band Jul-Sep (violet @0.10)
     fig.add_vrect(x0="Jul", x1="Sep", fillcolor="rgba(167,139,250,0.10)",
                   line_width=0, layer="below",
@@ -830,9 +831,12 @@ def chart_x_load(rows):
 
     tidy_dark(fig)
     fig.update_layout(showlegend=True)
-    fig.update_xaxes(title_text="Date")
-    fig.update_yaxes(title_text="7-day suffer score (sum)", secondary_y=False)
-    fig.update_yaxes(title_text="ACWR (7d / 28d)", range=[0, 2.2], secondary_y=True)
+    # automargin instead of the fixed r=80 below — fits ticks+title at any width so the
+    # plot fills a phone-width card (range on yaxis2 is unaffected; automargin is margins
+    # only). t=44 (set below) is kept for the "spike zone"/peak annotations above the plot.
+    fig.update_xaxes(title_text="Date", automargin=True)
+    fig.update_yaxes(title_text="7-day suffer score (sum)", automargin=True, secondary_y=False)
+    fig.update_yaxes(title_text="ACWR (7d / 28d)", range=[0, 2.2], automargin=True, secondary_y=True)
     fig.add_annotation(x=peak_date, y=peak_val, xref="x", yref="y",
                        text=f"peak {peak_val:.0f} ({peak_date.strftime('%Y-%m-%d')})",
                        showarrow=True, arrowcolor=X_VIOLET, ax=0, ay=-30,
@@ -841,7 +845,7 @@ def chart_x_load(rows):
     # Moved out of the plot area (was y=0.97 inside, overlapping the peak suffer
     # line/area). Anchored above the plot on the left to clear the peak label
     # (center) and the right-edge band labels. Top margin bumped to make room.
-    fig.update_layout(margin=dict(t=44, b=40, l=50, r=80))
+    fig.update_layout(margin=dict(t=44, b=40, l=40, r=20))
     fig.add_annotation(x=0.0, y=1.07, xref="paper", yref="paper", xanchor="left",
                        yanchor="bottom", text=f"{spike_days} days in spike zone (>1.5)",
                        showarrow=False,
