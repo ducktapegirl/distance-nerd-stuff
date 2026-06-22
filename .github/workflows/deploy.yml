@@ -40,7 +40,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --no-dev  # build needs only runtime deps; skip Playwright (dev)
 
       - name: Build Strava dashboard
         run: uv run python strava-data/build_dashboard.py

@@ -19,6 +19,9 @@ Running Log/strava.html
 __pycache__/
 *.pyc
 
+# tools/mobile_preview.py screenshot output
+out/
+
 # Netlify local link (deploy handled by GitHub Action)
 .netlify
 
