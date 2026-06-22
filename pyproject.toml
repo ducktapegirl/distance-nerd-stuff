@@ -10,3 +10,8 @@ dependencies = [
     "tqdm",
     "beautifulsoup4",
 ]
+
+[dependency-groups]
+dev = [
+    "playwright>=1.60.0",
+]
