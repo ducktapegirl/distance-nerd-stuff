@@ -587,14 +587,11 @@ def chart_x_seasonal(rows):
     fig.update_layout(showlegend=True)
     # Deepen the right margin for the secondary y-axis (mirrors chart_x_load); the
     # tidy_dark default r=20 is too tight for the right axis title+ticks, which on a
-    # narrow mobile viewport leaves the plot under-filling its card. automargin lets
-    # both axes adapt instead of clipping when the viewport shrinks.
+    # narrow mobile viewport leaves the plot under-filling its card.
     fig.update_layout(margin=dict(t=20, b=40, l=50, r=80))
     fig.update_xaxes(title_text="Month")
-    fig.update_yaxes(title_text="Run distance (km, summed)", secondary_y=False,
-                     automargin=True)
-    fig.update_yaxes(title_text="MTB rides (count)", secondary_y=True,
-                     automargin=True)
+    fig.update_yaxes(title_text="Run distance (km, summed)", secondary_y=False)
+    fig.update_yaxes(title_text="MTB rides (count)", secondary_y=True)
     # MTB blackout band Jul-Sep (violet @0.10)
     fig.add_vrect(x0="Jul", x1="Sep", fillcolor="rgba(167,139,250,0.10)",
                   line_width=0, layer="below",
