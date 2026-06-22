@@ -501,9 +501,19 @@ def chart_x_heat(rows):
     # axis is identical in both toggle states. Axis REVERSED so faster reads up.
     union = np.concatenate(air["paces_mi"] + app["paces_mi"]).tolist()
     pv, pt = _pace_ticks(union)
-    fig.update_yaxes(title_text="Pace (min/mi, faster = up)", autorange="reversed",
+    # Explicit reversed range (0.5 min/mi padding each side) so right-axis tick
+    # positions can be computed as matching fractions of their own range.
+    pace_top = pv[0] - 0.5   # fastest pace — top of the reversed axis
+    pace_bot = pv[-1] + 0.5  # slowest pace — bottom
+    left_span = pace_bot - pace_top
+    hr_lo, hr_hi = 130, 170
+    hr_ticks = [hr_lo + (pace_bot - v) / left_span * (hr_hi - hr_lo) for v in pv]
+    fig.update_yaxes(title_text="Pace (min/mi, faster = up)",
+                     range=[pace_bot, pace_top],
                      tickvals=pv, ticktext=pt, secondary_y=False)
-    fig.update_yaxes(title_text="Mean HR (bpm)", range=[145, 160], secondary_y=True)
+    fig.update_yaxes(title_text="Mean HR (bpm)",
+                     range=[hr_lo, hr_hi],
+                     tickvals=hr_ticks, tickformat=".0f", secondary_y=True)
     # Bottom margin holds both the x-axis title and the stat annotation below it.
     # b=96 (was 80) gives the y=-0.16 stat line room to sit fully inside the
     # 460px figure; at b=80 + y=-0.20 the text rendered past the SVG bottom edge.
