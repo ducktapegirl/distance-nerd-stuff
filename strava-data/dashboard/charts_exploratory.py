@@ -555,7 +555,7 @@ def chart_x_heat(rows):
 
 def chart_x_seasonal(rows):
     """V5 - The Seasonal Handoff."""
-    run_km = [0.0]*12
+    run_mi = [0.0]*12
     mtb_cnt = [0]*12
     temp_sum = [0.0]*12
     temp_n = [0]*12
@@ -564,8 +564,8 @@ def chart_x_seasonal(rows):
         m = int(r["start_date_local"][5:7]) - 1
         st = r["sport_type"]
         if st in ("Run", "TrailRun"):
-            d = mf(r["distance_km"]) or 0
-            run_km[m] += d; total_run += d
+            d = (mf(r["distance_km"]) or 0) * 0.621371
+            run_mi[m] += d; total_run += d
         elif st == "MountainBikeRide":
             mtb_cnt[m] += 1; total_mtb += 1
         tp = mf(r["average_temp_c"])
@@ -577,9 +577,9 @@ def chart_x_seasonal(rows):
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Scatter(
-        x=MONTH_NAMES, y=run_km, mode="lines", name="Run distance (km, summed)",
+        x=MONTH_NAMES, y=run_mi, mode="lines", name="Run distance (mi, summed)",
         fill="tozeroy", fillcolor="rgba(45,212,191,0.18)", line=dict(color=X_TEAL),
-        hovertemplate="%{x}<br>%{y:.1f} km<extra></extra>",
+        hovertemplate="%{x}<br>%{y:.1f} mi<extra></extra>",
     ), secondary_y=False)
     fig.add_trace(go.Bar(
         x=MONTH_NAMES, y=mtb_cnt, name="MTB rides (count)",
@@ -601,7 +601,7 @@ def chart_x_seasonal(rows):
     # t=20 for the top "MTB blackout" annotation; l/r are a small base it grows from.
     fig.update_layout(margin=dict(t=20, b=40, l=40, r=20))
     fig.update_xaxes(title_text="Month", automargin=True)
-    fig.update_yaxes(title_text="Run distance (km, summed)", automargin=True, secondary_y=False)
+    fig.update_yaxes(title_text="Run distance (mi, summed)", automargin=True, secondary_y=False)
     fig.update_yaxes(title_text="MTB rides (count)", automargin=True, secondary_y=True)
     # MTB blackout band Jul-Sep (violet @0.10)
     fig.add_vrect(x0="Jul", x1="Sep", fillcolor="rgba(167,139,250,0.10)",
@@ -610,7 +610,7 @@ def chart_x_seasonal(rows):
                   annotation_position="top left",
                   annotation_font=dict(family=PLOT_FONT_FAMILY, size=9, color=X_VIOLET))
     return fig, dict(total_run=total_run, total_mtb=total_mtb,
-                     sep_km=run_km[8], jul_mtb=mtb_cnt[6], run_km=run_km, mtb_cnt=mtb_cnt)
+                     sep_mi=run_mi[8], jul_mtb=mtb_cnt[6], run_mi=run_mi, mtb_cnt=mtb_cnt)
 
 
 def chart_x_cadence(rows):
