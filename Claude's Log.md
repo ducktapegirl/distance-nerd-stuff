@@ -1,4 +1,67 @@
 
+## 22 June 2026
+
+### Seasonal Handoff Mobile Bug — Three Wrong Fixes and a Blind-Spot Post-Mortem
+
+A "fix the mobile rendering of one chart" task that I got wrong three times before
+recognizing the real constraint: this remote/mobile session **could not see production**.
+The Strava dashboard's "The Seasonal Handoff" chart (`chart-x-seasonal`, Exploratory tab)
+renders broken on mobile — plot crammed into the left third, bars not spanning width, and
+a **negative left y-axis range**. Each fix was "verified" against a local rebuild that
+turned out not to match the deployed page, so the user kept seeing no improvement. Ended by
+writing a handoff doc (`strava-data/SEASONAL-HANDOFF.md`) and moving the work to desktop,
+where the live page is actually reachable.
+
+Notably, the **21 June entry below already documents this exact failure family** (charts
+init inside `display:none` → zero-size → Plotly defaults to a ~450px SVG → `.card
+{overflow:hidden}` clips). The leading unconfirmed hypothesis now: the hidden-tab zero-width
+render computes a garbage **autorange** (the negative axis), and `activateView()` only calls
+`Plotly.Plots.resize()` on tab switch — which resizes but does **not** re-autorange — so the
+bad range sticks. Independent of any margin or library-version change.
+
+### Iterations
+
+| # | Fix attempted | Why it didn't land |
+|---|---|---|
+| 1 | Right margin `r=20→80` + `automargin=True` on both y-axes | Treated it as a dual-axis margin problem; made it worse (label/legend overlap). Verified via a subagent using **vendored** Plotly, not the CDN build. |
+| 2 | Removed `automargin=True`, kept `r=80` | Correct to drop automargin, but margin was never the cause. No change for the user. |
+| 3 | Pinned `plotly==5.24.1` to match the CDN's `plotly.js 2.35.2` (was unpinned → 6.8.0) | A real, worth-keeping fix for build/runtime version skew — but my local render (now with matching vendored JS) showed "fixed" while prod stayed broken. Still verifying against a proxy, not production. |
+| — | Checked GitHub Actions | All three deploys green → prod *is* running my code → the gap is my verification environment, not the pipeline. |
+
+### Prompting / process lessons
+
+- **Pin build-time and runtime dependency versions together — ideally derive one from the
+  other.** Root structural defect: `pyproject.toml` had `"plotly"` unpinned while the page
+  hard-codes `plotly-2.35.2.min.js`. A spec rule "generate the CDN `<script>` version from
+  the installed plotly version, never hard-code it separately" makes that whole class of
+  drift impossible. (For the spec/original plan: also state falsifiable *mobile* acceptance
+  criteria — "every chart renders with correct width AND axis range when its tab is first
+  opened at 390px" — so the hidden-tab footgun is tested, not assumed.)
+- **Sync the working branch with `origin/main` before starting.** This session's local
+  `main` was **36 commits behind** origin (a big dashboard-package refactor + data-fetch
+  cron commits had landed since the branch's base). It fast-forwarded cleanly here, but I
+  could have edited files already restructured upstream. Good opening prompt: *"rebase this
+  branch onto latest origin/main and tell me if anything moved."*
+- **Know the remote session's hard limit: no network egress.** I couldn't load
+  `ducktapegirl.github.io` or the CDN, and live Preview tooling wasn't connected — so every
+  "verification" was a local approximation. Remote/mobile suits *code changes verifiable by
+  in-container build/test, git, CI inspection, planning/docs*. Tasks that can only be
+  confirmed by observing the **deployed page or an external service** belong on desktop.
+  The tell: if closing the loop on "done" requires seeing something outside the container,
+  it's a desktop task.
+- **Make me state how I verified.** I presented local-render "PASS" results as confident
+  fixes without flagging they used a vendored Plotly and couldn't see production. A fair
+  check: *"How did you verify this, and does that environment match production?"* — if the
+  answer is "a local approximation," treat the fix as a hypothesis, not a result.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| ~1.5 hrs | — | 4/5 — Three deployed "fixes" with no user-visible improvement; the real lesson was recognizing I was debugging blind against a local proxy. Resolved by handoff to desktop, not by a code fix. |
+
+---
+
 ## 21 June 2026
 
 ### Mobile Layout Fix: Both Dashboards (Rounds 1–4)
