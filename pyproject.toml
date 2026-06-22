@@ -3,7 +3,7 @@ name = "distance-nerd-stuff"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
-    "plotly",
+    "plotly==5.24.1",  # pinned to match the runtime CDN plotly.js 2.35.2 (see dashboard config.py)
     "numpy",
     "requests",
     "python-dotenv",
