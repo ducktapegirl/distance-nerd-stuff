@@ -230,8 +230,8 @@ def _build_exploratory_charts(rows):
                  _v["n"][0], _v["n"][1], _v["n"][2], _v["n"][3], _v["n_total"]))
     print("  exploratory V5 seasonal handoff...")
     v5, v5m = chart_x_seasonal(rows)
-    print("    V5 total_run_km=%.1f total_mtb=%d sep_km=%.1f jul_mtb=%d"
-          % (v5m["total_run"], v5m["total_mtb"], v5m["sep_km"], v5m["jul_mtb"]))
+    print("    V5 total_run_mi=%.1f total_mtb=%d sep_mi=%.1f jul_mtb=%d"
+          % (v5m["total_run"], v5m["total_mtb"], v5m["sep_mi"], v5m["jul_mtb"]))
     print("  exploratory V6 cadence...")
     v6, v6m = chart_x_cadence(rows)
     print("    V6 slope=%.4f intercept=%.4f r=%.4f n=%d"
