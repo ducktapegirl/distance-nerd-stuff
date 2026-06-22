@@ -934,6 +934,7 @@ window.addEventListener('load', function() {{
         if (on && window.Plotly) {{
           v.querySelectorAll('.js-plotly-plot').forEach(function(el) {{
             Plotly.Plots.resize(el);
+            Plotly.relayout(el, {{'xaxis.autorange': true, 'yaxis.autorange': true, 'yaxis2.autorange': true}});
           }});
         }}
       }});
