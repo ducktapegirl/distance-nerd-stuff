@@ -929,19 +929,26 @@ window.addEventListener('load', function() {{
         t.classList.toggle('active', t.dataset.view === name);
       }});
       document.querySelectorAll('.view').forEach(function(v) {{
-        var on = v.id === 'view-' + name;
-        v.classList.toggle('active', on);
-        if (on && window.Plotly) {{
-          v.querySelectorAll('.js-plotly-plot').forEach(function(el) {{
-            Plotly.Plots.resize(el);
-            Plotly.relayout(el, {{'xaxis.autorange': true, 'yaxis.autorange': true, 'yaxis2.autorange': true}});
-          }});
-        }}
+        v.classList.toggle('active', v.id === 'view-' + name);
       }});
-      // Retint chart titles/axes to the current theme (resize alone won't).
+      // Retint chart titles/axes to the current theme (color only; size-safe).
       if (window.__applyChartTheme) window.__applyChartTheme();
-      // Thin crowded axes now that the view's charts have real width.
-      if (window.__thinTicks) window.__thinTicks();
+      // Charts laid out while their view was display:none render at 0 width, so
+      // Plotly leaves the SVG at its ~700px default and it overflows the card
+      // (clipped by .card{{overflow:hidden}}). Wait one frame for the now-visible
+      // card to lay out, THEN resize each chart to its container. Resizing
+      // synchronously here reads a 0 width, leaving the chart too wide. (Don't
+      // autorange — several charts set intentional fixed ranges.)
+      if (window.Plotly) {{
+        requestAnimationFrame(function() {{
+          var view = document.getElementById('view-' + name);
+          if (view) view.querySelectorAll('.js-plotly-plot').forEach(function(el) {{
+            Plotly.Plots.resize(el);
+          }});
+          // Thin crowded axes now that the view's charts have real width.
+          if (window.__thinTicks) window.__thinTicks();
+        }});
+      }}
       history.replaceState(null, '', '#' + name);
       var at = document.querySelector('.tab[data-view="' + name + '"]');
       if (at) at.scrollIntoView({{behavior: 'smooth', block: 'nearest', inline: 'center'}});
