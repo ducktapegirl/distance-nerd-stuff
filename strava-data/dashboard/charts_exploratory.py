@@ -601,6 +601,11 @@ def chart_x_seasonal(rows):
     # t=20 for the top "MTB blackout" annotation; l/r are a small base it grows from.
     fig.update_layout(margin=dict(t=20, b=40, l=40, r=20))
     fig.update_xaxes(title_text="Month", automargin=True)
+    # Pin the category axis to exactly the 12 month slots. Without this, the
+    # "MTB blackout" annotation (a wide pill anchored at x="Jul") makes Plotly's
+    # autorange pad the axis out past Dec (~17.35), squeezing the bars into the
+    # left ~70% of the plot and leaving whitespace after Dec.
+    fig.update_xaxes(range=[-0.5, len(MONTH_NAMES) - 0.5])
     fig.update_yaxes(title_text="Run distance (mi, summed)", automargin=True, secondary_y=False)
     fig.update_yaxes(title_text="MTB rides (count)", automargin=True, secondary_y=True)
     # MTB blackout band Jul-Sep (violet @0.10)
