@@ -340,6 +340,10 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   {stats_html}
   <div class="card">
     <div class="card-title">Activity Calendar</div>
+    <div class="seg-filter">
+      <button class="seg-btn active" onclick="toggleCalMode('mileage',this)">Mileage</button>
+      <button class="seg-btn" onclick="toggleCalMode('type',this)">Activity Type</button>
+    </div>
     {cal}
   </div>
 </section>

@@ -27,12 +27,24 @@ def chart_calendar(rows):
     cells inherit CSS variables and retint automatically with the page theme.
     Intensity = --accent at fill-opacity = clamp(mi / max_mi, 0.08, 1.0); the
     max is data-driven (actual max across all days)."""
-    day_dist  = defaultdict(float)
-    day_count = defaultdict(int)
+    CAT_COLOR_VAR = {
+        "Run": "var(--running)",
+        "TrailRun": "var(--elevation)",
+        "MountainBikeRide": "var(--mtb)",
+        "Hike": "var(--hike)",
+    }
+    OTHER_COLOR_VAR = "var(--other)"
+
+    day_dist     = defaultdict(float)
+    day_count    = defaultdict(int)
+    day_cat_dist = defaultdict(lambda: defaultdict(float))
     for r in rows:
         ds = r["start_date_local"][:10]
-        day_dist[ds]  += mf(r["distance_km"]) or 0
+        km = mf(r["distance_km"]) or 0
+        day_dist[ds]  += km
         day_count[ds] += 1
+        bucket = r["sport_type"] if r["sport_type"] in CAT_COLOR_VAR else "Other"
+        day_cat_dist[ds][bucket] += km
 
     if not day_dist:
         return "<div class='hm-grid'>No data</div>", 0.0
@@ -75,12 +87,16 @@ def chart_calendar(rows):
                 if rec:
                     ds, mi, cnt = rec
                     op = min(1.0, max(0.08, mi / max_mi)) if max_mi else 0.08
+                    cat_dist = day_cat_dist[ds]
+                    dominant = max(cat_dist, key=cat_dist.get)
+                    type_color = CAT_COLOR_VAR.get(dominant, OTHER_COLOR_VAR)
                     title = (f"{ds} · {mi:.1f} mi "
                              f"({cnt} {'activity' if cnt == 1 else 'activities'})")
                     cells.append(
                         f'<rect class="hm-cell" data-date="{ds}" x="{x}" y="{y}" '
                         f'width="{cell}" height="{cell}" rx="2" fill="var(--accent)" '
-                        f'fill-opacity="{op:.2f}"><title>{title}</title></rect>'
+                        f'fill-opacity="{op:.2f}" data-type-color="{type_color}">'
+                        f'<title>{title}</title></rect>'
                     )
                 else:
                     cells.append(
@@ -114,15 +130,26 @@ def chart_calendar(rows):
             </svg>
           </div>""")
 
-    legend = (
+    legend_intensity = (
         '<div class="hm-legend hm-legend-intensity">'
         '<span class="hm-legend-meta">0 mi</span>'
         '<span class="hm-legend-grad"></span>'
         f'<span class="hm-legend-meta">{max_mi:.0f}+ mi</span>'
         '</div>'
     )
+    type_swatches = [("Running", "var(--running)"), ("Trail Running", "var(--elevation)"),
+                      ("MTB", "var(--mtb)"), ("Hike", "var(--hike)"), ("Other", OTHER_COLOR_VAR)]
+    legend_type = (
+        '<div class="hm-legend hm-legend-type" hidden>'
+        + "".join(
+            f'<span class="hm-legend-item"><span class="swatch" '
+            f'style="background:{color}"></span>{label}</span>'
+            for label, color in type_swatches
+        )
+        + '</div>'
+    )
     grid = f'<div class="hm-grid">{"".join(rows_html)}</div>'
-    return legend + grid, max_mi
+    return legend_intensity + legend_type + grid, max_mi
 
 
 def chart_volume(rows):
