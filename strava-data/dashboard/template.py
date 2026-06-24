@@ -32,6 +32,7 @@ CSS = f"""
   --running: #2dd4bf;
   --mtb: #f59e0b;
   --other: #8b949e;
+  --hike: #4ade80;
   --elevation: {ELEVATION_COLOR};
   --faster: {FASTER};
   --slower: {SLOWER};
@@ -58,6 +59,7 @@ CSS = f"""
   --running: #0d9488;
   --mtb: #c2710c;
   --other: #475569;
+  --hike: #15803d;
   --elevation: #6d28d9;
   --faster: #0d9488;
   --slower: #c81e1e;
@@ -271,6 +273,9 @@ main {{
     var(--accent)
   );
 }}
+.hm-legend[hidden] {{ display: none; }}
+.hm-legend-item {{ display: inline-flex; gap: 6px; align-items: center; }}
+.hm-legend-item .swatch {{ width: 12px; height: 12px; border-radius: 2px; display: inline-block; }}
 
 /* Stat cards */
 .stat-grid {{
@@ -623,6 +628,22 @@ function showDay(dateStr) {{
   if (!ids.length) return;
   openPanel(ids.map(function(id) {{ return renderActivity(ACT_DATA[id]); }})
                .join('<div class="d-sep"></div>'));
+}}
+
+// ─── Calendar heatmap: mileage-intensity ↔ activity-type toggle ────────────
+function toggleCalMode(mode, btn) {{
+  document.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {{
+    c.setAttribute('fill', mode === 'type' ? c.getAttribute('data-type-color') : 'var(--accent)');
+  }});
+  var intensityLegend = document.querySelector('.hm-legend-intensity');
+  var typeLegend = document.querySelector('.hm-legend-type');
+  if (intensityLegend) intensityLegend.hidden = (mode === 'type');
+  if (typeLegend) typeLegend.hidden = (mode !== 'type');
+  var grp = btn ? btn.parentNode : null;
+  if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
+    b.classList.remove('active');
+  }});
+  if (btn) btn.classList.add('active');
 }}
 
 // ─── Segment filter (trace 0 = Running, trace 1 = MTB) ─────────────────────
