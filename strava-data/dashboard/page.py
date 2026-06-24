@@ -59,8 +59,8 @@ def _activity_detail_json(rows):
 
 def _build_main_charts(rows, segs):
     print("  calendar...")
-    cal, cal_max_mi = chart_calendar(rows)
-    print("    calendar data-driven max_mi=%.2f mi" % cal_max_mi)
+    cal, cal_scale_cap = chart_calendar(rows)
+    print("    calendar robust opacity cap=%.2f mi" % cal_scale_cap)
     print("  volume...")
     vol    = chart_volume(rows)
     print("  heart rate...")

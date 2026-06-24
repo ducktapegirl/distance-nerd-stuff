@@ -1,6 +1,7 @@
 """Chart builders wired into the production dashboard: the Overview/Volume/
 Trends/Map charts plus the running & MTB segment scatter plots."""
 
+import math
 from collections import defaultdict
 from datetime import datetime
 
@@ -13,7 +14,10 @@ from .config import (
     TEXT_TERTIARY, TITLE_FONT_FAMILY, TRAIL_RUN_COLOR,
 )
 from .data import fmt_pace, fmt_seg_time, mf, sport_category, week_start
-from .geometry_stats import _add_regression_line, _pace_ticks, _r2_annotations, _remove_outliers
+from .geometry_stats import (
+    _add_regression_line, _iqr_upper_fence, _pace_ticks, _r2_annotations,
+    _remove_outliers,
+)
 from .theme import tidy_dark
 
 # ─── Chart builders ───────────────────────────────────────────────────────────
@@ -21,12 +25,26 @@ from .theme import tidy_dark
 MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun",
                "Jul","Aug","Sep","Oct","Nov","Dec"]
 
+
+def _star_path(cx, cy, r_outer=4.3, r_inner=1.9, n=5):
+    """5-point star outline path centered at (cx, cy), point-up."""
+    pts = []
+    for i in range(n * 2):
+        r   = r_outer if i % 2 == 0 else r_inner
+        ang = (math.pi / n) * i - math.pi / 2
+        pts.append((cx + r * math.cos(ang), cy + r * math.sin(ang)))
+    return "M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in pts) + " Z"
+
+
 def chart_calendar(rows):
     """Hand-built SVG calendar (one grid per year), ported from the College
     Running Log heatmap. Returns a raw HTML/SVG string (not a go.Figure) so the
     cells inherit CSS variables and retint automatically with the page theme.
-    Intensity = --accent at fill-opacity = clamp(mi / max_mi, 0.08, 1.0); the
-    max is data-driven (actual max across all days)."""
+    Opacity = clamp(mi / scale_cap, 0.08, 1.0), where scale_cap is a robust
+    Tukey IQR upper fence over daily mileage so a lone huge day doesn't compress
+    the scale — days at/above the cap saturate to full opacity. Both the Mileage
+    (--accent fill) and Activity Type (dominant-sport fill) modes share this
+    opacity."""
     CAT_COLOR_HEX = {
         "Run": SPORT_COLORS["Running"],
         "TrailRun": TRAIL_RUN_COLOR,
@@ -50,7 +68,14 @@ def chart_calendar(rows):
         return "<div class='hm-grid'>No data</div>", 0.0
 
     years  = sorted({ds[:4] for ds in day_dist})
-    max_mi = max((km * KM_TO_MI for km in day_dist.values()), default=0.0)
+    # Robust opacity cap: IQR upper fence over daily mileage, so a lone outlier
+    # day (e.g. a 22 mi long run) doesn't squash everyday runs into faint cells.
+    scale_cap = _iqr_upper_fence([v * KM_TO_MI for v in day_dist.values()]) \
+        or max((km * KM_TO_MI for km in day_dist.values()), default=0.0)
+    # Single highest-mileage day across the whole history — starred in both
+    # Mileage and Activity Type views regardless of which mode is active.
+    max_day, max_day_km = max(day_dist.items(), key=lambda kv: kv[1])
+    max_day_mi = max_day_km * KM_TO_MI
 
     cell    = 11
     gap     = 2
@@ -86,20 +111,27 @@ def chart_calendar(rows):
                 rec = year_days.get((dow, wnum))
                 if rec:
                     ds, mi, cnt = rec
-                    op      = min(1.0, max(0.08, mi / max_mi)) if max_mi else 0.08
-                    type_op = min(1.0, 0.45 + (mi / max_mi) * 0.55) if max_mi else 0.45
+                    op = min(1.0, max(0.08, mi / scale_cap)) if scale_cap else 0.08
                     cat_dist = day_cat_dist[ds]
                     dominant = max(cat_dist, key=cat_dist.get)
                     type_color = CAT_COLOR_HEX.get(dominant, OTHER_COLOR_HEX)
+                    is_max = (ds == max_day)
                     title = (f"{ds} · {mi:.1f} mi "
-                             f"({cnt} {'activity' if cnt == 1 else 'activities'})")
+                             f"({cnt} {'activity' if cnt == 1 else 'activities'})"
+                             + (" · longest day" if is_max else ""))
                     cells.append(
                         f'<rect class="hm-cell" data-date="{ds}" x="{x}" y="{y}" '
                         f'width="{cell}" height="{cell}" rx="2" fill="var(--accent)" '
-                        f'fill-opacity="{op:.2f}" data-int-op="{op:.2f}" '
-                        f'data-type-op="{type_op:.2f}" data-type-color="{type_color}">'
+                        f'fill-opacity="{op:.2f}" data-type-color="{type_color}">'
                         f'<title>{title}</title></rect>'
                     )
+                    if is_max:
+                        # Fixed (non-theme) colors so the star reads on any fill —
+                        # accent blue, or any sport color in Activity Type mode.
+                        cells.append(
+                            f'<path class="hm-star" pointer-events="none" '
+                            f'd="{_star_path(x + cell / 2, y + cell / 2)}"></path>'
+                        )
                 else:
                     cells.append(
                         f'<rect class="hm-cell" x="{x}" y="{y}" width="{cell}" '
@@ -132,11 +164,13 @@ def chart_calendar(rows):
             </svg>
           </div>""")
 
+    star_note = f'<span class="hm-legend-star-note">★ {max_day} · {max_day_mi:.1f} mi (longest day)</span>'
     legend_intensity = (
         '<div class="hm-legend hm-legend-intensity">'
         '<span class="hm-legend-meta">0 mi</span>'
         '<span class="hm-legend-grad"></span>'
-        f'<span class="hm-legend-meta">{max_mi:.0f}+ mi</span>'
+        f'<span class="hm-legend-meta">{scale_cap:.0f}+ mi</span>'
+        f'{star_note}'
         '</div>'
     )
     type_swatches = [("Running", CAT_COLOR_HEX["Run"]), ("Trail Running", CAT_COLOR_HEX["TrailRun"]),
@@ -149,10 +183,11 @@ def chart_calendar(rows):
             f'style="background:{color}"></span>{label}</span>'
             for label, color in type_swatches
         )
+        + star_note
         + '</div>'
     )
     grid = f'<div class="hm-grid">{"".join(rows_html)}</div>'
-    return legend_intensity + legend_type + grid, max_mi
+    return legend_intensity + legend_type + grid, scale_cap
 
 
 def chart_volume(rows):
