@@ -1,4 +1,60 @@
 
+## 24 June 2026
+
+### Calendar Heatmap Outlier Fix + Longest-Day Star
+
+Two follow-up passes on the Strava dashboard's Overview activity calendar. First: a single 22.3 mi outlier day (2025-10-01) was compressing the opacity scale, so every ordinary run rendered faint — fixed by capping the scale at the Tukey IQR upper fence (~10.5 mi) instead of the raw max, and removing the flat 0.45-opacity floor a prior session had given the Activity Type mode so its transparency also tracks volume. Second: added a small star marker (fixed white-fill/dark-stroke SVG path, theme-independent) on the single highest-mileage day, visible and correctly positioned in both Mileage and Activity Type views, with a matching legend note in each.
+
+### Iterations
+
+| # | What happened | Root cause | Fix |
+|---|---|---|---|
+| 1 | Read `charts_production.py`/`template.py` in plan mode and saw single-mode calendar code with no Activity Type toggle — didn't match the prior session's described changes | Local `main` was 4 commits behind `origin/main`; the activity-type-toggle work had landed upstream via a merged PR but was never pulled locally | Verified the pull was a clean fast-forward and didn't touch the locally-modified `Claude's Log.md`, then pulled before planning/editing |
+
+### Prompting lessons
+
+- **This is the second time in three days this exact gap has bitten a session** (see 22 June: "local `main` was 36 commits behind origin"). The fix worked fine once caught, but it's now a pattern specific to this repo's workflow (PRs merged via GitHub, local clone not auto-synced). Worth a standing rule in `CLAUDE.md`: *check `git fetch && git status -uno` (or compare `HEAD` to `origin/main`) before reading dashboard source as ground truth*, rather than re-discovering the staleness per session.
+- **Confirming an outlier-handling approach before coding paid off.** Computing the actual daily-mileage distribution (median 4.2 mi, fence ≈10.6 mi) and presenting three concrete scaling options (robust cap / cap-below-22 / log) let the user pick in one round-trip instead of guessing and redoing the math after a wrong assumption about scale.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| <30 min | — | 1/5 — smooth; only friction was the stale-local-main discovery, caught early in plan mode |
+
+---
+
+## 23 June 2026
+
+### Seasonal Handoff Mobile Bug — Finally Closed, with Claude in Chrome
+
+The "whitespace after Dec" symptom on the Seasonal Handoff chart (`chart-x-seasonal`) turned out to be a **third, distinct bug** in the same chart, layered under two others fixed across 21–22 June. Root cause: `add_vrect(..., annotation_text="MTB blackout - N July rides", ...)` anchors a wide text pill at `x="Jul"`; Plotly's category-axis autorange pads the axis to keep the whole pill inside the plot, stretching the range from `[-0.5, 11.5]` to `[-0.5, 17.35]` and squeezing the bars into the left ~70% of the card. Fixed with a one-line `fig.update_xaxes(range=[-0.5, len(MONTH_NAMES) - 0.5])` in `strava-data/dashboard/charts_exploratory.py`, pinning the axis so the annotation can't expand it. Committed `11dbaa0`, pushed to `main`.
+
+This was the difference-maker: the user did the live diagnostic in **Claude in Chrome** — toggling the deployed chart's shapes and annotations on/off and reading the actual computed `xaxis.range` after each toggle. That isolated the annotation as the sole trigger in three steps (remove both → correct `[-0.5, 11.5]`; add annotation back alone → bug returns; shape alone → no effect). Handed to this session as a written plan with the diagnostic trail attached, so the fix itself took one edit, one rebuild, and one `tools/mobile_preview.py` measurement to confirm `xRange` was exactly `[-0.5, 11.5]`.
+
+### Why the two prior sessions didn't find this
+
+| Session | What they could observe | What they fixed | What they missed |
+|---|---|---|---|
+| 22 June AM | A local rebuild only — no network egress in that remote sandbox, couldn't load the live page or CDN | Nothing that stuck: tried margin/`automargin` tweaks (made it worse), then pinned `plotly==5.24.1` to match the CDN runtime version. All three "verified" against a local approximation that disagreed with production | Never saw the real rendered axis range on the actual deployed chart — was debugging blind against a proxy environment |
+| 22 June PM | Local headless Playwright render with the version-matched vendored Plotly — closer, but still not the live page in a real browser | The genuine zero-width-hidden-tab bug: `activateView()` resized charts synchronously right after toggling `display`, reading `clientWidth: 0`. Fix deferred the resize into `requestAnimationFrame` so the now-visible card had real width first. Declared the chart **RESOLVED** | This fix addressed a *different* defect (SVG stuck at the ~700px default) that happened to also produce a width/overflow symptom. Once it was fixed, autorange ran correctly against real data — which is exactly what exposed the annotation-padding bug, since *correct* autorange is what stretches to 17.35. No live inspection meant no way to tell these two bugs apart |
+| 23 June (today) | Claude in Chrome on the live deployed page — could toggle individual chart elements and read Plotly's actual computed `xaxis.range` after each change | Pinned the x-axis range, closing the bug for good | — |
+
+The pattern across both prior sessions: every fix was a plausible hypothesis (margin, version skew, render timing) tested against a local stand-in, never against the one signal that actually mattered — the live page's computed autorange. Once that signal was available, the fix took minutes.
+
+### Prompting lessons
+
+- **For mobile/visual bugs on a deployed page, get a live-browser diagnostic before writing any fix.** Two sessions iterated on plausible-sounding theories (margins, library version, resize timing) without ever reading the actual rendered `xaxis.range`. The session that finally fixed it worked backward from real toggled-element measurements on the live page, not forward from a hypothesis.
+- **"Resolved" should mean "the specific measured symptom is gone," not "the chart looks right."** The 22 June PM session closed the bug after confirming the zero-width/negative-axis defect was fixed — but the chart still wasn't filling the card correctly for an unrelated reason. State the acceptance check as the *visual* outcome ("bars span the full plot width edge to edge"), not just the originally-diagnosed mechanism, so a second latent bug isn't mistaken for "done."
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| 30 min | — | 2/5 — smooth once the Chrome diagnostic existed; the real cost was sunk in the two prior sessions |
+
+---
+
 ## 22 June 2026
 
 ### Seasonal Handoff Mobile Bug — Three Wrong Fixes and a Blind-Spot Post-Mortem

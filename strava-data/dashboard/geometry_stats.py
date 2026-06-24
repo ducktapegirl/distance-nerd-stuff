@@ -94,6 +94,23 @@ def _pace_ticks(ys):
     return vals, texts
 
 
+def _iqr_upper_fence(vals, k=1.5):
+    """Tukey upper fence (q3 + k*iqr) of vals; falls back to max for n<4 or a
+    degenerate (zero-IQR) distribution. Used as a robust 'cap' so a lone extreme
+    value doesn't compress a color/opacity scale."""
+    n = len(vals)
+    if n < 4:
+        return max(vals, default=0.0)
+    s = sorted(vals)
+    q1 = s[n // 4]
+    q3 = s[(3 * n) // 4]
+    iqr = q3 - q1
+    fence = q3 + k * iqr
+    if iqr == 0 or fence <= 0:
+        return max(vals)
+    return fence
+
+
 def _remove_outliers(xs, ys, texts, iqr_k=1.5):
     """
     Remove outliers from paired (xs, ys, texts) lists using Tukey's IQR fence

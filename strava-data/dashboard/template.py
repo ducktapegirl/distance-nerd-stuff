@@ -260,6 +260,9 @@ main {{
 .hm-cell[data-date] {{ cursor: pointer; }}
 .hm-month {{ fill: var(--text-tertiary); font-size: 9px; font-family: 'Geist Mono', monospace; }}
 .hm-dow   {{ fill: var(--text-tertiary); font-size: 9px; font-family: 'Geist Mono', monospace; }}
+/* Longest-day marker: fixed (non-theme) colors so it reads on any cell fill —
+   accent blue in Mileage mode, or any sport color in Activity Type mode. */
+.hm-star {{ fill: #fff; stroke: #0d1117b0; stroke-width: 0.6; pointer-events: none; }}
 .hm-legend {{
   margin-top: 4px; margin-bottom: 14px;
   display: flex; gap: 8px; align-items: center;
@@ -267,6 +270,7 @@ main {{
   font-family: 'Geist Mono', monospace;
 }}
 .hm-legend-meta {{ color: var(--text-secondary); }}
+.hm-legend-star-note {{ color: var(--text-secondary); font-weight: 600; margin-left: 4px; }}
 .hm-legend-grad {{
   display: inline-block;
   width: 140px; height: 10px; border-radius: 3px;
@@ -637,7 +641,6 @@ function showDay(dateStr) {{
 function toggleCalMode(mode, btn) {{
   document.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {{
     c.setAttribute('fill', mode === 'type' ? c.getAttribute('data-type-color') : 'var(--accent)');
-    c.setAttribute('fill-opacity', mode === 'type' ? c.getAttribute('data-type-op') : c.getAttribute('data-int-op'));
   }});
   var intensityLegend = document.querySelector('.hm-legend-intensity');
   var typeLegend = document.querySelector('.hm-legend-type');
