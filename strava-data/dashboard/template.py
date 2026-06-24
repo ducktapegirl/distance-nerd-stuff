@@ -32,7 +32,6 @@ CSS = f"""
   --running: #2dd4bf;
   --mtb: #f59e0b;
   --other: #8b949e;
-  --hike: #4ade80;
   --elevation: {ELEVATION_COLOR};
   --faster: {FASTER};
   --slower: {SLOWER};
@@ -59,7 +58,6 @@ CSS = f"""
   --running: #0d9488;
   --mtb: #c2710c;
   --other: #475569;
-  --hike: #15803d;
   --elevation: #6d28d9;
   --faster: #0d9488;
   --slower: #c81e1e;
@@ -239,6 +237,11 @@ main {{
   color: var(--text-secondary);
   margin-bottom: 20px;
 }}
+.card-header {{
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}}
+.card-header .card-title {{ margin: 0; }}
 .attribution {{ font-size:13.5px; color:var(--text-secondary); line-height:1.65; margin:0; }}
 .plot-caption {{ font-size:13.5px; color:var(--text-secondary); line-height:1.65; margin:12px 0 0; }}
 

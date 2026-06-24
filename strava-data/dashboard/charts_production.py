@@ -7,8 +7,8 @@ from datetime import datetime
 import plotly.graph_objects as go
 
 from .config import (
-    BG_ELEVATED, BG_GLASS, BORDER, BORDER_SUBTLE, FASTER, GRID, KM_TO_MI,
-    MAP_CENTER_LAT, MAP_CENTER_LON, M_TO_FT, NEUTRAL, PLOT_FONT_FAMILY,
+    BG_ELEVATED, BG_GLASS, BORDER, BORDER_SUBTLE, FASTER, GRID, HIKE_COLOR,
+    KM_TO_MI, MAP_CENTER_LAT, MAP_CENTER_LON, M_TO_FT, NEUTRAL, PLOT_FONT_FAMILY,
     SLOWER, SPORT_COLORS, SPORT_DISPLAY, TEXT_PRIMARY, TEXT_SECONDARY,
     TEXT_TERTIARY, TITLE_FONT_FAMILY, TRAIL_RUN_COLOR,
 )
@@ -27,13 +27,13 @@ def chart_calendar(rows):
     cells inherit CSS variables and retint automatically with the page theme.
     Intensity = --accent at fill-opacity = clamp(mi / max_mi, 0.08, 1.0); the
     max is data-driven (actual max across all days)."""
-    CAT_COLOR_VAR = {
-        "Run": "var(--running)",
-        "TrailRun": "var(--elevation)",
-        "MountainBikeRide": "var(--mtb)",
-        "Hike": "var(--hike)",
+    CAT_COLOR_HEX = {
+        "Run": SPORT_COLORS["Running"],
+        "TrailRun": TRAIL_RUN_COLOR,
+        "MountainBikeRide": SPORT_COLORS["MountainBikeRide"],
+        "Hike": HIKE_COLOR,
     }
-    OTHER_COLOR_VAR = "var(--other)"
+    OTHER_COLOR_HEX = SPORT_COLORS["Other"]
 
     day_dist     = defaultdict(float)
     day_count    = defaultdict(int)
@@ -43,7 +43,7 @@ def chart_calendar(rows):
         km = mf(r["distance_km"]) or 0
         day_dist[ds]  += km
         day_count[ds] += 1
-        bucket = r["sport_type"] if r["sport_type"] in CAT_COLOR_VAR else "Other"
+        bucket = r["sport_type"] if r["sport_type"] in CAT_COLOR_HEX else "Other"
         day_cat_dist[ds][bucket] += km
 
     if not day_dist:
@@ -89,7 +89,7 @@ def chart_calendar(rows):
                     op = min(1.0, max(0.08, mi / max_mi)) if max_mi else 0.08
                     cat_dist = day_cat_dist[ds]
                     dominant = max(cat_dist, key=cat_dist.get)
-                    type_color = CAT_COLOR_VAR.get(dominant, OTHER_COLOR_VAR)
+                    type_color = CAT_COLOR_HEX.get(dominant, OTHER_COLOR_HEX)
                     title = (f"{ds} · {mi:.1f} mi "
                              f"({cnt} {'activity' if cnt == 1 else 'activities'})")
                     cells.append(
@@ -137,8 +137,9 @@ def chart_calendar(rows):
         f'<span class="hm-legend-meta">{max_mi:.0f}+ mi</span>'
         '</div>'
     )
-    type_swatches = [("Running", "var(--running)"), ("Trail Running", "var(--elevation)"),
-                      ("MTB", "var(--mtb)"), ("Hike", "var(--hike)"), ("Other", OTHER_COLOR_VAR)]
+    type_swatches = [("Running", CAT_COLOR_HEX["Run"]), ("Trail Running", CAT_COLOR_HEX["TrailRun"]),
+                      ("MTB", CAT_COLOR_HEX["MountainBikeRide"]), ("Hike", CAT_COLOR_HEX["Hike"]),
+                      ("Other", OTHER_COLOR_HEX)]
     legend_type = (
         '<div class="hm-legend hm-legend-type" hidden>'
         + "".join(
