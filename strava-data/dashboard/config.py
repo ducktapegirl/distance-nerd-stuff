@@ -36,6 +36,9 @@ SPORT_COLORS = {
 # Trail Running — violet, distinct from teal Running and amber MTB
 TRAIL_RUN_COLOR = "#a78bfa"
 
+# Hiking — green, distinct from the run/MTB/trail-run hues above
+HIKE_COLOR = "#4ade80"
+
 # Plotly figure colors — dark defaults. The theme toggle JS overrides these
 # at runtime via Plotly.relayout reading the CSS custom properties.
 BG_BASE        = "#0d1117"
