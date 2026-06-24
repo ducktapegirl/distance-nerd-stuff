@@ -86,7 +86,8 @@ def chart_calendar(rows):
                 rec = year_days.get((dow, wnum))
                 if rec:
                     ds, mi, cnt = rec
-                    op = min(1.0, max(0.08, mi / max_mi)) if max_mi else 0.08
+                    op      = min(1.0, max(0.08, mi / max_mi)) if max_mi else 0.08
+                    type_op = min(1.0, 0.45 + (mi / max_mi) * 0.55) if max_mi else 0.45
                     cat_dist = day_cat_dist[ds]
                     dominant = max(cat_dist, key=cat_dist.get)
                     type_color = CAT_COLOR_HEX.get(dominant, OTHER_COLOR_HEX)
@@ -95,7 +96,8 @@ def chart_calendar(rows):
                     cells.append(
                         f'<rect class="hm-cell" data-date="{ds}" x="{x}" y="{y}" '
                         f'width="{cell}" height="{cell}" rx="2" fill="var(--accent)" '
-                        f'fill-opacity="{op:.2f}" data-type-color="{type_color}">'
+                        f'fill-opacity="{op:.2f}" data-int-op="{op:.2f}" '
+                        f'data-type-op="{type_op:.2f}" data-type-color="{type_color}">'
                         f'<title>{title}</title></rect>'
                     )
                 else:

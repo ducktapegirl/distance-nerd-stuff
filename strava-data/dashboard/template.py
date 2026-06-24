@@ -637,6 +637,7 @@ function showDay(dateStr) {{
 function toggleCalMode(mode, btn) {{
   document.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {{
     c.setAttribute('fill', mode === 'type' ? c.getAttribute('data-type-color') : 'var(--accent)');
+    c.setAttribute('fill-opacity', mode === 'type' ? c.getAttribute('data-type-op') : c.getAttribute('data-int-op'));
   }});
   var intensityLegend = document.querySelector('.hm-legend-intensity');
   var typeLegend = document.querySelector('.hm-legend-type');
