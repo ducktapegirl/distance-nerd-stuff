@@ -13,6 +13,11 @@ on:
         description: "Only fetch activities on/after YYYY-MM-DD (leave blank for all)"
         required: false
         default: ""
+      backfill_segments:
+        description: "Backfill retroactive segments only (re-fetch detail for old activities; uses 'since' if set, else ~13 months)"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   fetch:
@@ -47,7 +52,10 @@ jobs:
           }, open("strava-data/.strava_tokens.json", "w"))
           PYEOF
 
+      # Normal fetch (also the scheduled path). Skipped when a segment-only
+      # backfill is requested so we don't burn the rate limit on both.
       - name: Fetch Strava data
+        if: ${{ ! inputs.backfill_segments }}
         env:
           STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
           STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
@@ -56,6 +64,18 @@ jobs:
           [ -n "${{ inputs.limit }}" ] && ARGS="$ARGS --limit ${{ inputs.limit }}"
           [ -n "${{ inputs.since }}" ] && ARGS="$ARGS --since ${{ inputs.since }}"
           uv run python strava-data/fetch.py $ARGS
+
+      # Segment-only backfill: re-fetch detail for old activities to pick up
+      # retroactively-matched new segments (1 request/activity, throttled).
+      - name: Backfill retroactive segments
+        if: ${{ inputs.backfill_segments }}
+        env:
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+        run: |
+          ARGS=""
+          [ -n "${{ inputs.since }}" ] && ARGS="$ARGS --since ${{ inputs.since }}"
+          uv run python strava-data/backfill_segments.py $ARGS
 
       - name: Backfill missing weather fields
         run: uv run python strava-data/backfill_weather.py
