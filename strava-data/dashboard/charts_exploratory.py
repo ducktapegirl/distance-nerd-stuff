@@ -1087,15 +1087,18 @@ def chart_x_heatverdict(rows):
     fig.update_layout(showlegend=True, barmode="group",
                       margin=dict(t=20, b=44, l=90, r=30))
     xmax = max(run_vals + mtb_vals)
+    # dtick=1% so ticks read 0/1/2/3/4% (auto half-percent ticks rounded to
+    # duplicate integer-percent labels like "1% 1% 2% 2%").
     fig.update_xaxes(title_text="Partial R² — variance in pace/speed explained "
                                 "(over distance + elevation)",
-                     range=[0, xmax * 1.25], tickformat=".0%")
+                     range=[0, xmax * 1.3], tickformat=".0%", dtick=0.01)
     fig.update_yaxes(title_text="", categoryorder="array",
                      categoryarray=list(reversed(cats)))
-    # Winner + collinearity caveat pill.
+    # Winner + collinearity caveat pill. Top-right (empty above the short Temp
+    # bars) so it never overlaps the long "Combined" bar at the bottom.
     run_best = cats[int(np.argmax(run_vals))]
     fig.add_annotation(
-        x=0.98, y=0.04, xref="paper", yref="paper", xanchor="right", yanchor="bottom",
+        x=0.98, y=0.97, xref="paper", yref="paper", xanchor="right", yanchor="top",
         text=(f"Running: {run_best} wins, but all weak · "
               f"temp~UV r={run['collinear']:.2f}"),
         showarrow=False,
