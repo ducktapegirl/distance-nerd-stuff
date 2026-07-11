@@ -5,7 +5,8 @@ import json
 
 from .charts_exploratory import (
     chart_x_archetypes, chart_x_cadence, chart_x_cardiac, chart_x_heat,
-    chart_x_load, chart_x_metronome, chart_x_mirage, chart_x_seasonal,
+    chart_x_heatsun, chart_x_heatverdict, chart_x_load, chart_x_metronome,
+    chart_x_mirage, chart_x_seasonal,
 )
 from .charts_production import (
     _seg_effort_points, chart_calendar, chart_elevation, chart_heartrate,
@@ -245,9 +246,23 @@ def _build_exploratory_charts(rows):
     print("    V8 peak=%.0f on %s spike_days=%d median_acwr=%.3f days=%d total_suffer=%.0f"
           % (v8m["peak"], v8m["peak_date"], v8m["spike_days"], v8m["median_acwr"],
              v8m["days"], v8m["total_suffer"]))
-    return (v1, v2, v3, v4, v5, v6, v7, v8,
+    print("  exploratory V9 heat & sun (running temp/UV scatter)...")
+    v9, v9m = chart_x_heatsun(rows)
+    print("    V9 n=%d r2_base=%.3f temp_pR2=%.4f uv_pR2=%.4f comb_pR2=%.4f "
+          "opt=%s collinear=%.3f"
+          % (v9m["n"], v9m["r2_base"], v9m["r2_temp"], v9m["r2_uv"], v9m["r2_comb"],
+             ("%.1fF" % v9m["temp_optimum"]) if v9m["temp_optimum"] is not None else "none",
+             v9m["collinear"]))
+    print("  exploratory V10 heat verdict (horse race)...")
+    v10, v10m = chart_x_heatverdict(rows)
+    print("    V10 run(temp/uv/comb)=%s mtb=%s n=%d/%d run_best=%s run_collinear=%.3f mtb_collinear=%.3f"
+          % (["%.4f" % v for v in v10m["run_vals"]], ["%.4f" % v for v in v10m["mtb_vals"]],
+             v10m["n_run"], v10m["n_mtb"], v10m["run_best"], v10m["run_collinear"],
+             v10m["mtb_collinear"]))
+    return (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
             v4m["air_text"], v4m["app_text"],
-            v1m["mirage_air_text"], v1m["mirage_app_text"])
+            v1m["mirage_air_text"], v1m["mirage_app_text"],
+            v9m["heatsun_temp_text"], v9m["heatsun_uv_text"])
 
 
 def _build_stats_panel(rows, stats):
@@ -294,7 +309,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
                     run_pace_hr, run_hr_temp, run_pace_tort, run_pace_grade,
                     run_hr_grade, mtb_pace_tort, mtb_pace_grade, mtb_hr_grade,
                     cons_cards_html, fast_cards_html, grade_time_html,
-                    v1, v2, v3, v4, v5, v6, v7, v8):
+                    v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -445,7 +460,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   <div class="section-anchor">Exploratory</div>
   <div class="card">
     <div class="card-title">About This Section</div>
-    <p class="attribution">This section was created entirely by Claude — Anthropic's <strong>Claude Fable 5</strong> model (<code>claude-fable-5</code>) acting as orchestrator, dispatching the strava-data-analyst, strava-creativity, strava-viz-design, strava-developer, and strava-qa subagents.</p>
+    <p class="attribution">This section was created entirely by Claude — Anthropic's <strong>Claude Fable 5</strong> model (<code>claude-fable-5</code>) acting as orchestrator, dispatching the strava-data-analyst, strava-creativity, strava-viz-design, strava-developer, and strava-qa subagents. The two newest charts — <strong>Heat &amp; Sun</strong> and <strong>The Verdict</strong> — were added in a later build by Anthropic's <strong>Claude Opus</strong> model.</p>
   </div>
   <div class="card">
     <div class="card-title">The Temperature Mirage</div>
@@ -495,6 +510,22 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
     {fig_html(v8,480,"chart-x-load")}
     <p class="plot-caption">The violet line (left axis) is your 7-day rolling suffer score — a Strava-derived measure of cumulative training stress. The gray line (right axis) is the ACWR ratio: your current week's training divided by your 4-week rolling average. A ratio near 1.0 means you're training consistently; the colored bands show risk zones — teal is the sweet spot, amber is elevated risk, and red is the spike zone (&gt;1.5) where injury risk rises sharply. The labeled arrow marks your highest single-week training peak; the counter at the top shows how many days you spent in the spike zone.</p>
   </div>
+
+  <div class="section-anchor" style="margin-top:32px">Heat &amp; Sun · Does Weather Predict Pace?</div>
+  <div class="card">
+    <div class="card-title">Heat &amp; Sun — Temperature vs UV</div>
+    <div class="seg-filter">
+      <button class="seg-btn active" onclick="toggleHeatSun('temp',this)">Air temp</button>
+      <button class="seg-btn" onclick="toggleHeatSun('uv',this)">UV index</button>
+    </div>
+    {fig_html(v9,460,"chart-x-heatsun")}
+    <p class="plot-caption">Does weather actually change how fast she runs? The honest answer needs a fair test. Raw pace is dominated by how far and how hilly a run is, so this chart first strips those out: it regresses pace on distance and elevation, then plots what's <em>left over</em> — the pace a run had after accounting for its length and climb — against the day's weather (faster&nbsp;=&nbsp;up). The toggle swaps the x-axis between <strong>air temperature</strong> (°F, with a quadratic fit to allow the inverted-U that the marathon literature reports, with a fitness optimum around 50&nbsp;°F) and <strong>UV index</strong> (a linear fit). The annotation reports each predictor's <strong>partial R&sup2;</strong> — the share of that left-over pace variance it explains. One caveat is baked in: UV index is <em>not</em> an independent physiological driver; it is a stand-in for solar radiant load / clear-sky conditions and is strongly correlated with temperature, so its effect largely echoes the temperature one rather than adding a new signal.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">The Verdict — Which Metric Predicts Best?</div>
+    {fig_html(v10,420,"chart-x-heatverdict")}
+    <p class="plot-caption">The direct answer to the research question. Each bar is a weather metric's <strong>partial R&sup2;</strong> — how much of the distance-and-elevation-adjusted pace (running, teal) or speed (MTB, amber) it explains — for air temperature, UV index, and a combined temperature+UV model. The combined model is an explicit <strong>&ldquo;WBGT-lite&rdquo;</strong> proxy: the sports-science gold standard for heat stress is WBGT, which also folds in <strong>humidity</strong>, and this dataset has none — so &ldquo;Combined&rdquo; is temperature and sun only, not true WBGT. Read it honestly: temperature is the best-supported single predictor and edges out UV for running, combining the two adds only a little, and — the real headline — <em>all of these bars are small</em>. Once distance and elevation are accounted for, weather explains only a few percent of pace. Temperature and UV are also collinear (their correlation is noted on the chart), so they are largely telling the same story twice.</p>
+  </div>
 </section>
 
 </main>
@@ -532,16 +563,18 @@ def build_page(rows, segs):
     cons_cards_html, fast_cards_html, grade_time_html = _build_segment_rollup_section(
         seg_efforts, act_by_id)
 
-    (v1, v2, v3, v4, v5, v6, v7, v8,
+    (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10,
      heat_air_text, heat_app_text,
-     mirage_air_text, mirage_app_text) = _build_exploratory_charts(rows)
+     mirage_air_text, mirage_app_text,
+     heatsun_temp_text, heatsun_uv_text) = _build_exploratory_charts(rows)
 
     date_range, stats_html, nav_links, theme_buttons = _build_stats_panel(rows, stats)
 
     SYNC_IDS  = ["chart-volume", "chart-hr", "chart-pace", "chart-elev"]
     CLICK_IDS = ["chart-hr", "chart-pace", "chart-map"]
     js = build_js(act_json, SYNC_IDS, CLICK_IDS, heat_air_text, heat_app_text,
-                  mirage_air_text, mirage_app_text, run_hr_temp_meta)
+                  mirage_air_text, mirage_app_text, run_hr_temp_meta,
+                  heatsun_temp_text, heatsun_uv_text)
 
     return _assemble_html(
         date_range=date_range, stats_html=stats_html, nav_links=nav_links,
@@ -553,5 +586,5 @@ def build_page(rows, segs):
         mtb_pace_grade=mtb_pace_grade, mtb_hr_grade=mtb_hr_grade,
         cons_cards_html=cons_cards_html, fast_cards_html=fast_cards_html,
         grade_time_html=grade_time_html,
-        v1=v1, v2=v2, v3=v3, v4=v4, v5=v5, v6=v6, v7=v7, v8=v8,
+        v1=v1, v2=v2, v3=v3, v4=v4, v5=v5, v6=v6, v7=v7, v8=v8, v9=v9, v10=v10,
     )

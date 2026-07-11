@@ -579,7 +579,8 @@ main {{
 # ─── JS ───────────────────────────────────────────────────────────────────────
 
 def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text,
-             mirage_air_text, mirage_app_text, hr_temp_meta):
+             mirage_air_text, mirage_app_text, hr_temp_meta,
+             heatsun_temp_text, heatsun_uv_text):
     # json.dumps produces safely-escaped JS string literals (handles quotes,
     # backslashes) for the build-time-computed annotation strings/arrays.
     heat_air_js = json.dumps(heat_air_text)
@@ -587,6 +588,8 @@ def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text,
     mirage_air_js = json.dumps(mirage_air_text)
     mirage_app_js = json.dumps(mirage_app_text)
     hr_temp_js = json.dumps(hr_temp_meta)
+    heatsun_temp_js = json.dumps(heatsun_temp_text)
+    heatsun_uv_js = json.dumps(heatsun_uv_text)
     return f"""
 var ACT_DATA  = {act_json};
 var SYNC_IDS  = {json.dumps(sync_ids)};
@@ -727,6 +730,32 @@ function toggleHrTemp(view, btn) {{
   var rl = {{}};
   for (var i = 0; i < anns.length; i++) rl['annotations[' + i + '].text'] = anns[i];
   Plotly.relayout(el, rl);
+  var grp = btn ? btn.parentNode : null;
+  if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
+    b.classList.remove('active');
+  }});
+  if (btn) btn.classList.add('active');
+}}
+
+// ─── Heat & Sun chart (V9): air-temp ↔ UV toggle ───────────────────────────
+// Traces 0-1 = temp scatter+fit, 2-3 = UV scatter+fit. The y-axis (residualized
+// pace) never moves; only the x-axis title, autorange, and the stat annotation
+// (index 0) swap per view.
+var HEATSUN_ANN = {{
+  temp: {heatsun_temp_js},
+  uv:   {heatsun_uv_js}
+}};
+function toggleHeatSun(view, btn) {{
+  var el = document.getElementById('chart-x-heatsun');
+  if (!el) return;
+  var vis = view === 'uv'
+    ? [false, false, true, true]
+    : [true, true, false, false];
+  Plotly.restyle(el, {{visible: vis}}, [0, 1, 2, 3]);
+  Plotly.relayout(el, {{
+    'xaxis.title.text': view === 'uv' ? 'UV index' : 'Air temperature (°F)',
+    'annotations[0].text': HEATSUN_ANN[view]
+  }});
   var grp = btn ? btn.parentNode : null;
   if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
     b.classList.remove('active');
