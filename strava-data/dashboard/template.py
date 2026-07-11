@@ -579,7 +579,8 @@ main {{
 # ─── JS ───────────────────────────────────────────────────────────────────────
 
 def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text,
-             mirage_air_text, mirage_app_text, hr_temp_meta):
+             mirage_air_text, mirage_app_text, hr_temp_meta,
+             heatsun_temp_text, heatsun_uv_text):
     # json.dumps produces safely-escaped JS string literals (handles quotes,
     # backslashes) for the build-time-computed annotation strings/arrays.
     heat_air_js = json.dumps(heat_air_text)
@@ -587,6 +588,8 @@ def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text,
     mirage_air_js = json.dumps(mirage_air_text)
     mirage_app_js = json.dumps(mirage_app_text)
     hr_temp_js = json.dumps(hr_temp_meta)
+    heatsun_temp_js = json.dumps(heatsun_temp_text)
+    heatsun_uv_js = json.dumps(heatsun_uv_text)
     return f"""
 var ACT_DATA  = {act_json};
 var SYNC_IDS  = {json.dumps(sync_ids)};
@@ -727,6 +730,32 @@ function toggleHrTemp(view, btn) {{
   var rl = {{}};
   for (var i = 0; i < anns.length; i++) rl['annotations[' + i + '].text'] = anns[i];
   Plotly.relayout(el, rl);
+  var grp = btn ? btn.parentNode : null;
+  if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
+    b.classList.remove('active');
+  }});
+  if (btn) btn.classList.add('active');
+}}
+
+// ─── Heat & Sun chart (V9): air-temp ↔ UV toggle ───────────────────────────
+// Traces 0-1 = temp scatter+fit, 2-3 = UV scatter+fit. The y-axis (residualized
+// pace) never moves; only the x-axis title, autorange, and the stat annotation
+// (index 0) swap per view.
+var HEATSUN_ANN = {{
+  temp: {heatsun_temp_js},
+  uv:   {heatsun_uv_js}
+}};
+function toggleHeatSun(view, btn) {{
+  var el = document.getElementById('chart-x-heatsun');
+  if (!el) return;
+  var vis = view === 'uv'
+    ? [false, false, true, true]
+    : [true, true, false, false];
+  Plotly.restyle(el, {{visible: vis}}, [0, 1, 2, 3]);
+  Plotly.relayout(el, {{
+    'xaxis.title.text': view === 'uv' ? 'UV index' : 'Air temperature (°F)',
+    'annotations[0].text': HEATSUN_ANN[view]
+  }});
   var grp = btn ? btn.parentNode : null;
   if (grp) grp.querySelectorAll('.seg-btn').forEach(function(b) {{
     b.classList.remove('active');
@@ -920,16 +949,24 @@ function syncRange(sourceId, ed) {{
   }});
 }})();
 
-// ─── Wire chart listeners on load ──────────────────────────────────────────
-window.addEventListener('load', function() {{
+// ─── Wire listeners ─────────────────────────────────────────────────────────
+// Runs immediately: this script is the last node in <body>, so the DOM — and,
+// because the Plotly bundle is a render-blocking <head> script, every chart's
+// inline Plotly.newPlot — has already executed. Do NOT gate this on the window
+// `load` event: `load` also waits for web fonts, the map chart's tiles and the
+// analytics script, so tab routing / the detail panel / calendar clicks would be
+// dead until all of those finish (and forever if one hangs). Every Plotly call
+// below is also guarded so a blocked CDN (ad-blocker / privacy filter / offline)
+// can't throw and take the whole interactive UI down along with the charts.
+(function() {{
   SYNC_IDS.forEach(function(id) {{
     var el = document.getElementById(id);
-    if (!el) return;
+    if (!el || typeof el.on !== 'function') return;
     el.on('plotly_relayout', function(ed) {{ syncRange(id, ed); }});
   }});
   CLICK_IDS.forEach(function(id) {{
     var el = document.getElementById(id);
-    if (!el) return;
+    if (!el || typeof el.on !== 'function') return;
     el.on('plotly_click', function(data) {{
       if (!data.points || !data.points.length) return;
       var pt = data.points[0];
@@ -1075,7 +1112,7 @@ window.addEventListener('load', function() {{
       }}
     }});
   }})();
-}});
+}})();
 """
 
 

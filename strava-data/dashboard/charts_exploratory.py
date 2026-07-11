@@ -861,3 +861,252 @@ def chart_x_load(rows):
                      total_suffer=total_suffer)
 
 
+# ─── V9/V10 — Heat & Sun: does temp, UV, or temp+UV best predict pace? ─────────
+# Research question: after removing the parts of pace/speed that distance and
+# elevation already explain, does AIR TEMPERATURE, UV INDEX, or a combined
+# temp+UV score best predict endurance pace (running) / speed (MTB)?
+#
+# Honesty rails (baked into captions/annotations, per the literature):
+#   • Air temperature is the best-supported single predictor of endurance pace
+#     (El Helou 2012). UV index is NOT an independent physiological driver — it is
+#     a proxy for solar radiant load / clear-sky conditions and is collinear with
+#     temperature and time-of-day.
+#   • The sports-science gold standard is WBGT, which also folds in HUMIDITY. We
+#     have no humidity, so the combined score is an explicit "WBGT-lite" proxy.
+#   • Raw pace is dominated by distance, elevation and fitness, not weather, so
+#     the response is DISTANCE+ELEVATION-RESIDUALIZED pace: we regress pace on
+#     distance+elevation first and relate the residual to weather. The reported
+#     numbers are each predictor's PARTIAL R² over that distance+elevation
+#     baseline — the fraction of the *left-over* pace variance weather explains.
+
+def _ols(X, y):
+    """Least-squares fit. X: (n,k) design incl. intercept column. Returns
+    (coef, yhat). numpy is the only non-stdlib dep allowed here."""
+    coef, *_ = np.linalg.lstsq(X, y, rcond=None)
+    return coef, X @ coef
+
+
+def _r2(y, yhat):
+    y = np.asarray(y, dtype=float); yhat = np.asarray(yhat, dtype=float)
+    ss_tot = float(np.sum((y - y.mean()) ** 2))
+    if ss_tot == 0:
+        return 0.0
+    return 1.0 - float(np.sum((y - yhat) ** 2)) / ss_tot
+
+
+def _heatsun_prep(rows, sport_types, is_run):
+    """Shared transform for V9/V10. Filters to `sport_types` with complete
+    distance/elevation/temp/UV/speed, residualizes the response (pace min/mi for
+    runs, speed mph for MTB) against distance+elevation, then fits weather models
+    on that residual. Returns everything both charts need."""
+    dist, elev, tempc, uv, spd = [], [], [], [], []
+    for r in rows:
+        if r["sport_type"] not in sport_types:
+            continue
+        d = mf(r["distance_km"]); e = mf(r["total_elevation_gain_m"])
+        t = mf(r["average_temp_c"]); u = mf(r["uv_index"]); s = mf(r["average_speed_kmh"])
+        if None in (d, e, t, u, s) or s == 0:
+            continue
+        dist.append(d); elev.append(e); tempc.append(t); uv.append(u); spd.append(s)
+    dist = np.array(dist); elev = np.array(elev); tempc = np.array(tempc)
+    uv = np.array(uv); spd = np.array(spd)
+    n = len(spd)
+
+    # Response in DISPLAY units (policy): running pace min/mi, MTB speed mph.
+    if is_run:
+        y = 60.0 / (spd * KM_TO_MI)   # pace min/mi (lower = faster)
+    else:
+        y = spd * KM_TO_MI            # speed mph (higher = faster)
+    tempF = tempc * 9.0 / 5.0 + 32.0
+    ones = np.ones(n)
+
+    # Baseline: y ~ distance + elevation. Residual = the pace/speed NOT explained
+    # by how far/hilly the outing was. Weather models fit this residual.
+    _, y_base = _ols(np.column_stack([ones, dist, elev]), y)
+    resid = y - y_base
+    r2_base = _r2(y, y_base)
+    mean_y = float(y.mean())
+
+    # Temp — quadratic (the literature's inverted-U). Partial R² = residual
+    # variance explained by temp alone.
+    ct, temp_hat = _ols(np.column_stack([ones, tempF, tempF ** 2]), resid)
+    r2_temp = _r2(resid, temp_hat)
+    b1, c2 = float(ct[1]), float(ct[2])
+    # Vertex of the parabola in pace-space. For pace a MINIMUM (c2>0) is the
+    # fastest temp; for speed a MAXIMUM (c2<0) is the fastest temp. Only trust it
+    # as a "fastest ≈ X°F" claim when it is that kind of extremum AND in-range.
+    vertex = (-b1 / (2.0 * c2)) if c2 != 0 else float("nan")
+    fastest_is_min = c2 > 0 if is_run else c2 < 0
+    in_range = (not math.isnan(vertex)) and tempF.min() <= vertex <= tempF.max()
+    temp_optimum = vertex if (fastest_is_min and in_range) else None
+    # Fitted response at the cold vs warm end → plain-language trend direction.
+    def temp_fit_at(T):
+        return float(ct[0] + b1 * T + c2 * T * T)
+    warm_minus_cold = temp_fit_at(tempF.max()) - temp_fit_at(tempF.min())
+    # For pace, positive Δ = slower when warm; for speed, positive Δ = faster.
+    warmer_slower = (warm_minus_cold > 0) if is_run else (warm_minus_cold < 0)
+
+    # UV — linear. Solar-load proxy, not a UV-biology effect.
+    cu, uv_hat = _ols(np.column_stack([ones, uv]), resid)
+    r2_uv = _r2(resid, uv_hat)
+
+    # Combined "WBGT-lite" — temp (quadratic) + UV, no humidity available.
+    _, comb_hat = _ols(np.column_stack([ones, tempF, tempF ** 2, uv]), resid)
+    r2_comb = _r2(resid, comb_hat)
+
+    collinear = float(np.corrcoef(tempF, uv)[0, 1])
+
+    return dict(
+        n=n, is_run=is_run, r2_base=r2_base, mean_y=mean_y,
+        tempF=tempF, uv=uv, resid=resid, resid_disp=resid + mean_y,
+        temp_coef=ct, uv_coef=cu,
+        r2_temp=r2_temp, r2_uv=r2_uv, r2_comb=r2_comb,
+        temp_optimum=temp_optimum, warmer_slower=warmer_slower,
+        collinear=collinear,
+    )
+
+
+def _heat_ann(fig, text):
+    """The single swap-on-toggle stat pill for V9 (annotation index 0)."""
+    fig.add_annotation(
+        x=0.98, y=0.03, xref="paper", yref="paper", xanchor="right", yanchor="bottom",
+        text=text, showarrow=False,
+        font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE),
+        bgcolor=X_ANN_BG,
+    )
+
+
+def chart_x_heatsun(rows):
+    """V9 - Heat & Sun (Running). Air-temp ↔ UV toggle scatter of
+    distance+elevation-residualized pace (min/mi, reversed = faster up).
+
+    4 traces (stable indices):
+      0 temp scatter, 1 temp quadratic curve   (visible)
+      2 UV scatter,   3 UV linear fit          (hidden)
+    A page toggle (`toggleHeatSun`) swaps trace visibility, the x-axis title, and
+    the stat annotation (index 0). The y-axis (residualized pace) never moves."""
+    d = _heatsun_prep(rows, ("Run", "TrailRun"), is_run=True)
+    tempF, uv, yd = d["tempF"], d["uv"], d["resid_disp"]
+
+    fig = go.Figure()
+    # (0) temp scatter
+    fig.add_trace(go.Scatter(
+        x=tempF, y=yd, mode="markers", name="temp",
+        marker=dict(color=X_TEAL, opacity=0.5, size=6),
+        hovertemplate="%{x:.0f} °F<br>adj pace %{customdata} /mi<extra></extra>",
+        customdata=[fmt_pace(v) for v in yd],
+    ))
+    # (1) temp quadratic curve
+    tline = np.linspace(tempF.min(), tempF.max(), 120)
+    ct = d["temp_coef"]
+    tcurve = ct[0] + ct[1] * tline + ct[2] * tline ** 2 + d["mean_y"]
+    fig.add_trace(go.Scatter(
+        x=tline, y=tcurve, mode="lines",
+        line=dict(color=X_SLATE, dash="dash", width=1.5),
+        showlegend=False, hoverinfo="skip",
+    ))
+    # (2) UV scatter (hidden)
+    fig.add_trace(go.Scatter(
+        x=uv, y=yd, mode="markers", name="uv", visible=False,
+        marker=dict(color=X_TEAL, opacity=0.5, size=6),
+        hovertemplate="UV %{x:.1f}<br>adj pace %{customdata} /mi<extra></extra>",
+        customdata=[fmt_pace(v) for v in yd],
+    ))
+    # (3) UV linear fit (hidden)
+    uline = np.linspace(uv.min(), uv.max(), 2)
+    cu = d["uv_coef"]
+    ucurve = cu[0] + cu[1] * uline + d["mean_y"]
+    fig.add_trace(go.Scatter(
+        x=uline, y=ucurve, mode="lines", visible=False,
+        line=dict(color=X_SLATE, dash="dash", width=1.5),
+        showlegend=False, hoverinfo="skip",
+    ))
+
+    tidy_dark(fig)
+    fig.update_layout(showlegend=False, margin=dict(t=20, b=50, l=64, r=20))
+    fig.update_xaxes(title_text="Air temperature (°F)")
+    # Y: residualized pace, min/mi, REVERSED (faster up). Robust range so a couple
+    # of extreme residual outliers don't compress the cloud; points may clip.
+    lo, hi = float(np.percentile(yd, 1.5)), float(np.percentile(yd, 98.5))
+    pad = 0.4
+    pv, pt = _pace_ticks([lo - pad, hi + pad])
+    fig.update_yaxes(title_text="Adj. pace (min/mi, faster = up)",
+                     range=[hi + pad, lo - pad], tickvals=pv, ticktext=pt)
+
+    # Swap-on-toggle stat pill (index 0) + the two view strings for the JS toggle.
+    def _dir_run(slower):
+        return "slower" if slower else "faster"
+    if d["temp_optimum"] is not None:
+        temp_tail = f"fastest ≈ {d['temp_optimum']:.0f} °F"
+    else:
+        temp_tail = f"warmer → {_dir_run(d['warmer_slower'])} (no in-range optimum)"
+    temp_text = f"Temp partial R²={d['r2_temp']:.3f} · {temp_tail}"
+    uv_text = (f"UV partial R²={d['r2_uv']:.3f} · solar-load proxy, "
+               f"not a UV effect (r={d['collinear']:.2f} with temp)")
+    _heat_ann(fig, temp_text)
+    fig.add_annotation(
+        x=0.02, y=0.97, xref="paper", yref="paper", xanchor="left", yanchor="top",
+        text="dashed = fit · pace holds distance & elevation fixed",
+        showarrow=False,
+        font=dict(family=PLOT_FONT_FAMILY, size=9, color=X_SLATE), bgcolor=X_ANN_BG)
+
+    return fig, dict(n=d["n"], r2_base=d["r2_base"], r2_temp=d["r2_temp"],
+                     r2_uv=d["r2_uv"], r2_comb=d["r2_comb"],
+                     temp_optimum=d["temp_optimum"], collinear=d["collinear"],
+                     heatsun_temp_text=temp_text, heatsun_uv_text=uv_text)
+
+
+def chart_x_heatverdict(rows):
+    """V10 - The Verdict: which weather metric predicts best? Grouped horizontal
+    bars of PARTIAL R² (weather over a distance+elevation baseline) for Temp / UV /
+    Combined (WBGT-lite), Running (teal) vs MTB (amber). The literal answer to the
+    research question."""
+    run = _heatsun_prep(rows, ("Run", "TrailRun"), is_run=True)
+    mtb = _heatsun_prep(rows, ("MountainBikeRide",), is_run=False)
+    cats = ["Temp", "UV", "Combined"]
+    run_vals = [run["r2_temp"], run["r2_uv"], run["r2_comb"]]
+    mtb_vals = [mtb["r2_temp"], mtb["r2_uv"], mtb["r2_comb"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=cats, x=run_vals, name=f"Running (n={run['n']})", orientation="h",
+        marker_color=X_TEAL, opacity=0.85,
+        text=[f"{v*100:.1f}%" for v in run_vals], textposition="outside",
+        textfont=dict(family=PLOT_FONT_FAMILY, size=10, color=X_TEAL),
+        hovertemplate="Running · %{y}<br>partial R² %{x:.3f}<extra></extra>",
+    ))
+    fig.add_trace(go.Bar(
+        y=cats, x=mtb_vals, name=f"MTB (n={mtb['n']})", orientation="h",
+        marker_color=X_AMBER, opacity=0.85,
+        text=[f"{v*100:.1f}%" for v in mtb_vals], textposition="outside",
+        textfont=dict(family=PLOT_FONT_FAMILY, size=10, color=X_AMBER),
+        hovertemplate="MTB · %{y}<br>partial R² %{x:.3f}<extra></extra>",
+    ))
+
+    tidy_dark(fig)
+    fig.update_layout(showlegend=True, barmode="group",
+                      margin=dict(t=20, b=44, l=90, r=30))
+    xmax = max(run_vals + mtb_vals)
+    # dtick=1% so ticks read 0/1/2/3/4% (auto half-percent ticks rounded to
+    # duplicate integer-percent labels like "1% 1% 2% 2%").
+    fig.update_xaxes(title_text="Partial R² — variance in pace/speed explained "
+                                "(over distance + elevation)",
+                     range=[0, xmax * 1.3], tickformat=".0%", dtick=0.01)
+    fig.update_yaxes(title_text="", categoryorder="array",
+                     categoryarray=list(reversed(cats)))
+    # Winner + collinearity caveat pill. Top-right (empty above the short Temp
+    # bars) so it never overlaps the long "Combined" bar at the bottom.
+    run_best = cats[int(np.argmax(run_vals))]
+    fig.add_annotation(
+        x=0.98, y=0.97, xref="paper", yref="paper", xanchor="right", yanchor="top",
+        text=(f"Running: {run_best} wins, but all weak · "
+              f"temp~UV r={run['collinear']:.2f}"),
+        showarrow=False,
+        font=dict(family=PLOT_FONT_FAMILY, size=10, color=X_SLATE), bgcolor=X_ANN_BG)
+
+    return fig, dict(run_vals=run_vals, mtb_vals=mtb_vals,
+                     n_run=run["n"], n_mtb=mtb["n"],
+                     run_best=run_best, run_collinear=run["collinear"],
+                     mtb_collinear=mtb["collinear"])
+
+
