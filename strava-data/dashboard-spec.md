@@ -386,6 +386,59 @@ figure.
   `renderActivity`, joined by a `.d-sep` divider, and opens the panel through the same
   `openPanel()` both paths share. Click listeners attach to `.hm-cell[data-date]`.
 
+## Heat & Sun — UV/temp partial-R² charts (2026-07-11)
+
+Net-new **Exploratory** subsection ("Heat & Sun · Does Weather Predict Pace?")
+answering: after removing what distance + elevation already explain, does **air
+temperature**, **UV index**, or a **combined temp+UV** score best predict
+endurance pace (running) / speed (MTB)? First use of the `uv_index` column.
+Builders live in `charts_exploratory.py` (`chart_x_heatsun`, `chart_x_heatverdict`);
+both share `_heatsun_prep(rows, sport_types, is_run)`.
+
+**Method (shared, honest by construction):** complete-case rows with
+distance/elevation/`average_temp_c`/`uv_index`/`average_speed_kmh`. Response =
+pace min/mi (run) or speed mph (MTB). **Baseline** OLS `response ~ 1 + distance +
+elevation`; the **residual** is the response with distance+elevation removed. Each
+weather model is fit on that residual and its **partial R²** (`1 − SS_res/SS_tot`
+of the residual) is the share of left-over variance it explains: **Temp** =
+quadratic `resid ~ tempF + tempF²` (allows the literature inverted-U); **UV** =
+linear `resid ~ uv`; **Combined ("WBGT-lite")** = `resid ~ tempF + tempF² + uv`.
+No HR gate (full N). `numpy.linalg.lstsq` only (no pandas/scipy). Temperature is
+shown in **°F**, running pace **min/mi `M:SS` reversed**, MTB **mph** — data stays
+metric, converted at display time.
+
+**Honesty rails (baked into captions/annotations):** UV is a **solar-load / clear-sky
+proxy**, not an independent physiological driver, and is collinear with temp; the
+combined score is **WBGT-lite** because humidity is unavailable (true WBGT needs it);
+all effects are small — weather explains only a few percent of pace once
+distance+elevation are removed. No new palette color (teal `SPORT_COLORS["Running"]`,
+amber `SPORT_COLORS["MountainBikeRide"]`, slate `TEXT_SECONDARY`, dark pill
+`--ann-pill-bg`). Attribution card notes these two charts were a later Opus build.
+
+### V9 — Heat & Sun (Temperature vs UV)
+- **div id:** `chart-x-heatsun` · **height:** 460 · **Type:** Scatter (markers) + fit line. **Running only** (Run+TrailRun). **Carries a metric toggle: Air temp (default) ↔ UV index.**
+- **Toggle control:** two-button `.seg-filter`/`.seg-btn` (Air temp active by default, UV index).
+- **4 traces (stable indices):** 0 temp scatter (teal, opacity 0.5), 1 temp quadratic curve (slate dashed) — `visible=True`; 2 UV scatter, 3 UV linear fit — `visible=False`.
+- **Toggle JS (`toggleHeatSun`):** `Plotly.restyle(el,{visible:[…]},[0,1,2,3])` (temp→`[T,T,F,F]`, uv→`[F,F,T,T]`) + `Plotly.relayout` swaps `xaxis.title.text` (Air temperature (°F) ↔ UV index) and `annotations[0].text`. **Y-axis never moves.**
+- **X axis:** Air temperature °F (temp view) / UV index (UV view), autoranged.
+- **Y axis:** distance+elevation-residualized pace shown as `residual + mean pace`, label "Adj. pace (min/mi, faster = up)", **reversed** via explicit range `[p98.5+0.4, p1.5−0.4]`, `M:SS` ticks from `_pace_ticks`. A couple of extreme residual outliers may clip by design.
+- **Annotation (index 0, swapped per view, bottom-right):**
+  - **Air temp:** `Temp partial R²=0.024 · warmer → slower (no in-range optimum)`
+  - **UV index:** `UV partial R²=0.020 · solar-load proxy, not a UV effect (r=0.47 with temp)`
+  - Index 1 (static, top-left slate): `dashed = fit · pace holds distance & elevation fixed`.
+  - **Temp optimum rule:** annotate `fastest ≈ X°F` only when the parabola vertex is the fastest-kind extremum (min for pace / max for speed) **and** within the data's temp range; otherwise report the monotonic direction. In the current data the running vertex is out-of-range → "no in-range optimum".
+- **Hover:** temp → `X °F<br>adj pace M:SS /mi`; uv → `UV X.X<br>adj pace M:SS /mi`.
+- **Edge cases:** rows missing any of distance/elevation/temp/UV/speed excluded; UV partial R² equals `corr(resid, uv)²` (verified).
+- **Verify vs recipe:** `V9_n=173`, `V9_r2_base=0.156`, `V9_temp_pR2=0.0237`, `V9_uv_pR2=0.0202`, `V9_comb_pR2=0.0318`, `V9_collinear=0.466`, temp optimum = none (in-range).
+
+### V10 — The Verdict (which metric predicts best?)
+- **div id:** `chart-x-heatverdict` · **height:** 420 · **Type:** grouped **horizontal** bars (`barmode="group"`), one trace per sport.
+- **Data:** partial R² for Temp / UV / Combined, Running (teal, n=173) vs MTB (amber, n=51). Bars labeled `X.X%` outside; x-axis `tickformat=".0%"`, range `[0, max*1.25]`.
+- **Legend:** ON — `Running (n=173)` / `MTB (n=51)`. **Annotation (bottom-right slate pill):** `Running: Combined wins, but all weak · temp~UV r=0.47`.
+- **Hover:** `Running · Temp<br>partial R² 0.024` etc.
+- **Verify vs recipe — Running:** `V10_run_temp=0.0237`, `V10_run_uv=0.0202`, `V10_run_comb=0.0318`, best=Combined, `collinear=0.466`.
+- **Verify vs recipe — MTB:** `V10_mtb_temp=0.0045`, `V10_mtb_uv=0.0112`, `V10_mtb_comb=0.0132`, `V10_mtb_r2_base=0.666`, `collinear=0.570`.
+
 ---
 
 ## Appendix B — Validated numeric routines (copy verbatim into build_dashboard.py)
