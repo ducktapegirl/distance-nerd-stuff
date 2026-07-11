@@ -949,16 +949,24 @@ function syncRange(sourceId, ed) {{
   }});
 }})();
 
-// ─── Wire chart listeners on load ──────────────────────────────────────────
-window.addEventListener('load', function() {{
+// ─── Wire listeners ─────────────────────────────────────────────────────────
+// Runs immediately: this script is the last node in <body>, so the DOM — and,
+// because the Plotly bundle is a render-blocking <head> script, every chart's
+// inline Plotly.newPlot — has already executed. Do NOT gate this on the window
+// `load` event: `load` also waits for web fonts, the map chart's tiles and the
+// analytics script, so tab routing / the detail panel / calendar clicks would be
+// dead until all of those finish (and forever if one hangs). Every Plotly call
+// below is also guarded so a blocked CDN (ad-blocker / privacy filter / offline)
+// can't throw and take the whole interactive UI down along with the charts.
+(function() {{
   SYNC_IDS.forEach(function(id) {{
     var el = document.getElementById(id);
-    if (!el) return;
+    if (!el || typeof el.on !== 'function') return;
     el.on('plotly_relayout', function(ed) {{ syncRange(id, ed); }});
   }});
   CLICK_IDS.forEach(function(id) {{
     var el = document.getElementById(id);
-    if (!el) return;
+    if (!el || typeof el.on !== 'function') return;
     el.on('plotly_click', function(data) {{
       if (!data.points || !data.points.length) return;
       var pt = data.points[0];
@@ -1104,7 +1112,7 @@ window.addEventListener('load', function() {{
       }}
     }});
   }})();
-}});
+}})();
 """
 
 
