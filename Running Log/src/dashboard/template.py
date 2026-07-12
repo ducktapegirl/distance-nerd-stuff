@@ -950,6 +950,30 @@ main {{
 """
 
 
+# ─── Pre-paint theme init ─────────────────────────────────────────────────────
+# Runs synchronously in <head> BEFORE first paint, so the correct light/dark
+# class is on <html> before the body renders — this eliminates the theme flash
+# on refresh. The full theme IIFE at the end of <body> (which also retints the
+# Plotly charts) still runs later and re-applies the same class idempotently.
+THEME_INIT_JS = """<script>
+(function () {
+  try {
+    var K = 'dns-theme';
+    var v = localStorage.getItem(K);
+    if (v == null) {
+      // Migrate from the old per-dashboard keys (same origin, shared storage).
+      var old = localStorage.getItem('strava-theme') || localStorage.getItem('theme');
+      if (old === 'light' || old === 'dark' || old === 'system') { v = old; localStorage.setItem(K, v); }
+    }
+    var mode = (v === 'light' || v === 'dark' || v === 'system') ? v : 'system';
+    var light = mode === 'light' ||
+      (mode === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+    document.documentElement.classList.toggle('light', light);
+  } catch (e) {}
+})();
+</script>"""
+
+
 JS = r"""
 // ─── Tab nav ────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(tab => {
@@ -1374,7 +1398,7 @@ DATE_CHART_IDS.forEach(id => {
 (function() {
   var root = document.documentElement;
   var mq = window.matchMedia('(prefers-color-scheme: light)');
-  var STORAGE_KEY = 'theme';
+  var STORAGE_KEY = 'dns-theme';
 
   function getStoredMode() {
     var v = localStorage.getItem(STORAGE_KEY);
