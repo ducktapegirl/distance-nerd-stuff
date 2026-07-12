@@ -10,7 +10,7 @@ from dashboard.sections import (
     section_volume, section_workout_mix,
 )
 from dashboard.stats import build_race_records, compute_stats
-from dashboard.template import CSS, JS
+from dashboard.template import CSS, JS, THEME_INIT_JS
 
 
 def _compute_page_data(rows):
@@ -60,6 +60,7 @@ def _assemble_html(rows, sections, day_index_json):
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  {THEME_INIT_JS}
   {PLOTLY_CDN}
   <style>{CSS}</style>
   <script data-goatcounter="https://ducktapegirl.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
