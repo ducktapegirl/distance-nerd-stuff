@@ -65,6 +65,10 @@ CSS = f"""
 
 * {{ box-sizing: border-box; }}
 
+/* The Places hero breaks out to 100vw via a negative-margin bleed; clip any
+   horizontal overflow it would otherwise spawn (Places build delta 1). */
+body {{ overflow-x: clip; }}
+
 html, body {{
   margin: 0; padding: 0;
   background: var(--bg-base);
@@ -941,6 +945,9 @@ function syncRange(sourceId, ed) {{
         }}
       }} catch (e) {{ /* no colorbar on this chart */ }}
     }});
+    // Places hero is a bespoke canvas (not Plotly) -- retint it here too so the
+    // theme toggle and tab activation both re-ink it (Places build delta 2).
+    if (window.__placesHeroRedraw) window.__placesHeroRedraw();
   }}
   // Reachable from the separate tab-routing IIFE so hidden-tab charts get
   // retinted (not just resized) when their tab is first shown.

@@ -527,3 +527,293 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 # rng = np.random.default_rng(42); 50x lloyd(Z, 3, kmeans_pp_init(Z, 3, rng))
 # -> inertia 1050.6752, sizes {46, 70, 121}
 ```
+
+---
+
+## Places — Build-Ready Spec
+
+Pass A (Foundation + Hero) of the approved Places plan (`places-plan.md`, `places-prespec.md`).
+Design source: `strava-data/mocks/places-hero-mock.html` — **port its structure/CSS/JS; this spec
+enumerates every delta needed for real data.** Architecture is locked Option A: the hero is a
+**bespoke `<canvas>` renderer — NOT Plotly, NOT tiles.** `chart_places_hero(rows)` (new module
+`dashboard/charts_places.py`) returns one **raw HTML/`<canvas>`/JS string with real data injected
+as JSON** (the `chart_calendar()` raw-string precedent). No `fig_html`, no `tidy_dark`. All numbers
+below come from the analyst's verified Pass-A recipe — implement, do not re-derive.
+
+Tone contract (pre-spec §1): neutral keepsake. No tagline, no achievement copy — a quiet `PLACES`
+eyebrow, the map, five labels, a legend, one mono stat line.
+
+### Section contract (Pass A)
+- **Nav tuple:** in `page.py`, replace `("map", "Map")` with `("places", "Places")` — same
+  position (after `segments`, before `exploratory`). No tab-router JS change (`.tab[data-view]`
+  is generic).
+- **Section HTML:** replace the whole `<section id="view-map" class="view">` with, for `view-places`:
+  ```html
+  <section id="view-places" class="view">
+    {chart_places_hero(rows)}
+  </section>
+  ```
+  The builder string IS the section body: one `<div class="places-hero" id="places-hero">…</div>`
+  containing its own `<style>`, canvas, chrome, and `<script>` (fully self-contained). Pass B/C
+  cards will be appended after the hero div, inside the same section, in the normal `.card` flow.
+- **Retire `chart_map()`:** delete the builder in `charts_production.py`, its import and the
+  `mp = chart_map(rows)` call in `page.py`, and remove `"chart-map"` from `CLICK_IDS`
+  (`CLICK_IDS = ["chart-hr", "chart-pace"]`). This is the one sanctioned `CLICK_IDS` edit; do not
+  touch `SYNC_IDS`. `MAP_CENTER_LAT/LON` in `config.py` may remain (unused) — do not repurpose.
+- **Full-bleed:** the hero breaks out of `main`'s 1100px column with the negative-margin bleed:
+  `.places-hero { position:relative; width:100vw; margin-left:calc(50% - 50vw); overflow:hidden;
+  border-top:1px solid var(--border-subtle); border-bottom:1px solid var(--border-subtle); }`.
+  Height: desktop `height:clamp(560px, calc(100svh - 150px), 900px)`; at `max-width:640px`
+  `height:clamp(480px, 74svh, 760px)`. **Template.py delta 1 (required):** add
+  `body { overflow-x: clip; }` so the 100vw bleed never spawns a horizontal scrollbar.
+- **Template.py delta 2 (required):** at the end of `applyChartTheme()`, add
+  `if (window.__placesHeroRedraw) window.__placesHeroRedraw();` — this retints the canvas on
+  theme toggle AND on tab activation (activateView already calls `applyChartTheme`).
+- **Do not port** the mock's `html,body{overflow:hidden}` rule or the `.mocknote` element.
+- No `.section-anchor` — the on-canvas `PLACES` eyebrow replaces it.
+
+### P1 — Places Hero
+- **Container id:** `places-hero` · **canvas id:** `chart-places-hero` · **Type:** bespoke 2D
+  canvas route-density map (additive glow), hand-rolled camera, tweened fly-to.
+- **Data:** `data/streams/*.csv` via a new stdlib+numpy loader (no pandas). Per analyst recipe
+  (pinned): 324 tracks with valid GPS (20 indoor blanks skipped); decimate each `[lng,lat]`
+  polyline with RDP epsilon = 0.0001 deg (~11 m), then hard-cap 150 points by uniform stride;
+  round lat/lng to 5 decimals on serialize. Expected: **21,372 total points, ~0.47 MB JSON**,
+  per-track min/med/p95/max = 2/62/122/144.
+
+#### Injected JSON (const `PD`, compact `json.dumps(..., separators=(",",":"))`)
+```
+{
+ "lng0": -126.121, "lngspan": 58.135,      // margined All frame, west edge + span
+ "lat1": 49.982,  "latspan": 18.027,       // north edge + span
+ "ww": 43.8977, "wh": 18.027,              // world units: ww = lngspan*COSLAT, COSLAT=0.7551
+ "tracks": [ {"c":0, "g":0, "p":[lng,lat, lng,lat, ...]}, ... ],   // flat pairs, 5-dec
+ "labels": [ {"k":"home","name":"SAN DIEGO","coord":"32.95°N  117.09°W",
+              "sub":"155 activities · 2025–now","u":0.xxxx,"v":0.xxxx}, ... ],
+ "views":  { "sd":  {"u0":0.1500,"u1":0.1595,"v0":0.9282,"v1":0.9670},
+             "bos": {"u0":0.9344,"u1":0.9490,"v0":0.4095,"v1":0.4328} }
+}
+```
+- `c` = sport bucket index: 0 Running (Run+TrailRun+**Walk fold-in**), 1 MTB
+  (MountainBikeRide+**EBikeRide+Ride fold-in**), 2 Trail·ski (AlpineSki+NordicSki+Snowboard),
+  3 Hike, 4 Other (Pickleball, IceSkate, SUP — **drawn silently in slate, no legend row**).
+  Pinned bucket counts: **211 / 74 / 11 / 15 / 13** (sum 324).
+- `g` = group: 0 = San Diego home box (lat 32.5..33.5, lng -117.6..-116.6), 1 = Boston home box
+  (lat 41.9..42.9, lng -71.8..-70.7), 2 = trip (outside both). Classify by the track's **first
+  decimated stream point** (covers the 5 valid-GPS tracks that lack `start_latlng`; may differ
+  from the start_latlng counts by <=5 — label counts below are hardcoded from the analyst's pins,
+  never recomputed from `g`).
+- At JS boot, convert once to `Float32Array` u/v: `u=(lng-PD.lng0)/PD.lngspan`,
+  `v=(PD.lat1-lat)/PD.latspan` (float32 precision in 0..1 far exceeds the 5-dec source).
+- Build console line (ASCII only): `[places] hero: tracks=324 pts=21372 json_kb=~470`.
+
+#### Projection & camera (replaces the mock's `proj`)
+The analyst's equirectangular + cos-lat projection, letterboxed, with the mock's `{s, fx, fy}`
+camera composed on top in normalized world coords:
+```
+S0 = min(W / PD.ww, H / PD.wh)               // base letterbox scale, recomputed on resize
+proj(u,v) = [ W/2 + (u - cur.fx) * PD.ww * S0 * cur.s,
+              H/2 + (v - cur.fy) * PD.wh * S0 * cur.s ]
+```
+At `cur = {s:1, fx:0.5, fy:0.5}` this IS the analyst's default "All" fit (frame already carries
+the +4% margin; north = up; aspect preserved — the mock's anisotropic `nx*W / ny*H` mapping is
+**replaced**, not kept). Pan/zoom deltas change accordingly:
+- drag: `fx -= dx/(PD.ww*S0*cur.s); fy -= dy/(PD.wh*S0*cur.s)`
+- zoom-at-cursor (mock's wheel math with `W→PD.ww*S0`, `H→PD.wh*S0`); clamp `s` to **[0.65, 400]**.
+- DPR capped at 2 (mock). Redraw cost is trivial (324 strokes / ~21k vertices per frame).
+
+**Gestures — cooperative (mock delta, required).** A full-bleed ~100svh canvas that
+`preventDefault`s wheel/touch would trap page scroll on the Places tab. Adopt the standard
+cooperative-gesture pattern:
+- Mouse: drag = pan (grab/grabbing cursor, mock). **Wheel zooms only with Ctrl/Cmd held**
+  (trackpad pinch arrives as ctrlKey wheel and therefore works natively); plain wheel scrolls the
+  page and shows a transient hint pill `Ctrl + scroll to zoom` (1.2 s fade). Dblclick zooms x1.8
+  at cursor.
+- Touch: canvas `touch-action: pan-y` (one finger scrolls the page). Map pan/pinch-zoom require
+  **two active pointers** (pan by centroid delta, zoom by pinch ratio); a one-finger horizontal
+  drag shows the hint `Use two fingers to move the map`.
+- Hint pill: `.places-hint` — centered, Geist Mono 11px, glass pill (`var(--bg-glass)` +
+  `var(--border-subtle)`), opacity-transition only.
+
+**Tween (mock delta, required):** keep 620 ms, ease `1-(1-k)^3`, `prefers-reduced-motion` → snap;
+but interpolate **log(s) geometrically** (`s = s_from * pow(s_to/s_from, e)`), fx/fy linear. The
+mock's linear-in-s tween degenerates over the real 1 → ~100 zoom range.
+
+#### View control (All · San Diego · Boston · Trips)
+Fly-to targets `{s, fx, fy}`; `s` computed at click time from the current canvas size with a 0.94
+inset so labels breathe:
+`s_view = 0.94 * min( W / ((u1-u0)*PD.ww*S0), H / ((v1-v0)*PD.wh*S0) )`, `fx=(u0+u1)/2`,
+`fy=(v0+v1)/2`.
+
+| Button | Camera | Lens |
+|---|---|---|
+| All | `{s:1, fx:0.5, fy:0.5}` (exact, special-cased — frame has its own margin) | none |
+| San Diego | fit `views.sd` → fx **0.1547**, fy **0.9476** (lat 32.55..33.25, lng -117.40..-116.85) | none |
+| Boston | fit `views.bos` → fx **0.9417**, fy **0.4211** (lat 42.18..42.60, lng -71.80..-70.95) | none |
+| Trips | **tweens to the All target — never zooms** (deterministic from any user pan/zoom state) | `trips` |
+
+**Trips is a highlight lens:** with lens active, per-track alpha becomes
+`g<2 ? a*0.20 : min(0.92, a*1.55)` — the mock's exact multipliers, keyed off the real home-box
+classification `g` instead of the fake `home` flag. Home labels dim to alpha 0.34; key-trip
+labels rise to 0.9 (mock parity). All/SD/Boston clear the lens.
+
+**Fly-to hook (Pass C dependency, build now):** expose
+`window.placesFlyTo(target)` where `target` is `'all' | 'sd' | 'bos'` **or** a box
+`{lat0, lat1, lng0, lng1}` (south, north, west, east — converted to u/v, fit with the 0.94 inset,
+tweened; lens cleared; all `[data-frame]` buttons deactivate unless the name matches).
+
+#### Map control (Glow · Terrain) + theme contract
+Basemap treatment only; routes/glow logic unchanged. The hero ground is driven by **hero-scoped
+CSS custom properties** with `:root.light` overrides — the mock's dark commit becomes the dark
+half of a theme pair:
+
+| | Dark (default) | Light (`:root.light`) |
+|---|---|---|
+| Glow ground | mock gradient verbatim: `radial-gradient(120% 120% at 50% 42%, #101725 0%, #0d1117 42%, #05070a 100%)` | `radial-gradient(120% 120% at 50% 42%, var(--bg-base) 0%, var(--bg-surface) 100%)` |
+| Terrain ground | mock verbatim: `#1a1512 / #120f11 / #08060a` | same as light Glow (light paper) |
+| Composite mode | `globalCompositeOperation='lighter'` (additive glow — **preserve**) | `'multiply'` (ink accumulates darker; additive is invisible on light ground) |
+| Route colors | computed `--running`, `--mtb`, `--elevation` (Trail·ski), `#4ade80` `HIKE_COLOR`, `--other` | same var reads → light variants resolve automatically (`#0d9488/#c2710c/#6d28d9/#475569`); Hike stays `#4ade80` (matches the calendar's existing light-mode behavior — no light hike token exists) |
+| Base alphas | home tracks `0.30 + 0.12*jitter`, trip tracks `0.50 + 0.12*jitter`, `jitter = (i*0.6180339887) % 1` (deterministic organic variance replacing the mock's rng) | same × 0.85 |
+| Graticule | glow `rgba(88,120,170,.09)`, terrain `rgba(120,96,72,.10)` (mock verbatim) | computed `--text-secondary` at alpha 0.10 |
+| Terrain contour rings | `rgba(212,160,116,.13)` (mock verbatim) | computed `--text-secondary` at alpha 0.12 |
+| Label ink | name `--text-primary`-equivalent whites (mock rgba values), coord/sub slate (mock) | computed `--text-primary` / `--text-secondary`; text shadow flips to `rgba(255,255,255,.85)` halo |
+| Footer scrim | `linear-gradient(to top, rgba(5,7,10,.82), transparent)` | `rgba(255,255,255,.82)` → transparent |
+
+The mock's dark ground literals (`#101725 #05070a #1a1512 #120f11 #08060a`, graticule/ring rgba)
+are **sanctioned basemap ground tints from the design mock — they are not palette colors and must
+not be extended**. No new palette hex anywhere; every sport/emphasis color is a `config.py` token
+read through its CSS var. Theme detection: `document.documentElement.classList.contains('light')`,
+re-read on every `window.__placesHeroRedraw()` (colors parsed to `r,g,b` once per retint).
+
+Terrain-mode relief (Pass A placeholder for Pass C's real treatment): the mock's 5 concentric
+ellipse rings, drawn **only at the SIERRA and MAINE label anchors** (the two mountain trips),
+radii `r*16*0.6*rs` / `r*12*0.6*rs` with `rs = min(cur.s, 3)` (cap added so rings don't blow up at
+real zoom depths). The route **terrain gradient (green/slate/red) is Pass C — out of scope here.**
+
+#### Route rendering
+Mock's draw loop verbatim except as noted: `lineJoin/lineCap='round'`,
+`lw = max(0.8, 1.15*min(cur.s, 2))`, one `beginPath`/`stroke` per track, additive (dark) or
+multiply (light) composite, then labels in `source-over`. No animated line-drawing. Adaptive
+graticule (mock delta): real lat/lng lines, not a decorative 10x10 grid — pick step from
+`[10,5,2,1,0.5,0.2,0.1,0.05]` deg, smallest with `step * S0 * cur.s >= 72px`, draw all multiples
+crossing the viewport. No graticule labels.
+
+#### Labels & declutter
+Injected `labels` array (Python-computed anchors), drawn per the mock's `label()` (dot + name +
+mono lines) with one fix: **`ctx.font` cannot resolve `var(--mono)`** — use literal families:
+name `600 13px/11px 'Geist', ui-sans-serif, sans-serif`, coord/sub
+`11px 'Geist Mono', ui-monospace, monospace`.
+
+| Label | Anchor (u/v) | Lines | Visibility |
+|---|---|---|---|
+| SAN DIEGO | centroid of first points of `g==0` tracks | name · `{lat:.2f}°N  {lng:.2f}°W` (from centroid) · **`155 activities · 2025–now`** | always, alpha 1 (0.34 under Trips lens) |
+| BOSTON | centroid of `g==1` first points | name · centroid coord · **`137 activities · 2024–2025`** | always, alpha 1 (0.34 under lens) |
+| SIERRA | centroid of trip first-points inside lat 36.0..37.2, lng -118.9..-117.9 | `SIERRA` · `Whitney · 14,507 ft` | faint-always, alpha 0.8 (0.9 under lens) |
+| MAINE | box lat 44.6..45.6, lng -71.2..-69.9 | `MAINE` · `hut ski · 3 days` | faint-always 0.8 (0.9) |
+| VANCOUVER | box lat 48.9..49.5, lng -124.3..-122.9 (spans Nanaimo + Stanley Park, Wrinkle A — centroid mid-cluster is correct at this scale) | `VANCOUVER` · `49.3°N · northernmost` | faint-always 0.8 (0.9) |
+
+- The VANCOUVER sub-line uses the analyst's verified northernmost pin (49.29°N — FLAG 3); do NOT
+  ship any "northernmost Maine" copy. `155` is the verified SD count — not the pre-spec's ~145.
+- The count strings above are **hardcoded from the analyst pins**, never recomputed from `g`.
+- **Declutter rule (applies now; Pass C trip labels join the same system):** compute each label's
+  screen rect (`measureText` + line stack + 4px pad + dot); place in priority order — homes
+  (never skipped) by count desc, then key trips west→east, then (Pass C) other trips. Skip any
+  label whose rect intersects an already-placed rect; skipped labels reappear as zoom separates
+  them. Cull anchors >40px offscreen (mock). Named non-key trip labels are **deferred to Pass C**
+  (no verified trip clusters/names exist yet); their reveal threshold is pinned now: **`cur.s >=
+  3.0`**, same collision rule.
+- Vertical clamp: label text-block baseline clamped to `[26, H-70]` so San Diego's 3-liner (v≈0.95,
+  near the letterbox bottom at All zoom) never collides with the footer scrim; the anchor dot
+  stays at the true anchor.
+
+#### Chrome (markup contract)
+Port the mock's floating chrome, restyled onto dashboard components:
+```html
+<div class="places-chrome">
+  <div class="places-caption"><p class="places-eyebrow">Places</p></div>
+  <div class="places-controls">
+    <div class="seg-filter places-seg" role="group" aria-label="View">
+      <span class="places-seg-lbl">View</span>
+      <button class="seg-btn active" data-frame="all"    aria-pressed="true">All</button>
+      <button class="seg-btn"        data-frame="sd"     aria-pressed="false">San Diego</button>
+      <button class="seg-btn"        data-frame="bos"    aria-pressed="false">Boston</button>
+      <button class="seg-btn"        data-frame="trips"  aria-pressed="false">Trips</button>
+    </div>
+    <div class="seg-filter places-seg" role="group" aria-label="Basemap">
+      <span class="places-seg-lbl">Map</span>
+      <button class="seg-btn active" data-base="glow"    aria-pressed="true">Glow</button>
+      <button class="seg-btn"        data-base="terrain" aria-pressed="false">Terrain</button>
+    </div>
+  </div>
+  <div class="places-foot">
+    <div class="places-legend">
+      <span><i class="dot" style="background:var(--running)"></i>Running</span>
+      <span><i class="dot" style="background:var(--mtb)"></i>Mountain bike</span>
+      <span><i class="dot" style="background:var(--elevation)"></i>Trail / ski</span>
+      <span><i class="dot" style="background:#4ade80"></i>Hike</span>
+    </div>
+    <div class="places-stat"><b>319</b> activities · <b>28</b> regions · <b>9</b> states &amp; provinces</div>
+  </div>
+</div>
+```
+- Buttons keep BOTH the dashboard `.active` class and `aria-pressed` in sync. `.places-seg` adds
+  the mock's glass-over-map treatment (`backdrop-filter: blur(10px)`, `var(--bg-glass)`,
+  `var(--border)`) on top of `.seg-filter`; `.places-seg-lbl` is the mock's mono `View`/`Map`
+  prefix (9px, letterspaced, `--text-tertiary`). The existing mobile `.seg-btn{min-height:40px}`
+  rule applies automatically. Do NOT use `data-view` on these buttons (reserved by the tab router)
+  — `data-frame`/`data-base` only; all listeners scoped inside `#places-hero`.
+- Stat line is exact: **`319 activities · 28 regions · 9 states & provinces`** (319 = activities
+  with start_latlng; 324 tracks are drawn — the 5 extra are valid-GPS tracks without start_latlng;
+  do not "fix" the mismatch). Positions/gradients per mock footer; legend dot for Hike is the
+  `HIKE_COLOR` literal (documented exception above); the other three dots are CSS vars so light
+  mode retints them for free.
+- No tagline `<h1>` (pre-spec removed it); eyebrow only. Canvas gets `role="img"`
+  `aria-label="Map of every GPS route: San Diego and Boston home clusters plus trips across North America"`.
+
+#### Motion, lifecycle & a11y
+- Keep the mock's entrance choreography (canvas `rise` 1100ms, caption/controls/footer staggered
+  `fade` 450/600/750ms) and the 620ms fly-to tween (log-s, above).
+  `@media (prefers-reduced-motion: reduce)`: all CSS animations off, opacity 1, tween → snap
+  (mock's `reduce` flag — preserve both halves).
+- **Sizing:** a `ResizeObserver` on `#places-hero` drives `resize()` (the section is
+  `display:none` until its tab activates — window-resize alone reads 0 width; the observer fires
+  on first layout). Also expose `window.__placesHeroRedraw = retintAndDraw` (re-reads CSS vars,
+  redraws) — called by the `applyChartTheme()` hook (Section contract, delta 2).
+- Keyboard: buttons are native (focus-visible outline per mock via `--accent`). Canvas itself is
+  non-focusable; all camera destinations are reachable through the View buttons.
+
+#### Edge cases
+- 20 indoor/blank stream files skipped; 25 activities without start_latlng: 5 have valid GPS and
+  are drawn (classified by first stream point), 20 do not exist as drawable tracks.
+- Novelty point-blobs (Pickleball x11, IceSkate, SUP) decimate to ~2 points spanning meters —
+  sub-pixel slate flecks at All zoom by design (round lineCap makes them dots at deep zoom).
+- Tracks with 2 identical points after decimation: draw anyway (invisible or dot — harmless).
+- A key-trip label box with zero contained trip tracks → drop that label silently (assert in
+  build print instead of crashing).
+- No antimeridian handling needed (lng -123.97..-70.14).
+- Zoom floor 0.65 / ceiling 400; 5-decimal coords (~1.1 m) stay smooth at ceiling; RDP epsilon
+  ~11 m gives a slightly chunky street trace at extreme zoom — accepted (heatmap aesthetic, not
+  route inspection).
+- JSON budget: assert <= 0.6 MB and warn if total points drift >5% from 21,372 (data refresh).
+
+#### Verify vs recipe (developer asserts / QA checks)
+- `tracks=324`, `total_pts=21372` (±5% tolerance only on data refresh), `json <= 0.6 MB`.
+- Bucket counts `211/74/11/15/13` (Running incl. 5 Walks / MTB incl. 11 EBike + 4 Ride /
+  Trail·ski / Hike / silent Other) — sum 324.
+- Frame constants: `lng0=-126.121, lngspan=58.135, lat1=49.982, latspan=18.027, ww=43.8977,
+  wh=18.027, COSLAT=0.7551` (COSLAT from raw-extent midpoint lat 40.9685 — constant, never
+  recomputed from the margined frame).
+- View centers: SD `fx=0.1547, fy=0.9476`; Boston `fx=0.9417, fy=0.4211`; All `s=1, fx=fy=0.5`.
+- Label strings exact: `155 activities · 2025–now` (NOT 145), `137 activities · 2024–2025`,
+  `Whitney · 14,507 ft`, `hut ski · 3 days`, `49.3°N · northernmost` (no Maine-northernmost copy).
+- Stat line exact: `319 activities · 28 regions · 9 states & provinces`.
+- Trips button: camera target equals the All target (no zoom); lens multipliers `x0.20` (g<2) /
+  `min(0.92, x1.55)` (g==2); home labels 0.34 / key trips 0.9.
+- Dark = `lighter` composite on dark radial ground; light = `multiply` with light-token route
+  colors; both themes legible (QA: screenshot both, Glow + Terrain).
+- Plain wheel over the hero scrolls the page (hint pill appears); Ctrl/Cmd+wheel zooms;
+  one-finger touch scrolls; two-finger pans/zooms.
+- `prefers-reduced-motion`: no entrance animation, fly-to snaps.
+- Nav shows `Places` (no `Map`); `view-map` section gone; `CLICK_IDS` no longer contains
+  `chart-map`; `window.placesFlyTo` exists and accepts `'sd'` and a `{lat0,lat1,lng0,lng1}` box.
+- Build print (ASCII): `[places] hero: tracks=324 pts=21372 json_kb=~470`.

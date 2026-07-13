@@ -8,9 +8,10 @@ from .charts_exploratory import (
     chart_x_heatsun, chart_x_heatverdict, chart_x_load, chart_x_metronome,
     chart_x_mirage, chart_x_seasonal,
 )
+from .charts_places import chart_places_hero
 from .charts_production import (
     _seg_effort_points, chart_calendar, chart_elevation, chart_heartrate,
-    chart_map, chart_pace, chart_run_hr_vs_temp, chart_run_pace_vs_hr,
+    chart_pace, chart_run_hr_vs_temp, chart_run_pace_vs_hr,
     chart_run_seg_hr_vs_grade, chart_run_seg_pace_vs_grade,
     chart_run_seg_pace_vs_tortuosity, chart_mtb_seg_hr_vs_grade,
     chart_mtb_seg_pace_vs_grade, chart_mtb_seg_pace_vs_tortuosity,
@@ -72,9 +73,7 @@ def _build_main_charts(rows, segs):
     elev_c = chart_elevation(rows)
     print("  segments...")
     segs_c = chart_segment_prs(segs)
-    print("  map...")
-    mp     = chart_map(rows)
-    return cal, vol, hr_c, pac, elev_c, segs_c, mp
+    return cal, vol, hr_c, pac, elev_c, segs_c
 
 
 def _build_trend_and_segment_scatter_charts(rows):
@@ -287,7 +286,7 @@ def _build_stats_panel(rows, stats):
             ("volume",    "Volume"),
             ("trends",    "Trends"),
             ("segments",  "Segments"),
-            ("map",       "Map"),
+            ("places",    "Places"),
             ("exploratory", "Exploratory"),
         ]
     )
@@ -305,7 +304,7 @@ def _build_stats_panel(rows, stats):
 
 
 def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
-                    cal, vol, hr_c, pac, elev_c, segs_c, mp,
+                    cal, vol, hr_c, pac, elev_c, segs_c, places_hero,
                     run_pace_hr, run_hr_temp, run_pace_tort, run_pace_grade,
                     run_hr_grade, mtb_pace_tort, mtb_pace_grade, mtb_hr_grade,
                     cons_cards_html, fast_cards_html, grade_time_html,
@@ -449,12 +448,8 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   {grade_time_html}
 </section>
 
-<section id="view-map" class="view">
-  <div class="section-anchor">Map</div>
-  <div class="card">
-    <div class="card-title">Activity Locations</div>
-    {fig_html(mp, 520, div_id="chart-map")}
-  </div>
+<section id="view-places" class="view">
+  {places_hero}
 </section>
 
 <section id="view-exploratory" class="view">
@@ -554,7 +549,9 @@ def build_page(rows, segs):
     stats = compute_stats(rows)
     act_json = _activity_detail_json(rows)
 
-    cal, vol, hr_c, pac, elev_c, segs_c, mp = _build_main_charts(rows, segs)
+    cal, vol, hr_c, pac, elev_c, segs_c = _build_main_charts(rows, segs)
+    print("  places hero...")
+    places_hero = chart_places_hero(rows)
 
     (seg_efforts, act_by_id, scatter_charts,
      run_hr_temp_meta) = _build_trend_and_segment_scatter_charts(rows)
@@ -572,7 +569,7 @@ def build_page(rows, segs):
     date_range, stats_html, nav_links, theme_buttons = _build_stats_panel(rows, stats)
 
     SYNC_IDS  = ["chart-volume", "chart-hr", "chart-pace", "chart-elev"]
-    CLICK_IDS = ["chart-hr", "chart-pace", "chart-map"]
+    CLICK_IDS = ["chart-hr", "chart-pace"]
     js = build_js(act_json, SYNC_IDS, CLICK_IDS, heat_air_text, heat_app_text,
                   mirage_air_text, mirage_app_text, run_hr_temp_meta,
                   heatsun_temp_text, heatsun_uv_text)
@@ -580,7 +577,8 @@ def build_page(rows, segs):
     return _assemble_html(
         date_range=date_range, stats_html=stats_html, nav_links=nav_links,
         theme_buttons=theme_buttons, js=js,
-        cal=cal, vol=vol, hr_c=hr_c, pac=pac, elev_c=elev_c, segs_c=segs_c, mp=mp,
+        cal=cal, vol=vol, hr_c=hr_c, pac=pac, elev_c=elev_c, segs_c=segs_c,
+        places_hero=places_hero,
         run_pace_hr=run_pace_hr, run_hr_temp=run_hr_temp,
         run_pace_tort=run_pace_tort, run_pace_grade=run_pace_grade,
         run_hr_grade=run_hr_grade, mtb_pace_tort=mtb_pace_tort,
