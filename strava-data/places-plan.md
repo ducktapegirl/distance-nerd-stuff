@@ -1,6 +1,6 @@
 # Places — Build Plan (model-split execution)
 
-**Status:** APPROVED PLAN (2026-07-13). Input to a `/strava` pipeline run.
+**Status:** APPROVED PLAN — all open decisions confirmed (2026-07-13). Input to a `/strava` pipeline run.
 **Source of intent:** [`places-prespec.md`](places-prespec.md) (concept + module contracts).
 **Design mocks (in-repo):** [`mocks/places-hero-mock.html`](mocks/places-hero-mock.html),
 [`mocks/places-passport-mock.html`](mocks/places-passport-mock.html).
@@ -171,13 +171,18 @@ Modules 3–4 share the trip/superlative precompute, so they land together.
 
 ---
 
-## Open decisions to confirm before Pass A
+## Decisions confirmed before Pass A (2026-07-13)
 
-- **Rendering architecture** — adopt the mock's **canvas renderer** (Option A, recommended) or
-  reconcile the look onto a **Plotly tile map** (Option B, real basemap but loses the mock's glow /
-  fly-to / Trips lens)?
-- **Fable budget** — one dispatch (Design, recommended), or widen to Ideate / a design-QA pass?
-  (Given how complete the mocks are, Opus viz-design could even cover Design.)
-- **Build cadence** — hero-first MVP (recommended) or all four modules in one pipeline pass?
-- **Escalation** — OK to escalate a Build sub-task to Opus if projection/perf or the map fly-to
-  stalls under Sonnet?
+All four open decisions are resolved — each landed on the recommended option, so the plan above
+stands as written and is cleared to start at Pass A.
+
+- **Rendering architecture — Option A (canvas renderer).** Port the mock's `<canvas>` renderer and
+  feed it real projected coordinates; do **not** reconcile onto a Plotly tile map (Option B would
+  lose the additive glow, fly-to, and Trips lens). Both `charts_places` builders emit raw
+  HTML/`<canvas>`/JS strings with data injected as JSON (chart_calendar precedent).
+- **Fable budget — one dispatch (Design).** Fable is spent only on the Design → spec stage; Ideate
+  and any design-QA pass stay on Opus/Sonnet. Net Fable spend: one dispatch.
+- **Build cadence — hero-first MVP.** Execute in passes (A: Foundation + Hero, B: Two homes,
+  C: Passport + Peaks), pausing at each gate — not all four modules in a single pipeline pass.
+- **Escalation — approved.** A Build sub-task may escalate from Sonnet to Opus if projection/perf
+  or the map fly-to stalls; escalate the specific piece only, not the whole Build stage.
