@@ -8,8 +8,8 @@ from datetime import datetime
 import plotly.graph_objects as go
 
 from .config import (
-    BG_ELEVATED, BG_GLASS, BORDER, BORDER_SUBTLE, FASTER, GRID, HIKE_COLOR,
-    KM_TO_MI, MAP_CENTER_LAT, MAP_CENTER_LON, M_TO_FT, NEUTRAL, PLOT_FONT_FAMILY,
+    BG_GLASS, BORDER_SUBTLE, FASTER, GRID, HIKE_COLOR,
+    KM_TO_MI, M_TO_FT, NEUTRAL, PLOT_FONT_FAMILY,
     SLOWER, SPORT_COLORS, SPORT_DISPLAY, TEXT_PRIMARY, TEXT_SECONDARY,
     TEXT_TERTIARY, TITLE_FONT_FAMILY, TRAIL_RUN_COLOR,
 )
@@ -480,61 +480,6 @@ def chart_segment_prs(segs):
     )
     return fig
 
-
-def chart_map(rows):
-    by_cat = defaultdict(lambda: {"lat": [], "lon": [], "text": [], "ids": []})
-    for r in rows:
-        ll = r.get("start_latlng", "").strip()
-        if not ll:
-            continue
-        parts = ll.split(",")
-        if len(parts) != 2:
-            continue
-        lat = mf(parts[0].strip())
-        lon = mf(parts[1].strip())
-        if lat is None or lon is None:
-            continue
-        cat = sport_category(r["sport_type"])
-        ds  = r["start_date_local"][:10]
-        km  = mf(r["distance_km"]) or 0
-        by_cat[cat]["lat"].append(lat)
-        by_cat[cat]["lon"].append(lon)
-        by_cat[cat]["ids"].append(r["id"])
-        by_cat[cat]["text"].append(f"{r['name']}<br>{ds}<br>{km * KM_TO_MI:.1f} mi")
-
-    fig = go.Figure()
-    for cat in ["Running", "MountainBikeRide", "Other"]:
-        d = by_cat[cat]
-        if not d["lat"]:
-            continue
-        fig.add_trace(go.Scattermap(
-            lat=d["lat"], lon=d["lon"],
-            mode="markers", name=SPORT_DISPLAY[cat],
-            marker=dict(color=SPORT_COLORS[cat], size=9, opacity=0.85),
-            hovertext=d["text"], hoverinfo="text",
-            customdata=d["ids"],
-        ))
-
-    fig.update_layout(
-        map=dict(
-            style="carto-positron",
-            center=dict(lat=MAP_CENTER_LAT, lon=MAP_CENTER_LON),
-            zoom=11,
-        ),
-        legend=dict(
-            orientation="h", y=0, x=0.5, xanchor="center",
-            bgcolor="rgba(255,255,255,0.85)", bordercolor="#ccc", borderwidth=1,
-            font=dict(color="#11161d", size=11, family=PLOT_FONT_FAMILY),
-        ),
-        margin=dict(t=10, b=10, l=10, r=10),
-        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=TEXT_SECONDARY, family=PLOT_FONT_FAMILY),
-        hoverlabel=dict(
-            bgcolor=BG_ELEVATED, bordercolor=BORDER,
-            font=dict(family=PLOT_FONT_FAMILY, color=TEXT_PRIMARY, size=11),
-        ),
-    )
-    return fig
 
 # ─── New scatter plots ────────────────────────────────────────────────────────
 
