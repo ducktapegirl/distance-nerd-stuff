@@ -1,0 +1,263 @@
+<title>Places — passport mock</title>
+<style>
+  :root{
+    --bg:#eef1f4; --card:#ffffff; --card-2:#f7f9fb; --border:rgba(20,24,31,.10);
+    --text:#1c2128; --text2:#57606a; --text3:#8b949e; --accent:#3b82f6;
+    --run:#0f9d8f; --mtb:#c2760a; --trail:#7c5cf0; --hike:#2ea44f;
+    --sans:"Geist",ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"Geist Mono",ui-monospace,"SF Mono",SFMono-Regular,Menlo,"Cascadia Code",monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0d1117; --card:#161b22; --card-2:#1c2230; --border:rgba(48,54,61,.7);
+      --text:#e6edf3; --text2:#8b949e; --text3:#6b727c; --accent:#58a6ff;
+      --run:#2dd4bf; --mtb:#f59e0b; --trail:#a78bfa; --hike:#4ade80; }
+  }
+  :root[data-theme="light"]{ --bg:#eef1f4; --card:#ffffff; --card-2:#f7f9fb; --border:rgba(20,24,31,.10);
+    --text:#1c2128; --text2:#57606a; --text3:#8b949e; --accent:#3b82f6;
+    --run:#0f9d8f; --mtb:#c2760a; --trail:#7c5cf0; --hike:#2ea44f; }
+  :root[data-theme="dark"]{ --bg:#0d1117; --card:#161b22; --card-2:#1c2230; --border:rgba(48,54,61,.7);
+    --text:#e6edf3; --text2:#8b949e; --text3:#6b727c; --accent:#58a6ff;
+    --run:#2dd4bf; --mtb:#f59e0b; --trail:#a78bfa; --hike:#4ade80; }
+
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+    padding:clamp(24px,5vw,64px) 0; transition:background .3s,color .3s}
+  .wrap{max-width:1120px; margin:0 auto; padding:0 clamp(20px,4vw,40px)}
+
+  /* header */
+  .head{display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;
+    margin-bottom:22px}
+  .head .lede{max-width:560px}
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--text3); margin:0 0 10px}
+  h2{margin:0 0 8px; font-size:clamp(24px,3.4vw,34px); font-weight:600; letter-spacing:-.02em}
+  .sub{margin:0; color:var(--text2); font-size:15px; text-wrap:pretty}
+  .meta-right{display:flex; flex-direction:column; gap:10px; align-items:flex-end}
+  .count{font-family:var(--mono); font-size:12.5px; color:var(--text2); font-variant-numeric:tabular-nums}
+  .count b{color:var(--text); font-weight:600}
+  .gradkey{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10.5px;
+    color:var(--text3); letter-spacing:.04em}
+  .gradbar{width:96px; height:7px; border-radius:4px;
+    background:linear-gradient(90deg,#4ade80,#8b949e 50%,#f87171)}
+  :root[data-theme="light"] .gradbar{background:linear-gradient(90deg,#2ea44f,#8b949e 50%,#e5534b)}
+
+  /* filmstrip */
+  .stripwrap{position:relative;
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 26px,#000 calc(100% - 26px),transparent);
+    mask-image:linear-gradient(to right,transparent,#000 26px,#000 calc(100% - 26px),transparent)}
+  .strip{display:flex; gap:16px; overflow-x:auto; padding:6px 4px 16px;
+    scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:var(--border) transparent}
+  .strip::-webkit-scrollbar{height:8px}
+  .strip::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px}
+
+  .stamp{flex:0 0 clamp(260px,74vw,300px); scroll-snap-align:center;
+    background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden;
+    cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, border-color .2s;
+    box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .stamp:hover{transform:translateY(-4px); border-color:color-mix(in srgb,var(--accent) 45%,var(--border));
+    box-shadow:0 12px 30px rgba(0,0,0,.16)}
+  .stamp:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+
+  .thumb{position:relative; height:150px; background:#0a0e16; overflow:hidden}
+  .thumb canvas{width:100%; height:100%; display:block}
+  .badge{position:absolute; left:10px; top:10px; font-family:var(--mono); font-size:10px;
+    letter-spacing:.06em; text-transform:uppercase; color:#e6edf3; padding:5px 9px; border-radius:7px;
+    background:rgba(10,14,22,.66); border:1px solid rgba(230,237,243,.16); backdrop-filter:blur(3px)}
+  .badge.hi{color:#fca5a5; border-color:rgba(248,113,113,.4)}
+  .badge.north{color:#93c5fd; border-color:rgba(88,166,255,.4)}
+  .viewmap{position:absolute; right:10px; bottom:10px; font-family:var(--mono); font-size:10.5px;
+    color:#c9d1d9; opacity:0; transform:translateY(4px); transition:.2s;
+    background:rgba(10,14,22,.6); padding:4px 8px; border-radius:6px}
+  .stamp:hover .viewmap{opacity:1; transform:none}
+
+  .body{padding:14px 16px 17px}
+  .region{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text3); margin-bottom:7px}
+  .title{margin:0 0 11px; font-size:16.5px; font-weight:600; line-height:1.28; letter-spacing:-.01em;
+    text-wrap:balance}
+  .rowmeta{display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-family:var(--mono); font-size:11.5px; color:var(--text2); font-variant-numeric:tabular-nums}
+  .tags{color:var(--text3)}
+
+  /* brief stops */
+  .brief{margin-top:26px; padding-top:20px; border-top:1px solid var(--border)}
+  .brief h3{font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--text3); font-weight:500; margin:0 0 12px}
+  .chips{display:flex; flex-wrap:wrap; gap:9px}
+  .chip{font-size:12.5px; color:var(--text2); background:var(--card-2); border:1px solid var(--border);
+    padding:6px 11px; border-radius:999px; cursor:pointer; transition:.16s}
+  .chip:hover{color:var(--text); border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
+  .chip .dot{display:inline-block; width:5px; height:5px; border-radius:50%; margin-right:7px;
+    background:var(--text3); vertical-align:middle}
+
+  .foot{margin-top:30px; font-family:var(--mono); font-size:10px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--text3); opacity:.7; text-align:center}
+
+  @media (max-width:640px){ .head{align-items:flex-start} .meta-right{align-items:flex-start} }
+  @media (prefers-reduced-motion:reduce){ .stamp{transition:none} }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <div class="lede">
+      <p class="eyebrow">Places · The Passport</p>
+      <h2>Everywhere that wasn't home</h2>
+      <p class="sub">Each stretch of days away from Boston or San&nbsp;Diego gets one stamp — weighted by memory, not miles. A three-day summit sits beside a single morning run.</p>
+    </div>
+    <div class="meta-right">
+      <div class="count"><b>9</b> trips · <b>5</b> states &amp; <b>1</b> province</div>
+      <div class="gradkey"><span>descent</span><span class="gradbar"></span><span>climb</span></div>
+    </div>
+  </div>
+
+  <div class="stripwrap">
+    <div class="strip" id="strip">
+      <article class="stamp" tabindex="0">
+        <div class="thumb"><canvas data-profile="peak" data-seed="7"></canvas>
+          <span class="badge hi">Highest point · 14,507 ft</span>
+          <span class="viewmap">↗ view on map</span></div>
+        <div class="body">
+          <div class="region">Sierra Nevada · CA</div>
+          <h3 class="title">Mt. Whitney from Whitney Portal &amp; JMT</h3>
+          <div class="rowmeta"><span>Sep 29 – Oct 2 · 2025</span><span class="tags">hike · walk · 3 days</span></div>
+        </div>
+      </article>
+
+      <article class="stamp" tabindex="0">
+        <div class="thumb"><canvas data-profile="rolling" data-seed="19"></canvas>
+          <span class="badge north">Northernmost · 45.2°N</span>
+          <span class="viewmap">↗ view on map</span></div>
+        <div class="body">
+          <div class="region">Western Maine</div>
+          <h3 class="title">Maine Hut Trail — Days 1–3</h3>
+          <div class="rowmeta"><span>Feb 7 – 9 · 2025</span><span class="tags">nordic ski ×3</span></div>
+        </div>
+      </article>
+
+      <article class="stamp" tabindex="0">
+        <div class="thumb"><canvas data-profile="laps" data-seed="3"></canvas>
+          <span class="viewmap">↗ view on map</span></div>
+        <div class="body">
+          <div class="region">Jay, VT</div>
+          <h3 class="title">Jay Peak Spring Riding</h3>
+          <div class="rowmeta"><span>Mar 22 – 23 · 2025</span><span class="tags">snowboard · alpine ski</span></div>
+        </div>
+      </article>
+
+      <article class="stamp" tabindex="0">
+        <div class="thumb"><canvas data-profile="flat" data-seed="42"></canvas>
+          <span class="viewmap">↗ view on map</span></div>
+        <div class="body">
+          <div class="region">Mid-Michigan</div>
+          <h3 class="title">Muggy in Michigan</h3>
+          <div class="rowmeta"><span>Jun 30 – Jul 4 · 2025</span><span class="tags">run ×3</span></div>
+        </div>
+      </article>
+
+      <article class="stamp" tabindex="0">
+        <div class="thumb"><canvas data-profile="coast" data-seed="11"></canvas>
+          <span class="viewmap">↗ view on map</span></div>
+        <div class="body">
+          <div class="region">Vancouver, BC</div>
+          <h3 class="title">Stanley Park Bike Cruise</h3>
+          <div class="rowmeta"><span>Apr 10 – 11 · 2026</span><span class="tags">ride · run · hike</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <div class="brief">
+    <h3>…and a few brief stops</h3>
+    <div class="chips">
+      <span class="chip"><i class="dot"></i>Omni Mt. Washington, NH · Jul 2025</span>
+      <span class="chip"><i class="dot"></i>Baldface Circle Trail, NH · Jun 2025</span>
+      <span class="chip"><i class="dot"></i>Whaleback Mtn kid adventure, NH · Dec 2024</span>
+      <span class="chip"><i class="dot"></i>Snow Snake, MI · Feb 2026</span>
+      <span class="chip"><i class="dot"></i>Vacation Legs · Feb 2026</span>
+    </div>
+  </div>
+
+  <p class="foot">Design mock · titles &amp; dates are real, route thumbnails are illustrative</p>
+</div>
+
+<script>
+(function(){
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  // elevation profile shapes over distance 0..1
+  const PROFILES = {
+    peak:   (t)=> (t<.6 ? t/.6 : 1-(t-.6)/.4)*.92 + .04,
+    rolling:(t)=> .5 + .32*Math.sin(t*6.283*2.3) + .1*Math.sin(t*6.283*5.1),
+    laps:   (t)=> { const p=(t*3)%1; return .15 + (p<.5? p*2 : (1-p)*2)*.7 },
+    flat:   (t)=> .5 + .05*Math.sin(t*6.283*3),
+    coast:  (t)=> .42 + .07*Math.sin(t*6.283*1.8) + .03*Math.sin(t*6.283*6),
+  };
+  // grade -> color (descent green, flat slate, climb red) — all existing palette hues
+  function gradeColor(g){ // g in [-1,1]
+    const G=[74,222,128], S=[139,148,158], R=[248,113,113];
+    let a,b,k; if(g<0){a=S;b=G;k=Math.min(1,-g);} else {a=S;b=R;k=Math.min(1,g);}
+    const c=a.map((v,i)=>Math.round(v+(b[i]-v)*k));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
+  function drawThumb(cv){
+    const prof = PROFILES[cv.dataset.profile] || PROFILES.flat;
+    const rng = mulberry32((+cv.dataset.seed||1)*2654435761 >>> 0);
+    const dpr = Math.min(devicePixelRatio||1,2);
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width=w*dpr; cv.height=h*dpr; const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,w,h);
+    // faint graticule
+    ctx.strokeStyle='rgba(88,120,170,.08)'; ctx.lineWidth=1;
+    for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(i/5*w,0);ctx.lineTo(i/5*w,h);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i/5*h);ctx.lineTo(w,i/5*h);ctx.stroke();}
+
+    // build a seeded route squiggle in the upper ~72% of the tile
+    const N=110, pts=[], mx=26, my=18, top=6, botLimit=h*.66;
+    let x=mx+rng()*(w-2*mx), y=top+my+rng()*(botLimit-top-my), ang=rng()*6.283;
+    for(let i=0;i<N;i++){
+      ang += (rng()-.5)*1.15;
+      const cx=w/2, cy=(top+botLimit)/2, dx=cx-x, dy=cy-y;
+      if(Math.hypot(dx,dy) > Math.min(w,botLimit)*.42){ ang = ang*.8 + Math.atan2(dy,dx)*.2; }
+      x += Math.cos(ang)*7; y += Math.sin(ang)*4.4;
+      x=Math.max(mx,Math.min(w-mx,x)); y=Math.max(top+6,Math.min(botLimit,y));
+      pts.push([x,y]);
+    }
+    // per-segment grade from elevation profile sampled along the path
+    const elev = pts.map((_,i)=>prof(i/(N-1)));
+    let gmax=1e-6; for(let i=1;i<N;i++) gmax=Math.max(gmax,Math.abs(elev[i]-elev[i-1]));
+    ctx.lineJoin=ctx.lineCap='round'; ctx.lineWidth=2.4;
+    ctx.shadowBlur=6;
+    for(let i=1;i<N;i++){
+      const g=(elev[i]-elev[i-1])/gmax; const col=gradeColor(g);
+      ctx.strokeStyle=col; ctx.shadowColor=col;
+      ctx.beginPath(); ctx.moveTo(pts[i-1][0],pts[i-1][1]); ctx.lineTo(pts[i][0],pts[i][1]); ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+    // start/end nodes
+    ctx.fillStyle='rgba(230,237,243,.9)'; ctx.beginPath();ctx.arc(pts[0][0],pts[0][1],2.6,0,6.283);ctx.fill();
+    ctx.beginPath();ctx.arc(pts[N-1][0],pts[N-1][1],2.6,0,6.283);ctx.fill();
+
+    // elevation profile strip along the bottom (violet, faint)
+    const bandTop=h*.72, bandH=h-bandTop-6;
+    ctx.beginPath(); ctx.moveTo(mx,h-6);
+    for(let i=0;i<N;i++){ const px=mx+(i/(N-1))*(w-2*mx); const py=h-6-elev[i]*bandH; i?ctx.lineTo(px,py):ctx.lineTo(px,py); }
+    ctx.lineTo(w-mx,h-6); ctx.closePath();
+    ctx.fillStyle='rgba(167,139,250,.16)'; ctx.fill();
+    ctx.strokeStyle='rgba(167,139,250,.55)'; ctx.lineWidth=1.3;
+    ctx.beginPath();
+    for(let i=0;i<N;i++){ const px=mx+(i/(N-1))*(w-2*mx); const py=h-6-elev[i]*bandH; i?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.stroke();
+  }
+
+  function drawAll(){ document.querySelectorAll('.thumb canvas').forEach(drawThumb); }
+  drawAll();
+  let rt; addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(drawAll,150)});
+
+  // drag-to-scroll the filmstrip
+  const strip=document.getElementById('strip'); let down=false, sx, sl;
+  strip.addEventListener('pointerdown',e=>{down=true;sx=e.clientX;sl=strip.scrollLeft;strip.setPointerCapture(e.pointerId)});
+  strip.addEventListener('pointermove',e=>{if(down)strip.scrollLeft=sl-(e.clientX-sx)});
+  strip.addEventListener('pointerup',()=>down=false);
+})();
+</script>
