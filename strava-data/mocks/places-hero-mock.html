@@ -1,0 +1,309 @@
+<title>Places — hero mock</title>
+<style>
+  :root{
+    --base:#0d1117; --edge:#05070a; --surface:rgba(22,27,34,.72);
+    --border:rgba(48,54,61,.8); --border-soft:rgba(48,54,61,.45);
+    --text:#e6edf3; --text2:#8b949e; --text3:#6b727c;
+    --accent:#58a6ff; --run:#2dd4bf; --mtb:#f59e0b; --trail:#a78bfa; --hike:#4ade80;
+    --sans:"Geist",ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"Geist Mono",ui-monospace,"SF Mono",SFMono-Regular,Menlo,"Cascadia Code",monospace;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--edge); color:var(--text); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; overflow:hidden;
+  }
+  .hero{
+    position:relative; width:100%; height:100svh; min-height:560px; overflow:hidden;
+    background:radial-gradient(120% 120% at 50% 42%, #101725 0%, var(--base) 42%, var(--edge) 100%);
+    transition:background .6s ease;
+  }
+  .hero.terrain{
+    background:radial-gradient(120% 120% at 50% 42%, #1a1512 0%, #120f11 44%, #08060a 100%);
+  }
+  canvas{position:absolute; inset:0; width:100%; height:100%; display:block;
+    cursor:grab; touch-action:none; opacity:0; animation:rise 1100ms ease .12s forwards}
+  canvas:active{cursor:grabbing}
+  @keyframes rise{from{opacity:0} to{opacity:1}}
+
+  /* ── floating chrome ─────────────────────────────── */
+  .chrome{position:absolute; inset:0; pointer-events:none}
+  .chrome > *{pointer-events:auto}
+
+  .caption{position:absolute; top:clamp(22px,4vh,44px); left:clamp(22px,4vw,52px);
+    max-width:min(64vw,520px); opacity:0; animation:fade 800ms ease .45s forwards}
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.34em; text-transform:uppercase;
+    color:var(--text3); margin:0 0 14px}
+  .caption h1{margin:0; font-weight:500; line-height:1.16; letter-spacing:-.01em;
+    font-size:clamp(21px,3.1vw,34px); text-wrap:balance}
+  .caption h1 .then{color:var(--text2); font-weight:400}
+  .caption h1 .now{color:var(--text)}
+
+  .controls{position:absolute; top:clamp(22px,4vh,44px); right:clamp(22px,4vw,52px);
+    display:flex; flex-direction:column; gap:10px; align-items:flex-end;
+    opacity:0; animation:fade 800ms ease .6s forwards}
+  .seg{display:inline-flex; padding:4px; gap:2px; border-radius:12px;
+    background:var(--surface); border:1px solid var(--border);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px)}
+  .seg .lbl{font-family:var(--mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--text3); align-self:center; padding:0 8px 0 4px}
+  .seg button{font-family:var(--sans); font-size:12.5px; color:var(--text2);
+    background:transparent; border:0; border-radius:8px; padding:6px 12px; cursor:pointer;
+    transition:color .18s, background .18s; white-space:nowrap}
+  .seg button:hover{color:var(--text)}
+  .seg button[aria-pressed="true"]{color:var(--text);
+    background:rgba(88,166,255,.16); box-shadow:inset 0 0 0 1px rgba(88,166,255,.35)}
+  .seg button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .footer{position:absolute; left:0; right:0; bottom:0; padding:clamp(16px,3vh,30px) clamp(22px,4vw,52px);
+    display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap;
+    background:linear-gradient(to top, rgba(5,7,10,.82), rgba(5,7,10,0));
+    opacity:0; animation:fade 800ms ease .75s forwards}
+  .legend{display:flex; gap:16px; flex-wrap:wrap}
+  .legend span{display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--text2)}
+  .dot{width:9px; height:9px; border-radius:50%}
+  .stat{font-family:var(--mono); font-size:12px; color:var(--text2); letter-spacing:.02em;
+    text-align:right; font-variant-numeric:tabular-nums}
+  .stat b{color:var(--text); font-weight:500}
+
+  .mocknote{position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text3); opacity:.6; pointer-events:none; white-space:nowrap}
+
+  @keyframes fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+  @media (max-width:640px){
+    .controls{top:auto; bottom:96px; right:clamp(14px,4vw,52px); left:clamp(14px,4vw,52px); align-items:stretch}
+    .seg{justify-content:center}
+    .footer{flex-direction:column; align-items:flex-start}
+    .stat{text-align:left}
+  }
+  @media (prefers-reduced-motion:reduce){
+    canvas,.caption,.controls,.footer{animation:none; opacity:1; transform:none}
+  }
+</style>
+
+<div class="hero" id="hero">
+  <canvas id="map"></canvas>
+
+  <div class="chrome">
+    <div class="caption">
+      <p class="eyebrow">Places</p>
+    </div>
+
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Region">
+        <span class="lbl">View</span>
+        <button data-view="all" aria-pressed="true">All</button>
+        <button data-view="sd" aria-pressed="false">San Diego</button>
+        <button data-view="bos" aria-pressed="false">Boston</button>
+        <button data-view="trips" aria-pressed="false">Trips</button>
+      </div>
+      <div class="seg" role="group" aria-label="Basemap">
+        <span class="lbl">Map</span>
+        <button data-base="glow" aria-pressed="true">Glow</button>
+        <button data-base="terrain" aria-pressed="false">Terrain</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="legend">
+        <span><i class="dot" style="background:#2dd4bf"></i>Running</span>
+        <span><i class="dot" style="background:#f59e0b"></i>Mountain bike</span>
+        <span><i class="dot" style="background:#a78bfa"></i>Trail / ski</span>
+        <span><i class="dot" style="background:#4ade80"></i>Hike</span>
+      </div>
+      <div class="stat"><b>319</b> activities · <b>28</b> regions · <b>6</b> states &amp; <b>2</b> provinces</div>
+    </div>
+
+    <div class="mocknote">Design mock · illustrative routes, not exact GPS</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const cv = document.getElementById('map'), ctx = cv.getContext('2d'), hero = document.getElementById('hero');
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  let W=0, H=0, dpr=1;
+
+  // seeded rng so the map is stable & composed
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+  // normalized anchors (0..1 of the map rect). x→lon-ish, y→lat-ish (down = south)
+  const HOMES = [
+    {name:'SAN DIEGO', coord:'32.95°N  117.09°W', sub:'145 activities · 2025–now', x:.28, y:.66,
+     mix:[['run',.66],['mtb',.22],['trail',.12]], tracks:96, spread:.052, home:true},
+    {name:'BOSTON', coord:'42.36°N  71.06°W', sub:'136 activities · 2024–2025', x:.735, y:.34,
+     mix:[['run',.7],['mtb',.16],['trail',.14]], tracks:86, spread:.05, home:true},
+  ];
+  const TRIPS = [
+    {name:'SIERRA', coord:'Whitney · 14,507 ft', x:.44, y:.545, color:'hike', tracks:16, spread:.03, show:true},
+    {name:'MAINE', coord:'hut ski · 3 days', x:.82, y:.235, color:'trail', tracks:12, spread:.024, show:true},
+    {name:'VANCOUVER', coord:'sea level', x:.185, y:.205, color:'run', tracks:12, spread:.026, show:true},
+    {name:'SEATTLE', coord:'', x:.205, y:.30, color:'run', tracks:9, spread:.02},
+    {name:'MICHIGAN', coord:'', x:.585, y:.305, color:'mtb', tracks:11, spread:.028},
+    {name:'VERMONT', coord:'', x:.79, y:.29, color:'trail', tracks:9, spread:.02},
+    {name:'WASHINGTON', coord:'', x:.80, y:.315, color:'run', tracks:7, spread:.017},
+  ];
+  const COL = {run:'45,212,191', mtb:'245,158,11', trail:'167,139,250', hike:'74,222,128'};
+
+  // pre-generate route polylines (normalized) once
+  function pickColor(mix, r){let a=r();for(const[c,w]of mix){a-=w;if(a<=0)return c}return mix[0][0]}
+  function makeTracks(node){
+    const rng = mulberry32(Math.floor(node.x*9871+node.y*3313)+node.tracks);
+    const out=[];
+    for(let t=0;t<node.tracks;t++){
+      const col = node.mix ? pickColor(node.mix,rng) : node.color;
+      const steps = 34 + Math.floor(rng()*40);
+      let x=node.x+(rng()-.5)*node.spread, y=node.y+(rng()-.5)*node.spread;
+      let ang=rng()*6.283, pts=[[x,y]];
+      const step=node.spread*(.10+rng()*.09);
+      for(let i=0;i<steps;i++){
+        ang += (rng()-.5)*1.1;
+        // gentle pull back toward node center so clusters stay tight
+        const dx=node.x-x, dy=node.y-y, d=Math.hypot(dx,dy);
+        if(d>node.spread*.9){const to=Math.atan2(dy,dx); ang = ang*.86 + to*.14}
+        x += Math.cos(ang)*step; y += Math.sin(ang)*step*.82;
+        pts.push([x,y]);
+      }
+      out.push({col, pts, a:.34+rng()*.28, home:!!node.home});
+    }
+    return out;
+  }
+  const ROUTES = [];
+  [...HOMES,...TRIPS].forEach(n=>{ n._tracks=makeTracks(n); ROUTES.push(...n._tracks); });
+
+  // view state (pan/zoom) + tween
+  const VIEWS = {all:{s:1,fx:.5,fy:.5}, sd:{s:2.7,fx:.28,fy:.66}, bos:{s:2.7,fx:.735,fy:.34}, trips:{s:1.5,fx:.46,fy:.31}};
+  let cur={s:1,fx:.5,fy:.5}, tgt={s:1,fx:.5,fy:.5}, anim=null, terrain=false, highlight='none';
+
+  function resize(){
+    dpr = Math.min(devicePixelRatio||1, 2);
+    W = hero.clientWidth; H = hero.clientHeight;
+    cv.width = W*dpr; cv.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw();
+  }
+  function proj(nx,ny){
+    return [ W/2 + (nx*W - cur.fx*W)*cur.s,
+             H/2 + (ny*H - cur.fy*H)*cur.s ];
+  }
+
+  function drawGraticule(){
+    ctx.lineWidth=1; ctx.strokeStyle= terrain?'rgba(120,96,72,.10)':'rgba(88,120,170,.09)';
+    for(let i=0;i<=10;i++){
+      let [x0,y0]=proj(i/10,-.1),[x1,y1]=proj(i/10,1.1); ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+      let [a0,b0]=proj(-.1,i/10),[a1,b1]=proj(1.1,i/10); ctx.beginPath();ctx.moveTo(a0,b0);ctx.lineTo(a1,b1);ctx.stroke();
+    }
+  }
+  function drawContours(){ // terrain mode: faint elevation rings around mountain trips
+    const peaks=[HOMES[0], ...TRIPS.filter(t=>['SIERRA','MAINE','VERMONT','WASHINGTON'].includes(t.name))];
+    ctx.strokeStyle='rgba(212,160,116,.13)'; ctx.lineWidth=1;
+    peaks.forEach(p=>{
+      const [cx,cy]=proj(p.x,p.y);
+      for(let r=1;r<=5;r++){ctx.beginPath();ctx.ellipse(cx,cy,r*16*cur.s*.6,r*12*cur.s*.6,0,0,6.283);ctx.stroke();}
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    if(terrain) drawContours();
+    drawGraticule();
+    // routes with additive glow
+    ctx.globalCompositeOperation='lighter';
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    const lw = Math.max(.8, 1.15*Math.min(cur.s,2));
+    for(const t of ROUTES){
+      let a=t.a;
+      if(highlight==='trips') a = t.home ? t.a*.20 : Math.min(.92, t.a*1.55);
+      ctx.strokeStyle=`rgba(${COL[t.col]},${a})`; ctx.lineWidth=lw;
+      ctx.beginPath();
+      for(let i=0;i<t.pts.length;i++){const[x,y]=proj(t.pts[i][0],t.pts[i][1]); i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation='source-over';
+    drawLabels();
+  }
+
+  function label(node,alpha){
+    const [x,y]=proj(node.x,node.y);
+    if(x<-40||x>W+40||y<-40||y>H+40) return;
+    ctx.textAlign='left';
+    const bright = node.home;
+    ctx.shadowColor='rgba(0,0,0,.85)'; ctx.shadowBlur=8;
+    // tick dot
+    ctx.beginPath(); ctx.arc(x,y,bright?3:2.2,0,6.283);
+    ctx.fillStyle= bright?'rgba(230,237,243,'+alpha+')':'rgba(139,148,158,'+alpha+')'; ctx.fill();
+    // name
+    ctx.font='600 '+(bright?13:11)+'px '+getComputedStyle(document.body).fontFamily;
+    ctx.fillStyle= bright?'rgba(230,237,243,'+alpha+')':'rgba(180,188,198,'+(alpha*.9)+')';
+    ctx.fillText(node.name, x+10, y+4);
+    if(node.coord){
+      ctx.font='11px var(--mono),ui-monospace,monospace';
+      ctx.fillStyle='rgba(139,148,158,'+(alpha*.85)+')';
+      ctx.fillText(node.coord, x+10, y+20);
+    }
+    if(node.sub){
+      ctx.font='11px var(--mono),ui-monospace,monospace';
+      ctx.fillStyle='rgba(107,114,124,'+(alpha*.9)+')';
+      ctx.fillText(node.sub, x+10, y+35);
+    }
+    ctx.shadowBlur=0;
+  }
+  function drawLabels(){
+    const dimHome = highlight==='trips';
+    HOMES.forEach(h=>label(h, dimHome?.34:1));
+    const zoom = cur.s;
+    TRIPS.forEach(t=>{
+      const a = (highlight==='trips') ? .9 : (t.show ? .8 : (zoom>1.35?.75:0));
+      if(a>0) label(t,a);
+    });
+  }
+
+  function tweenTo(v){
+    tgt={...v};
+    if(reduce){cur={...v};draw();return;}
+    const from={...cur}, t0=performance.now(), dur=620;
+    cancelAnimationFrame(anim);
+    (function frame(now){
+      const k=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-k,3);
+      cur={ s:from.s+(tgt.s-from.s)*e, fx:from.fx+(tgt.fx-from.fx)*e, fy:from.fy+(tgt.fy-from.fy)*e };
+      draw();
+      if(k<1) anim=requestAnimationFrame(frame);
+    })(t0);
+  }
+
+  // wire controls
+  document.querySelectorAll('.seg [data-view]').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.seg [data-view]').forEach(o=>o.setAttribute('aria-pressed', o===b));
+    const v=b.dataset.view;
+    highlight = v==='trips' ? 'trips' : 'none';
+    // "Trips" is a highlight lens, not a place: stay wide, light up the adventures
+    tweenTo(v==='trips' ? {s:1.05,fx:.5,fy:.44} : VIEWS[v]);
+  }));
+  document.querySelectorAll('.seg [data-base]').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.seg [data-base]').forEach(o=>o.setAttribute('aria-pressed', o===b));
+    terrain = b.dataset.base==='terrain'; hero.classList.toggle('terrain', terrain); draw();
+  }));
+
+  // ── free pan & zoom (buttons only shortcut to nice framings) ──
+  let dragging=false, lx=0, ly=0;
+  cv.addEventListener('pointerdown', e=>{ dragging=true; lx=e.clientX; ly=e.clientY;
+    cancelAnimationFrame(anim); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e=>{ if(!dragging) return;
+    cur.fx -= (e.clientX-lx)/(W*cur.s); cur.fy -= (e.clientY-ly)/(H*cur.s);
+    lx=e.clientX; ly=e.clientY; draw(); });
+  cv.addEventListener('pointerup',   ()=>{ dragging=false; });
+  cv.addEventListener('pointercancel',()=>{ dragging=false; });
+  cv.addEventListener('wheel', e=>{ e.preventDefault(); cancelAnimationFrame(anim);
+    const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+    const wx=cur.fx+(mx-W/2)/(W*cur.s), wy=cur.fy+(my-H/2)/(H*cur.s);
+    cur.s = Math.min(6, Math.max(.65, cur.s*Math.exp(-e.deltaY*0.0012)));
+    cur.fx = wx-(mx-W/2)/(W*cur.s); cur.fy = wy-(my-H/2)/(H*cur.s);
+    draw(); }, {passive:false});
+
+  addEventListener('resize', resize);
+  resize();
+})();
+</script>
