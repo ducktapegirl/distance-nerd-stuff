@@ -1045,8 +1045,9 @@ by id. Titles may contain emoji (`Snow Snake 🐍`) — fine in HTML; Python `pr
   .stripwrap/.strip/.stamp/.thumb/.body/.brief/.chips` structure and CSS **verbatim** (already
   theme-aware via `prefers-color-scheme` + `:root[data-theme]`), restyled onto dashboard tokens
   where the mock used its own `--run/--mtb/...` (map to `--running/--mtb/--elevation/--hike`). Drop
-  the mock's `.foot` "design mock" note. Stamp thumbnails stay **dark insets in both themes** (fixed
-  dark ground `#0a0e16`, the mock's `.thumb` bg) — little map windows. Each `.stamp` is a
+  the mock's `.foot` "design mock" note. Stamp thumbnails are **theme-aware** (dark ground
+  `#0a0e16` in dark, light `#e9edf2` in light; canvas re-tints node/glow/graticule per theme and
+  redraws via a `MutationObserver` on the `<html>` `.light` class). Each `.stamp` is a
   `<button>`/`article[tabindex=0]` with `data-stamp`/`data-fly`; hover reveals `↗ view on map`;
   click → `window.placesFlyTo(fly)`. Featured stamps in curated order; brief stops as `.chip`s.
 - **`chart_places_peaks(rows)`** → raw HTML: a `.places-peaks` list of 6 `.peak-row`s (no mock —
