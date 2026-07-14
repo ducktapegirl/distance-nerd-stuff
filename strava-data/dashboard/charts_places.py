@@ -1410,6 +1410,23 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   };
 
   // ── controls ────────────────────────────────────────────────────────────
+  // Persist the View/Map selection (NOT arbitrary fly-to boxes from the
+  // passport/peaks) into the URL hash, '#places?v=<frame>&b=<base>', reusing
+  // the same history.replaceState mechanism the page-level tab router uses --
+  // so reloading while on a non-default Places view restores it instead of
+  // always snapping back to the default camera. Omits a key at its default
+  // (v=all, b=glow) so the common case stays a bare '#places'.
+  function syncHashState(){
+    var activeFrame = hero.querySelector('[data-frame].active');
+    var activeBase = hero.querySelector('[data-base].active');
+    var v = activeFrame ? activeFrame.dataset.frame : 'all';
+    var bmode = activeBase ? activeBase.dataset.base : 'glow';
+    var parts = [];
+    if(v && v!=='all') parts.push('v='+v);
+    if(bmode && bmode!=='glow') parts.push('b='+bmode);
+    var suffix = parts.length ? ('?'+parts.join('&')) : '';
+    history.replaceState(null, '', '#places'+suffix);
+  }
   hero.querySelectorAll('[data-frame]').forEach(function(b){
     b.addEventListener('click', function(){
       hero.querySelectorAll('[data-frame]').forEach(function(o){
@@ -1418,6 +1435,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       });
       var v=b.dataset.frame;
       tweenTo(frameTarget(v), v==='trips' ? 'trips' : 'none');
+      syncHashState();
     });
   });
   hero.querySelectorAll('[data-base]').forEach(function(b){
@@ -1429,8 +1447,42 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       terrain = b.dataset.base==='terrain';
       hero.classList.toggle('terrain', terrain);
       draw();
+      syncHashState();
     });
   });
+
+  // Restore the View/Map selection from the URL hash on boot (snap, no
+  // animated tween -- the camera should already be in place before the
+  // canvas's first paint, not visibly fly there). Only Places' own '?v=/&b='
+  // params, written by syncHashState() above; the page router (template.py)
+  // already stripped this suffix before matching the section id, so reading
+  // location.hash here again is safe and independent of that.
+  (function applyHashState(){
+    var h = location.hash || '';
+    var qIdx = h.indexOf('?');
+    if(h.indexOf('places')===-1 || qIdx===-1) return;
+    var params = new URLSearchParams(h.slice(qIdx+1));
+    var v = params.get('v'), bmode = params.get('b');
+    if(bmode==='terrain'){
+      terrain = true;
+      hero.classList.add('terrain');
+      hero.querySelectorAll('[data-base]').forEach(function(b){
+        var on = b.dataset.base==='terrain';
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on?'true':'false');
+      });
+    }
+    if(v==='sd' || v==='bos' || v==='trips'){
+      var tgt = frameTarget(v);
+      cur = {s:tgt.s, fx:tgt.fx, fy:tgt.fy};
+      lens = (v==='trips') ? 'trips' : 'none';
+      hero.querySelectorAll('[data-frame]').forEach(function(b){
+        var on = b.dataset.frame===v;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on?'true':'false');
+      });
+    }
+  })();
 
   // ── fullscreen toggle (feature-detected) ────────────────────────────────
   var fsBtn = document.getElementById('places-fs');
