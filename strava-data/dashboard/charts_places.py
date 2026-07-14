@@ -756,6 +756,9 @@ _HOMES_TEMPLATE = r"""<div class="places-homes">
     display:block; width:100%; height:200px;
     background:radial-gradient(120% 120% at 50% 45%, #101725 0%, #0d1117 55%, #05070a 100%);
   }
+  :root.light .places-homes .places-home-map{
+    background:radial-gradient(120% 120% at 50% 45%, #eef1f4 0%, #e9edf2 55%, #e2e7ed 100%);
+  }
   .places-homes .places-home-body{padding:14px 16px 16px;}
   .places-homes .places-home-name{
     font-family:'Geist', ui-sans-serif, sans-serif;
@@ -803,14 +806,20 @@ __CARDS__
     // sits in the middle of the thumbnail rather than a corner/edge.
     var fx = (d.cx != null) ? d.cx : 0.5, fy = (d.cy != null) ? d.cy : 0.5;
     ctx.clearRect(0,0,W,H);
-    ctx.globalCompositeOperation = 'lighter';
+    // Theme-aware ground (CSS handles the radial-gradient swap): additive glow
+    // reads on the dark ground, but the same 'lighter' math clips straight to
+    // white on the light ground -- switch to 'multiply' there (ink on paper),
+    // matching the hero's light-mode treatment.
+    var light = document.documentElement.classList.contains('light');
+    ctx.globalCompositeOperation = light ? 'multiply' : 'lighter';
     ctx.lineJoin='round'; ctx.lineCap='round';
     ctx.lineWidth = Math.max(0.8, 1.0);
     var tks = d.tracks;
     for(var i=0;i<tks.length;i++){
       var t = tks[i], p = t.p, m = p.length/2;
       var jitter = (i*0.6180339887) % 1;
-      ctx.strokeStyle = hexA(HEX[t.c] || HEX[4], 0.34 + 0.12*jitter);
+      var a = 0.34 + 0.12*jitter;
+      ctx.strokeStyle = hexA(HEX[t.c] || HEX[4], light ? a*0.85 : a);
       ctx.beginPath();
       for(var k=0;k<m;k++){
         var x = W/2 + (p[2*k]   - fx)*fr.ww*S0;
@@ -821,15 +830,23 @@ __CARDS__
     }
     ctx.globalCompositeOperation = 'source-over';
   }
+  var renders = [];
   [['sd','chart-places-home-sd'],['bos','chart-places-home-bos']].forEach(function(pair){
     var cv = document.getElementById(pair[1]);
     if(!cv) return;
     var render = function(){ draw(cv, pair[0]); };
+    renders.push(render);
     // Cards start in a hidden tab -> observe each canvas so first layout draws.
     if(window.ResizeObserver){ new ResizeObserver(render).observe(cv); }
     window.addEventListener('resize', render);
     render();
   });
+  // Redraw when the page theme toggles (the .light class on <html>), same as
+  // the passport thumbnails, so the glow composite mode re-picks per theme.
+  if(window.MutationObserver){
+    new MutationObserver(function(){ renders.forEach(function(r){ r(); }); })
+      .observe(document.documentElement, {attributes:true, attributeFilter:['class']});
+  }
 })();
 </script>
 </div>"""

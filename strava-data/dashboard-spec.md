@@ -903,13 +903,17 @@ Reuse the hero's already-decimated tracks; filter to each home by the track grou
 - **`.places-home`** (each card, EQUAL): `flex:1 1 0; min-width:0;` glass card reusing the dashboard
   card look -- `background:var(--bg-glass); border:1px solid var(--border); border-radius:16px;
   overflow:hidden;` (theme-aware, like every other `.card`). No hover-lift, no arrow.
-- **`.places-home-map`** (the dark heatmap thumbnail): `display:block; width:100%; height:200px;`
-  (mobile `height:170px`). **Dark-committed in BOTH themes** -- a dark inset "little window" per
-  pre-spec: fixed dark ground `background: radial-gradient(120% 120% at 50% 45%, #101725 0%,
-  #0d1117 55%, #05070a 100%)` and additive `globalCompositeOperation='lighter'` glow with the
-  **fixed dark-theme sport hexes** (bucket -> teal `#2dd4bf`, amber `#f59e0b`, violet `#a78bfa`,
-  green `#4ade80`, slate `#8b949e`) -- NO light/multiply swap, NO CSS-var reads. It does not
-  participate in `__placesHeroRedraw`.
+- **`.places-home-map`** (the heatmap thumbnail): `display:block; width:100%; height:200px;`
+  (mobile `height:170px`). **Theme-aware** (revised post-ship per athlete review — was originally
+  dark-committed in both themes; a dark map inset inside a light card read as broken): `:root.light`
+  overrides the ground to a light radial gradient (`#eef1f4`/`#e9edf2`/`#e2e7ed`); dark stays the
+  original `#101725`/`#0d1117`/`#05070a`. The route glow uses the **fixed sport hexes** in both
+  themes (bucket -> teal `#2dd4bf`, amber `#f59e0b`, violet `#a78bfa`, green `#4ade80`, slate
+  `#8b949e` — no CSS-var reads) but the JS reads `document.documentElement.classList.contains
+  ('light')` at draw time to pick the composite mode: `'lighter'` (additive glow) on the dark
+  ground, `'multiply'` (ink-on-paper) on the light ground — additive 'lighter' math clips straight
+  to white and the routes vanish otherwise. A `MutationObserver` on the `<html>` `.light` class
+  redraws both canvases on toggle (same pattern as the passport thumbnails).
 - **`.places-home-body`**: `padding:14px 16px 16px;`.
   - **`.places-home-name`**: Geist, `font-size:15px; font-weight:600; color:var(--text-primary);
     margin-bottom:8px;` -- `San Diego` / `Boston`.
