@@ -19,10 +19,36 @@ Fable budget is ONE dispatch total and it was spent on Pass A Design — Pass B/
 |---|---|---|---|
 | **A** | Hero (full GPS route-density map) | ✅ shipped | `9956269`, tweak `62331e6`, labels `f096d57` |
 | **B** | Two Homes cards | ✅ shipped | spec `c07b7b0`, code `674cbfc` |
-| **C** | Passport + Peaks | ⏳ NOT STARTED | — |
+| **C** | Passport + Peaks | ✅ shipped | spec+code this pass (see below) |
 
-All commits pushed. HEAD = `674cbfc`. Generated HTML (`Running Log/strava.html`) is **gitignored** —
+All commits pushed. Generated HTML (`Running Log/strava.html`) is **gitignored** —
 rebuilt from source by the deploy workflow; never commit it.
+
+### What's live (Pass C)
+- **Passport** (`chart_places_passport`): horizontal filmstrip of **7 featured trip stamps**
+  (curated order Whitney → Maine → Vancouver → Snow Snake → Muggy → Jay Peak → Whaleback) + a
+  **4-chip brief-stops row** (NYC, Baldface, Mt Washington, San Jacinto). Each stamp = a dark-inset
+  `<canvas>` thumbnail: real signature-activity GPS colored by **terrain grade** (green descent /
+  slate flat / red climb from `grade_pct`) + a violet `altitude_m` elevation profile; server-side
+  region overline / caption (athlete title) / live date-span + sport-tags; badges **Highest point ·
+  14,507 ft** (Whitney), **Easternmost · 70.2°W** (Maine), **Northernmost · 49.3°N** (Vancouver —
+  NOT Maine). Header meta live: **7 trips · 7 states & 1 province**. Hover reveals ↗; click →
+  `placesFlyTo(fly-box)` + smooth-scroll to hero.
+- **Peaks** (`chart_places_peaks`): 6-row record book — Highest 14,507 ft (Whitney) · Northernmost
+  49.3°N (Vancouver) · **Home-adjacent giant 10,800 ft (San Jacinto — Wrinkle B, missed by
+  clustering)** · Easternmost 70.2°W (Maine) · First in San Diego (live earliest SD act, *Time zone
+  shakeout*) · Longest climb 6,752 ft (Whitney). Each row: big mono value, slate overline, title,
+  violet altitude sparkline, lat/lng, click → `placesFlyTo`.
+- **Trip clustering** = time-gap-away-from-home (`_away_clusters`, gap > 5 days; Wrinkle A keeps the
+  roaming Seattle→Vancouver trip as one). Curated editorial copy matched to live clusters by unique
+  title substring `sig`; unmatched multi-day clusters degrade to auto-featured (graceful).
+- **Geometry loader** `_load_trip_geo` reads only the ~11 signature/peak streams (not all 344),
+  RDP+cap-120, emits numeric `path`/`grade`/`elev` + a `fly` box. **XSS:** the `PC` payload is
+  numeric-only keyed by opaque slot; every display string is rendered server-side and `_html_escape`d
+  (now also escapes `"`/`'` because titles land in `aria-label` attributes).
+- Review gate: `/code-review high` → fixed 2 findings (aria-label quote-escaping; dropped a
+  new `#86efac` hex → `#4ade80`). QA: Playwright geometry pass (desktop+mobile × light+dark) — 7
+  stamps / 4 chips / 6 peaks, all canvases inked, 0 body h-overflow, click-to-fly fires.
 
 ### What's live (Pass A + B)
 - Nav tab **Places** replaced the old **Map** (`chart_map()` retired). Section id `view-places`.
@@ -60,7 +86,7 @@ stamps and peaks rows call this** for click-to-fly-into-hero (e.g. a stamp click
 
 ---
 
-## Pass C — Passport (Module 3) + Peaks (Module 4)  ← NEXT
+## Pass C — Passport (Module 3) + Peaks (Module 4)  ← ✅ DONE (recipe preserved for reference)
 
 Modules 3–4 share the trip/superlative precompute, so they land together. Full contracts in
 `places-prespec.md` §6 Modules 3–4 and `places-plan.md` Pass C. Second build-ready mock exists:

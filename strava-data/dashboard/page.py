@@ -8,7 +8,10 @@ from .charts_exploratory import (
     chart_x_heatsun, chart_x_heatverdict, chart_x_load, chart_x_metronome,
     chart_x_mirage, chart_x_seasonal,
 )
-from .charts_places import chart_places_hero, chart_places_homes
+from .charts_places import (
+    chart_places_hero, chart_places_homes,
+    chart_places_passport, chart_places_peaks,
+)
 from .charts_production import (
     _seg_effort_points, chart_calendar, chart_elevation, chart_heartrate,
     chart_pace, chart_run_hr_vs_temp, chart_run_pace_vs_hr,
@@ -305,6 +308,7 @@ def _build_stats_panel(rows, stats):
 
 def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
                     cal, vol, hr_c, pac, elev_c, segs_c, places_hero, places_homes,
+                    places_passport, places_peaks,
                     run_pace_hr, run_hr_temp, run_pace_tort, run_pace_grade,
                     run_hr_grade, mtb_pace_tort, mtb_pace_grade, mtb_hr_grade,
                     cons_cards_html, fast_cards_html, grade_time_html,
@@ -451,6 +455,8 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
 <section id="view-places" class="view">
   {places_hero}
   {places_homes}
+  {places_passport}
+  {places_peaks}
 </section>
 
 <section id="view-exploratory" class="view">
@@ -555,6 +561,10 @@ def build_page(rows, segs):
     places_hero = chart_places_hero(rows)
     print("  places homes...")
     places_homes = chart_places_homes(rows)
+    print("  places passport...")
+    places_passport = chart_places_passport(rows)
+    print("  places peaks...")
+    places_peaks = chart_places_peaks(rows)
 
     (seg_efforts, act_by_id, scatter_charts,
      run_hr_temp_meta) = _build_trend_and_segment_scatter_charts(rows)
@@ -582,6 +592,7 @@ def build_page(rows, segs):
         theme_buttons=theme_buttons, js=js,
         cal=cal, vol=vol, hr_c=hr_c, pac=pac, elev_c=elev_c, segs_c=segs_c,
         places_hero=places_hero, places_homes=places_homes,
+        places_passport=places_passport, places_peaks=places_peaks,
         run_pace_hr=run_pace_hr, run_hr_temp=run_hr_temp,
         run_pace_tort=run_pace_tort, run_pace_grade=run_pace_grade,
         run_hr_grade=run_hr_grade, mtb_pace_tort=mtb_pace_tort,
