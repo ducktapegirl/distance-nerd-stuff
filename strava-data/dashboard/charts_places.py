@@ -888,6 +888,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     opacity:0; animation:places-rise 1100ms ease .12s forwards;
   }
   #places-hero canvas:active{cursor:grabbing}
+  #places-hero.shift-down canvas{cursor:crosshair}
   @keyframes places-rise{from{opacity:0} to{opacity:1}}
   @keyframes places-fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
 
@@ -1029,10 +1030,21 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       animation:none; opacity:1; transform:none;
     }
   }
+
+  /* Selection zoom (desktop only, Shift+drag): a marquee rectangle that fits
+     the camera to whatever's dragged out, on release. */
+  #places-hero .places-selrect{
+    position:absolute; display:none; z-index:2; pointer-events:none;
+    border:1.5px dashed var(--accent);
+    background:color-mix(in srgb, var(--accent) 15%, transparent);
+  }
+  @media (hover:none){ #places-hero .places-selrect{ display:none !important; } }
 </style>
 
 <canvas id="chart-places-hero" role="img"
   aria-label="Map of every GPS route: San Diego and Boston home clusters plus trips across North America"></canvas>
+<div class="places-selrect" id="places-selrect"
+     aria-label="Selection zoom rectangle"></div>
 
 <div class="places-chrome">
   <div class="places-caption"><p class="places-eyebrow">Places</p></div>
@@ -1551,7 +1563,50 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   var pointers=new Map(), mouseDrag=false, lx=0, ly=0, lastDist=0, lastCx=0, lastCy=0;
   function localXY(e){ var r=cv.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; }
 
+  // ── selection zoom (desktop only): Shift+drag draws a marquee rectangle;
+  // releasing fits the camera to it (same fitBox/tweenTo the View buttons
+  // use). Mirrors placesFlyTo's custom-box handling: deactivates the named
+  // View buttons (this is a one-off framing, not one of them) and updates
+  // the URL hash the same way a button click would, so it round-trips
+  // through reload like any other camera state.
+  var selBox = null;             // {x0,y0,x1,y1} in canvas-local px while dragging
+  var selEl = document.getElementById('places-selrect');
+  function selRectFromBox(){
+    var x=Math.min(selBox.x0,selBox.x1), y=Math.min(selBox.y0,selBox.y1);
+    var w=Math.abs(selBox.x1-selBox.x0), h=Math.abs(selBox.y1-selBox.y0);
+    return {x:x,y:y,w:w,h:h};
+  }
+  function drawSelRect(){
+    if(!selEl) return;
+    var r=selRectFromBox();
+    selEl.style.left=r.x+'px'; selEl.style.top=r.y+'px';
+    selEl.style.width=r.w+'px'; selEl.style.height=r.h+'px';
+  }
+  function endSelection(){
+    if(!selBox) return;
+    var r=selRectFromBox();
+    selBox=null;
+    if(selEl) selEl.style.display='none';
+    if(r.w<8 || r.h<8) return;   // ignore an accidental shift-click/tiny drag
+    var u0=cur.fx+(r.x-W/2)/(PD.ww*S0*cur.s), u1=cur.fx+(r.x+r.w-W/2)/(PD.ww*S0*cur.s);
+    var v0=cur.fy+(r.y-H/2)/(PD.wh*S0*cur.s), v1=cur.fy+(r.y+r.h-H/2)/(PD.wh*S0*cur.s);
+    cancelAnimationFrame(anim);
+    tweenTo(fitBox(u0,u1,v0,v1), 'none');
+    hero.querySelectorAll('[data-frame]').forEach(function(b){
+      b.classList.remove('active'); b.setAttribute('aria-pressed','false');
+    });
+    if(typeof syncHashState==='function') syncHashState();
+  }
+
   cv.addEventListener('pointerdown', function(e){
+    if(e.pointerType==='mouse' && e.shiftKey){
+      var xy0=localXY(e);
+      selBox={x0:xy0[0], y0:xy0[1], x1:xy0[0], y1:xy0[1]};
+      if(selEl){ selEl.style.display='block'; drawSelRect(); }
+      cv.setPointerCapture(e.pointerId);
+      cancelAnimationFrame(anim);
+      return;    // don't also start a pan drag
+    }
     pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
     cancelAnimationFrame(anim);
     if(e.pointerType==='mouse'){ mouseDrag=true; lx=e.clientX; ly=e.clientY; cv.setPointerCapture(e.pointerId); }
@@ -1562,6 +1617,12 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     }
   });
   cv.addEventListener('pointermove', function(e){
+    if(selBox){
+      var xy=localXY(e);
+      selBox.x1=xy[0]; selBox.y1=xy[1];
+      drawSelRect();
+      return;
+    }
     if(e.pointerType==='mouse'){
       if(!mouseDrag) return;
       cur.fx -= (e.clientX-lx)/(PD.ww*S0*cur.s);
@@ -1593,12 +1654,20 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     }
   });
   function endPointer(e){
+    if(selBox){ endSelection(); }
     pointers.delete(e.pointerId);
     if(e.pointerType==='mouse') mouseDrag=false;
     if(pointers.size<2) lastDist=0;
   }
   cv.addEventListener('pointerup', endPointer);
   cv.addEventListener('pointercancel', endPointer);
+
+  // Crosshair cursor while Shift is held, signaling selection-zoom is armed
+  // (global listeners: the key can go down before the pointer enters the
+  // canvas). Cleared on blur so an alt-tab away doesn't strand the cursor.
+  document.addEventListener('keydown', function(e){ if(e.key==='Shift') hero.classList.add('shift-down'); });
+  document.addEventListener('keyup', function(e){ if(e.key==='Shift') hero.classList.remove('shift-down'); });
+  window.addEventListener('blur', function(){ hero.classList.remove('shift-down'); });
 
   cv.addEventListener('wheel', function(e){
     if(e.ctrlKey || e.metaKey){          // trackpad pinch arrives as ctrlKey wheel
