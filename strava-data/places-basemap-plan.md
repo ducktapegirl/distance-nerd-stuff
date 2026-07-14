@@ -1,8 +1,18 @@
 # Places — Basemap Plan (real terrain + a map behind the glow)
 
-**Status:** DRAFT for review (2026-07-14). Follow-on to the shipped Places build
-(`places-plan.md`, Passes A–C). Source of feedback: three review notes after
-looking at the live section.
+**Status:** ✅ SHIPPED (2026-07-14). Decisions D1–D3 confirmed (allow small assets /
+pre-rendered PNG + regen script / faint). All three feedback items delivered:
+- **#3 scroll arrows** — `3f712ac`.
+- **#2 Glow vector basemap** — `91ea5fd` (`assets/basemap.json` + `tools/gen_basemap.py`).
+- **#1 Terrain shaded relief** — this commit (`assets/hillshade.png` + `tools/gen_hillshade.py`).
+
+Build contract lives in `dashboard-spec.md` (“Places — Basemap” / “Places — Terrain”).
+Original plan retained below for reference.
+
+---
+
+Follow-on to the shipped Places build (`places-plan.md`, Passes A–C). Source of
+feedback: three review notes after looking at the live section.
 
 ## The feedback, triaged
 
