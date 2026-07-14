@@ -2029,6 +2029,7 @@ _PASSPORT_TEMPLATE = r"""<div class="places-passport">
   .places-passport .stamp:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
 
   .places-passport .thumb{position:relative; height:150px; background:#0a0e16; overflow:hidden}
+  :root.light .places-passport .thumb{background:#e9edf2}
   .places-passport .thumb canvas{width:100%; height:100%; display:block}
   .places-passport .badge{position:absolute; left:10px; top:10px;
     font-family:'Geist Mono',ui-monospace,monospace; font-size:10px; letter-spacing:.06em;
@@ -2132,9 +2133,11 @@ __CHIPS__
     var w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
     cv.width=w*dpr; cv.height=h*dpr;
     var ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    var light = document.documentElement.classList.contains('light');
     ctx.clearRect(0,0,w,h);
-    // faint graticule (mock)
-    ctx.strokeStyle='rgba(88,120,170,.08)'; ctx.lineWidth=1;
+    // faint graticule (theme-aware: light thumbnails read as light map windows)
+    ctx.strokeStyle = light ? 'rgba(120,130,150,.16)' : 'rgba(88,120,170,.08)';
+    ctx.lineWidth=1;
     for(var i=1;i<5;i++){ ctx.beginPath();ctx.moveTo(i/5*w,0);ctx.lineTo(i/5*w,h);ctx.stroke();
       ctx.beginPath();ctx.moveTo(0,i/5*h);ctx.lineTo(w,i/5*h);ctx.stroke(); }
     var P=d.path, N=P.length/2, grade=d.grade||[], elev=d.elev||[];
@@ -2147,14 +2150,16 @@ __CHIPS__
     var S=Math.min(Wr/((umax-umin)||1e-6), Hr/((vmax-vmin)||1e-6));
     var ox=mx+(Wr-(umax-umin)*S)/2 - umin*S, oy=top+(Hr-(vmax-vmin)*S)/2 - vmin*S;
     function X(u){ return ox+u*S; } function Y(v){ return oy+v*S; }
-    ctx.lineJoin=ctx.lineCap='round'; ctx.lineWidth=2.4; ctx.shadowBlur=6;
+    // Softer glow on the light ground (a heavy neon halo reads muddy on paper).
+    ctx.lineJoin=ctx.lineCap='round'; ctx.lineWidth=2.4; ctx.shadowBlur = light ? 2 : 6;
     for(var k=1;k<N;k++){
       var col=gradeColor(grade[k]!=null?grade[k]:0); ctx.strokeStyle=col; ctx.shadowColor=col;
       ctx.beginPath(); ctx.moveTo(X(P[2*(k-1)]),Y(P[2*(k-1)+1]));
       ctx.lineTo(X(P[2*k]),Y(P[2*k+1])); ctx.stroke();
     }
     ctx.shadowBlur=0;
-    ctx.fillStyle='rgba(230,237,243,.9)';
+    // start/end nodes: dark ink on the light ground, near-white on the dark
+    ctx.fillStyle = light ? 'rgba(28,33,40,.9)' : 'rgba(230,237,243,.9)';
     ctx.beginPath();ctx.arc(X(P[0]),Y(P[1]),2.6,0,6.283);ctx.fill();
     ctx.beginPath();ctx.arc(X(P[2*(N-1)]),Y(P[2*(N-1)+1]),2.6,0,6.283);ctx.fill();
     // violet elevation profile along the bottom
@@ -2177,6 +2182,12 @@ __CHIPS__
   if(window.ResizeObserver){ new ResizeObserver(drawAll).observe(strip); }
   window.addEventListener('resize', function(){ clearTimeout(window.__ppRt);
     window.__ppRt=setTimeout(drawAll,150); });
+  // Redraw thumbnails when the page theme toggles (the .light class on <html>),
+  // so their ground/nodes/glow re-tint like the hero.
+  if(window.MutationObserver){
+    new MutationObserver(drawAll).observe(document.documentElement,
+      {attributes:true, attributeFilter:['class']});
+  }
   drawAll();
 
   // click / keyboard -> fly the hero to this trip's box
