@@ -1899,6 +1899,10 @@ _PASSPORT_TEMPLATE = r"""<div class="places-passport">
   .places-passport .gradbar{width:96px; height:7px; border-radius:4px;
     background:linear-gradient(90deg,#4ade80,#8b949e 50%,#f87171)}
 
+  /* pp-strip-outer wraps the (masked) stripwrap + the two nav arrows. Arrows are
+     SIBLINGS of stripwrap (not descendants) so the edge-fade mask never dims
+     them. */
+  .places-passport .pp-strip-outer{position:relative}
   .places-passport .stripwrap{position:relative;
     -webkit-mask-image:linear-gradient(to right,transparent,#000 26px,#000 calc(100% - 26px),transparent);
     mask-image:linear-gradient(to right,transparent,#000 26px,#000 calc(100% - 26px),transparent)}
@@ -1907,6 +1911,25 @@ _PASSPORT_TEMPLATE = r"""<div class="places-passport">
     scrollbar-color:var(--border) transparent}
   .places-passport .strip::-webkit-scrollbar{height:8px}
   .places-passport .strip::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px}
+
+  .places-passport .pp-arrow{position:absolute; top:81px; transform:translateY(-50%);
+    z-index:3; width:36px; height:36px; padding:0; display:flex; align-items:center;
+    justify-content:center; border-radius:50%; cursor:pointer;
+    background:var(--bg-glass); border:1px solid var(--border); color:var(--text-secondary);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    box-shadow:0 4px 14px rgba(0,0,0,.18);
+    transition:opacity .2s ease, color .18s, background .18s}
+  .places-passport .pp-arrow:hover{color:var(--text-primary);
+    border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
+  .places-passport .pp-arrow:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .places-passport .pp-arrow-l{left:-4px}
+  .places-passport .pp-arrow-r{right:-4px}
+  .places-passport .pp-arrow.hidden{opacity:0; pointer-events:none}
+  .places-passport .pp-arrow svg{width:18px; height:18px; stroke:currentColor; fill:none;
+    stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+  /* Touch devices swipe the strip natively -- hide the arrows there. */
+  @media (hover:none){ .places-passport .pp-arrow{display:none} }
+  @media (prefers-reduced-motion:reduce){ .places-passport .pp-arrow{transition:opacity .2s ease} }
 
   .places-passport .stamp{flex:0 0 clamp(260px,74vw,300px); scroll-snap-align:center;
     background:var(--bg-glass); border:1px solid var(--border); border-radius:16px; overflow:hidden;
@@ -1977,10 +2000,20 @@ _PASSPORT_TEMPLATE = r"""<div class="places-passport">
   </div>
 </div>
 
-<div class="stripwrap">
-  <div class="strip" id="places-strip">
+<div class="pp-strip-outer">
+  <button class="pp-arrow pp-arrow-l hidden" id="places-arrow-l" type="button"
+          aria-label="Scroll trips left">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="stripwrap">
+    <div class="strip" id="places-strip">
 __STAMPS__
+    </div>
   </div>
+  <button class="pp-arrow pp-arrow-r hidden" id="places-arrow-r" type="button"
+          aria-label="Scroll trips right">
+    <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+  </button>
 </div>
 
 <div class="brief">
@@ -2085,6 +2118,31 @@ __CHIPS__
   function up(){ down=false; setTimeout(function(){ dragged=false; },0); }
   strip.addEventListener('pointerup', up);
   strip.addEventListener('pointerleave', up);
+
+  // explicit scroll arrows (desktop affordance; touch swipes natively)
+  var reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var arL = document.getElementById('places-arrow-l');
+  var arR = document.getElementById('places-arrow-r');
+  function stepPx(){
+    var s = strip.querySelector('.stamp');
+    return s ? Math.round(s.getBoundingClientRect().width + 16) : Math.round(strip.clientWidth * 0.8);
+  }
+  function updateArrows(){
+    if(!arL || !arR) return;
+    var maxX = strip.scrollWidth - strip.clientWidth;
+    var x = strip.scrollLeft;
+    var noOverflow = maxX < 4;
+    arL.classList.toggle('hidden', noOverflow || x <= 2);
+    arR.classList.toggle('hidden', noOverflow || x >= maxX - 2);
+  }
+  function nudge(dir){
+    strip.scrollBy({left: dir * stepPx(), behavior: reduce ? 'auto' : 'smooth'});
+  }
+  if(arL) arL.addEventListener('click', function(){ nudge(-1); });
+  if(arR) arR.addEventListener('click', function(){ nudge(1); });
+  strip.addEventListener('scroll', updateArrows, {passive:true});
+  if(window.ResizeObserver){ new ResizeObserver(updateArrows).observe(strip); }
+  updateArrows();
 })();
 </script>
 </div>"""
