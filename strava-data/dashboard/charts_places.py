@@ -354,8 +354,9 @@ def _build_labels(tracks, fr, sd_n, bos_n):
                            ("BOSTON", bos_pts, bos_sub)):
         clng, clat = _centroid(pts)
         u, v = _uv(clng, clat, fr)
-        coord = "%.2f°N  %.2f°W" % (clat, abs(clng))
-        labels.append({"k": "home", "name": name, "coord": coord, "sub": sub,
+        # Homes show only name + activity/era sub-line; the raw lat/lng coord
+        # line is reserved for the trip "destinations".
+        labels.append({"k": "home", "name": name, "coord": "", "sub": sub,
                        "u": round(u, 4), "v": round(v, 4)})
 
     # Key trips, west -> east (Vancouver, Sierra, Maine).
@@ -835,15 +836,20 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     ctx.font='600 '+(home?13:11)+"px 'Geist', ui-sans-serif, sans-serif";
     var nm = home?tp:ts;
     ctx.fillStyle='rgba('+nm[0]+','+nm[1]+','+nm[2]+','+alpha+')';
-    ctx.fillText(L.name, tx, by+4);
+    var ly = by+4;
+    ctx.fillText(L.name, tx, ly);
     ctx.font="11px 'Geist Mono', ui-monospace, monospace";
+    // Stack the mono sub-lines with a running offset so a label without a
+    // coord line (the homes) closes the gap instead of leaving a hole.
     if(L.coord){
+      ly += 16;
       ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*0.85)+')';
-      ctx.fillText(L.coord, tx, by+20);
+      ctx.fillText(L.coord, tx, ly);
     }
     if(L.sub){
+      ly += 15;
       ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*0.9)+')';
-      ctx.fillText(L.sub, tx, by+35);
+      ctx.fillText(L.sub, tx, ly);
     }
     ctx.shadowBlur=0;
   }
