@@ -1198,3 +1198,38 @@ mobile chrome rework).
 - Desktop: zoom cluster clear of Boston label and footer in both themes.
 - Mobile: zoom cluster clear of the caption and the (relocated) View/Map controls; the
   View/Map-vs-footer collision is gone on 320-430px widths (canvas pixel-scan verified).
+
+---
+
+## Places — Hero selection zoom (desktop, Shift+drag)
+
+Follow-on to the zoom-controls pass. A "box zoom" affordance for desktop: hold Shift and
+drag a rectangle on the hero; releasing fits the camera to it. Standard mapping-tool
+pattern (matches e.g. Leaflet's `L.Map.BoxZoom`), chosen over a mode-toggle button to stay
+consistent with the hero's existing modifier-key gesture language (Ctrl/Cmd+scroll to zoom).
+
+### Behavior
+- `pointerdown` with `e.pointerType==='mouse' && e.shiftKey` starts a selection instead of
+  a pan (returns before `mouseDrag` is set, so the two never both fire).
+- A `.places-selrect` overlay div (dashed `--accent` border, 15%-tint fill) tracks the drag
+  in canvas-local px; hidden by default, `display:none !important` under `(hover:none)` so
+  it can never appear on touch (the whole feature is mouse-only by design — no touch path
+  sets `e.shiftKey`).
+- On release: screen-rect corners convert to world u/v via the inverse of `projX`/`projY`,
+  then `fitBox(u0,u1,v0,v1)` + `tweenTo` (same call the View buttons use — 620ms ease,
+  snaps under `prefers-reduced-motion`). Drags under 8x8px are ignored (accidental
+  Shift-click guard).
+- Deactivates all `[data-frame]` buttons (a one-off custom framing, like the passport/
+  peaks fly-to boxes) and calls `syncHashState()` — since no named view is active, this
+  clears any stale `v=` from the hash; the custom camera position itself is NOT persisted
+  across reload (consistent with fly-to boxes, which are also one-off, not named states).
+- Crosshair cursor while Shift is held (`#places-hero.shift-down canvas`), tracked via
+  global `keydown`/`keyup`/`blur` listeners so it works regardless of pointer position when
+  the key goes down, and never gets stuck after an alt-tab.
+
+### Verify
+- Tiny Shift-drag (<8px): no camera change, no button-state change (accidental-click guard).
+- Real Shift-drag: rectangle visible + tracks the drag; hides on release; camera changes to
+  fit the selection; View buttons deactivate; canvas pixels differ before/after.
+- A normal (non-Shift) drag immediately after still pans, unaffected (regression check).
+- Both themes legible; no JS errors.
