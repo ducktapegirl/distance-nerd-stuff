@@ -7,9 +7,12 @@ charts_production.py. Imports are stdlib + numpy only (no pandas)."""
 import json
 import math
 import os
+from collections import Counter
 
-from .config import STREAMS_DIR
-from .data import mf
+import numpy as np
+
+from .config import KM_TO_MI, STREAMS_DIR
+from .data import load_segment_efforts, load_segments, mf
 
 # ── Pinned constants (analyst Pass-A recipe; see dashboard-spec "Places") ──────
 # COSLAT is the cosine of the RAW-extent midpoint latitude (40.9685) -- a frozen
@@ -190,6 +193,21 @@ def _load_tracks(act_by_id):
             lng_max = ln if lng_max is None else max(lng_max, ln)
 
     return tracks, (lat_min, lat_max, lng_min, lng_max)
+
+
+# Process-level cache so the 344-file stream parse happens exactly ONCE per build,
+# shared by chart_places_hero and chart_places_homes.
+_TRACKS_CACHE = None
+
+
+def _places_tracks(rows):
+    """Memoized _load_tracks: parse/decimate/classify every stream once, cache
+    (tracks, extents) for the process."""
+    global _TRACKS_CACHE
+    if _TRACKS_CACHE is None:
+        act_by_id = {str(r["id"]): r for r in rows}
+        _TRACKS_CACHE = _load_tracks(act_by_id)
+    return _TRACKS_CACHE
 
 
 def _in_box(lng, lat, box):
@@ -391,13 +409,11 @@ def chart_places_hero(rows):
     """Build the Places hero: load streams, assemble the injected `PD` payload,
     and return one self-contained raw HTML string (style + canvas + chrome +
     script). `rows` supplies sport_type per activity id."""
-    act_by_id = {str(r["id"]): r for r in rows}
-
     # Live counts (computed at build time from start_latlng per the pinned
     # analyst methods) so the fetch cron can't leave them stale.
     counts = _count_places(rows)
 
-    tracks, extents = _load_tracks(act_by_id)
+    tracks, extents = _places_tracks(rows)   # shared parse (see _places_tracks)
     fr = _compute_frame(extents)
     labels, dropped = _build_labels(tracks, fr, counts["sd"], counts["bos"])
     views = _build_views(fr)
@@ -458,6 +474,321 @@ def chart_places_hero(rows):
             .replace("__REGIONS__", str(counts["regions"]))
             .replace("__STATES__", str(counts["states"])))
     return html
+
+
+# ─── Pass B: Two Homes cards ────────────────────────────────────────────────────
+
+# Home-era labels (the "moved away" narrative, hardcoded per home; en-dash) --
+# NOT literal min/max years (Boston has 2026 return-visits that would muddy it).
+_HOME_ERA = {"sd": "2025–now", "bos": "2024–2025"}
+# Home boxes reused for the live start_latlng-in-box stats (Pass-A 155/137 defn).
+_HOME_BOX = {"sd": _SD_BOX, "bos": _BOS_BOX}
+# Pinned stat targets for the soft drift NOTE (never hard-assert).
+_HOME_PINNED = {"sd": {"mi": 782, "seg": "Canyon entrance via Salix"},
+                "bos": {"mi": 530, "seg": "Cataldo East"}}
+
+
+def _metro_frame(la0, la1, ln0, ln1, margin=0.06):
+    """Per-metro thumbnail frame: drawn-track extent + `margin` each span, then
+    the hero's projection (ww = lngspan*COSLAT, wh = latspan)."""
+    ml = margin * (la1 - la0)
+    mn = margin * (ln1 - ln0)
+    LAT0, LAT1 = la0 - ml, la1 + ml
+    LNG0, LNG1 = ln0 - mn, ln1 + mn
+    lngspan, latspan = LNG1 - LNG0, LAT1 - LAT0
+    return {"lng0": LNG0, "lngspan": lngspan, "lat1": LAT1, "latspan": latspan,
+            "ww": lngspan * COSLAT, "wh": latspan}
+
+
+def _home_stats(rows):
+    """Live per-home stats by start_latlng-in-box: miles (sum distance_km * mi),
+    and the most-repeated Strava segment (Counter over segment_efforts joined to
+    each activity's home box). Returns {'sd':{mi,seg,segN}, 'bos':{...}}."""
+    home_of_act = {}
+    km = {"sd": 0.0, "bos": 0.0}
+    for r in rows:
+        ll = (r.get("start_latlng") or "").strip()
+        home = None
+        if ll:
+            parts = ll.split(",")
+            if len(parts) == 2:
+                lat = mf(parts[0].strip())
+                lng = mf(parts[1].strip())
+                if lat is not None and lng is not None:
+                    if _in_box(lng, lat, _SD_BOX):
+                        home = "sd"
+                    elif _in_box(lng, lat, _BOS_BOX):
+                        home = "bos"
+        home_of_act[str(r["id"])] = home
+        if home:
+            km[home] += mf(r.get("distance_km")) or 0
+
+    # segment_name fallback via segments_summary.csv (efforts usually carry it).
+    summary_name = {}
+    try:
+        for s in load_segments():
+            summary_name[str(s.get("segment_id"))] = s.get("segment_name") or ""
+    except Exception:
+        pass
+
+    cnt = {"sd": Counter(), "bos": Counter()}
+    eff_name = {}
+    for e in load_segment_efforts():
+        home = home_of_act.get(str(e.get("activity_id")))
+        if not home:                      # activity not in either home box -> skip
+            continue
+        sid = str(e.get("segment_id") or "")
+        if not sid:
+            continue
+        cnt[home][sid] += 1
+        nm = (e.get("segment_name") or "").strip()
+        if nm:
+            eff_name[sid] = nm
+
+    out = {}
+    for h in ("sd", "bos"):
+        mi = round(km[h] * KM_TO_MI)
+        top = cnt[h].most_common(1)
+        if top:
+            sid, n = top[0]
+            seg = eff_name.get(sid) or summary_name.get(sid) or "(unknown segment)"
+        else:
+            seg, n = "(none)", 0
+        out[h] = {"mi": mi, "seg": seg, "segN": n}
+    return out
+
+
+def _home_thumb_tracks(tracks, group):
+    """Filter decimated tracks to one home (by group g) and frame on the DENSE
+    CORE, not the full extent: the per-axis p1..p99 box (drops sparse outlier
+    tails -- SD's northern tail, outlying day-trips) + 3% margin. Points outside
+    the core box are dropped (tracks split into sub-polylines at gaps so no
+    spurious connector lines), and the renderer uses a COVER fit so the core fills
+    the thumbnail edge-to-edge. Returns (frame, thumb_tracks, n_drawn_points)."""
+    home_tracks = [t for t in tracks if t["g"] == group]
+    lats = np.array([la for t in home_tracks for _, la in t["pts"]], dtype=float)
+    lngs = np.array([ln for t in home_tracks for ln, _ in t["pts"]], dtype=float)
+    if lats.size == 0:
+        # Defensive: a future data refresh could empty a home box. Degrade to a
+        # blank thumbnail (unit frame, no tracks) instead of nan from percentile.
+        fr = {"lng0": 0.0, "lngspan": 1.0, "lat1": 1.0, "latspan": 1.0,
+              "ww": round(COSLAT, 5), "wh": 1.0}
+        return fr, [], 0, 0.5, 0.5
+    la0, la1 = (float(x) for x in np.percentile(lats, [1, 99]))
+    ln0, ln1 = (float(x) for x in np.percentile(lngs, [1, 99]))
+    fr = _metro_frame(la0, la1, ln0, ln1, margin=0.03)
+    # Density center = per-axis median (robust to the sparse tails). Cover-fit
+    # centers on THIS instead of the box midpoint, so each metro's dense mass
+    # lands in the middle of the thumbnail (SD rises off the bottom; Boston
+    # leaves the upper-right corner).
+    cu, cv = _uv(float(np.median(lngs)), float(np.median(lats)), fr)
+
+    def _in_core(ln, la):
+        return la0 <= la <= la1 and ln0 <= ln <= ln1
+
+    out = []
+    n_pts = 0
+    for t in home_tracks:
+        run = []   # consecutive in-core points -> one sub-polyline
+
+        def _flush():
+            nonlocal n_pts
+            if len(run) >= 2:
+                flat = []
+                for ln, la in run:
+                    u, v = _uv(ln, la, fr)
+                    flat.append(round(u, 4))
+                    flat.append(round(v, 4))
+                out.append({"c": t["c"], "p": flat})
+                n_pts += len(run)
+
+        for ln, la in t["pts"]:
+            if _in_core(ln, la):
+                run.append((ln, la))
+            else:
+                _flush()
+                run = []
+        _flush()
+
+    fr_round = {k: round(val, 5) for k, val in fr.items()}
+    return fr_round, out, n_pts, round(cu, 4), round(cv, 4)
+
+
+def _ascii(s):
+    """ASCII-safe rendering of a (possibly unicode) segment name for prints."""
+    return s.encode("ascii", "replace").decode("ascii")
+
+
+def chart_places_homes(rows):
+    """Build the two-homes cards (San Diego / Boston) that sit below the hero in
+    view-places. Returns one self-contained raw HTML string. Reuses the shared
+    decimated tracks; stats are computed live at build time."""
+    tracks, _extents = _places_tracks(rows)   # shared parse (no second file walk)
+    stats = _home_stats(rows)
+
+    PH = {}
+    thumb_pts = {}
+    thumb_ctr = {}
+    for home, group in (("sd", 0), ("bos", 1)):
+        fr, thumb, n_pts, cx, cy = _home_thumb_tracks(tracks, group)
+        thumb_pts[home] = n_pts
+        thumb_ctr[home] = (cx, cy)
+        # PH carries ONLY the fields the thumbnail JS reads (fr/cx/cy/tracks).
+        # The display fields (mi/seg/segN/era) are rendered server-side into the
+        # card HTML via _HOME_CARD.format (seg is _html_escape'd there) -- keeping
+        # the third-party segment_name out of the raw-spliced <script> JSON, which
+        # json.dumps would NOT HTML-escape (stored-XSS surface).
+        PH[home] = {"fr": fr, "cx": cx, "cy": cy, "tracks": thumb}
+
+    ph_json = json.dumps(PH, separators=(",", ":"), ensure_ascii=False)
+
+    # ── Build print + soft drift NOTE (ASCII only) ────────────────────────────
+    # Display stats live in `stats`/_HOME_ERA (server-side rendered), NOT in PH.
+    print('[places] homes: sd_mi=%d sd_seg="%s"x%d bos_mi=%d bos_seg="%s"x%d'
+          % (stats["sd"]["mi"], _ascii(stats["sd"]["seg"]), stats["sd"]["segN"],
+             stats["bos"]["mi"], _ascii(stats["bos"]["seg"]), stats["bos"]["segN"]))
+    print("[places] homes thumb: sd_pts=%d bos_pts=%d "
+          "sd_ctr=(%.3f,%.3f) bos_ctr=(%.3f,%.3f) (p1..p99 core, median-centered cover)"
+          % (thumb_pts["sd"], thumb_pts["bos"],
+             thumb_ctr["sd"][0], thumb_ctr["sd"][1],
+             thumb_ctr["bos"][0], thumb_ctr["bos"][1]))
+    notes = []
+    for home in ("sd", "bos"):
+        pin = _HOME_PINNED[home]
+        if abs(stats[home]["mi"] - pin["mi"]) > 8:
+            notes.append("%s mi=%d (pinned %d)" % (home, stats[home]["mi"], pin["mi"]))
+        if stats[home]["seg"] != pin["seg"]:
+            notes.append('%s seg="%s" (pinned "%s")'
+                         % (home, _ascii(stats[home]["seg"]), pin["seg"]))
+    if notes:
+        print("[places] NOTE: homes drift vs pinned: %s" % "; ".join(notes))
+
+    def _card(home, name, cid):
+        st = stats[home]
+        return _HOME_CARD.format(
+            cid=cid, name=name, mi=st["mi"],
+            seg=_html_escape(st["seg"]), segN=st["segN"],
+            era=_html_escape(_HOME_ERA[home]))
+
+    cards = (_card("sd", "San Diego", "chart-places-home-sd")
+             + _card("bos", "Boston", "chart-places-home-bos"))
+    return (_HOMES_TEMPLATE
+            .replace("__CARDS__", cards)
+            .replace("__PH_JSON__", ph_json))
+
+
+def _html_escape(s):
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+# Card markup (one per home). En-dash / times / middot are HTML entities.
+_HOME_CARD = """  <div class="places-home">
+    <canvas class="places-home-map" id="{cid}" role="img" aria-label="{name} route heatmap"></canvas>
+    <div class="places-home-body">
+      <div class="places-home-name">{name}</div>
+      <div class="places-home-stats">
+        <div class="phs-mi"><b>{mi}</b> mi</div>
+        <div class="phs-seg"><span class="phs-ovl">Most-repeated segment</span>{seg} &middot; {segN}&times;</div>
+        <div class="phs-era">{era}</div>
+      </div>
+    </div>
+  </div>
+"""
+
+
+# ─── Self-contained homes HTML/CSS/JS (dark-committed thumbnails) ───────────────
+# Plain string with __CARDS__ / __PH_JSON__ tokens (JS braces stay literal). The
+# thumbnails are dark-committed in BOTH page themes (fixed dark ground + additive
+# glow + fixed dark sport hexes) -- no CSS-var reads, no __placesHeroRedraw hook.
+_HOMES_TEMPLATE = r"""<div class="places-homes">
+<style>
+  .places-homes{display:flex; gap:16px; margin-top:16px;}
+  .places-homes .places-home{
+    flex:1 1 0; min-width:0;
+    background:var(--bg-glass); border:1px solid var(--border);
+    border-radius:16px; overflow:hidden;
+  }
+  .places-homes .places-home-map{
+    display:block; width:100%; height:200px;
+    background:radial-gradient(120% 120% at 50% 45%, #101725 0%, #0d1117 55%, #05070a 100%);
+  }
+  .places-homes .places-home-body{padding:14px 16px 16px;}
+  .places-homes .places-home-name{
+    font-family:'Geist', ui-sans-serif, sans-serif;
+    font-size:15px; font-weight:600; color:var(--text-primary); margin-bottom:8px;
+  }
+  .places-homes .places-home-stats{
+    font-family:'Geist Mono', ui-monospace, monospace; font-size:12.5px;
+    color:var(--text-secondary); display:flex; flex-direction:column; gap:4px;
+    font-variant-numeric:tabular-nums;
+  }
+  .places-homes .phs-mi b{color:var(--text-primary); font-weight:600;}
+  .places-homes .phs-seg{overflow-wrap:anywhere;}
+  .places-homes .phs-ovl{
+    display:block; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text-tertiary); margin-bottom:2px;
+  }
+  .places-homes .phs-era{color:var(--text-tertiary);}
+  @media (max-width:640px){
+    .places-homes{flex-direction:column;}
+    /* In the stacked column, flex:1 1 0 would collapse each card's HEIGHT to ~0
+       (basis 0 + grow in an auto-height container). Revert to content height. */
+    .places-homes .places-home{flex:0 0 auto;}
+    .places-homes .places-home-map{height:170px;}
+  }
+</style>
+__CARDS__
+<script>
+(function(){
+  var PH = __PH_JSON__;
+  var HEX = ["#2dd4bf","#f59e0b","#a78bfa","#4ade80","#8b949e"];
+  function hexA(h,a){
+    var r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16);
+    return 'rgba('+r+','+g+','+b+','+a+')';
+  }
+  function draw(cv, home){
+    var d = PH[home]; if(!cv || !d) return;
+    var ctx = cv.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio||1, 2);
+    var W = cv.clientWidth, H = cv.clientHeight;
+    if(W===0 || H===0) return;
+    cv.width = W*dpr; cv.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    var fr = d.fr, S0 = Math.max(W/fr.ww, H/fr.wh);   // COVER fit: core fills the thumbnail
+    // Center on the density median (fallback to box midpoint) so the dense mass
+    // sits in the middle of the thumbnail rather than a corner/edge.
+    var fx = (d.cx != null) ? d.cx : 0.5, fy = (d.cy != null) ? d.cy : 0.5;
+    ctx.clearRect(0,0,W,H);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.lineWidth = Math.max(0.8, 1.0);
+    var tks = d.tracks;
+    for(var i=0;i<tks.length;i++){
+      var t = tks[i], p = t.p, m = p.length/2;
+      var jitter = (i*0.6180339887) % 1;
+      ctx.strokeStyle = hexA(HEX[t.c] || HEX[4], 0.34 + 0.12*jitter);
+      ctx.beginPath();
+      for(var k=0;k<m;k++){
+        var x = W/2 + (p[2*k]   - fx)*fr.ww*S0;
+        var y = H/2 + (p[2*k+1] - fy)*fr.wh*S0;
+        if(k) ctx.lineTo(x,y); else ctx.moveTo(x,y);
+      }
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  [['sd','chart-places-home-sd'],['bos','chart-places-home-bos']].forEach(function(pair){
+    var cv = document.getElementById(pair[1]);
+    if(!cv) return;
+    var render = function(){ draw(cv, pair[0]); };
+    // Cards start in a hidden tab -> observe each canvas so first layout draws.
+    if(window.ResizeObserver){ new ResizeObserver(render).observe(cv); }
+    window.addEventListener('resize', render);
+    render();
+  });
+})();
+</script>
+</div>"""
 
 
 # ─── Self-contained hero HTML/CSS/JS (ported from the mock; hardenings applied) ─
