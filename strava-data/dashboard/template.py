@@ -41,7 +41,7 @@ CSS = f"""
   --bg-base: #ffffff;
   --bg-surface: #f3f4f6;
   --bg-elevated: #ffffff;
-  --bg-glass: rgba(255, 255, 255, 0.75);
+  --bg-glass: rgba(255, 255, 255, 0.94);
   --topnav-bg: rgba(255, 255, 255, 0.8);
   --border: rgba(140, 149, 159, 0.55);
   --border-subtle: rgba(140, 149, 159, 0.3);
@@ -1016,7 +1016,7 @@ function syncRange(sourceId, ed) {{
   // ─── Page/tab routing ─────────────────────────────────────────────────
   (function() {{
     var tabs = document.querySelectorAll('.tab[data-view]');
-    function activateView(name) {{
+    function activateView(name, skipHash) {{
       tabs.forEach(function(t) {{
         t.classList.toggle('active', t.dataset.view === name);
       }});
@@ -1041,15 +1041,30 @@ function syncRange(sourceId, ed) {{
           if (window.__thinTicks) window.__thinTicks();
         }});
       }}
-      history.replaceState(null, '', '#' + name);
+      // Boot-time activation reads FROM the hash to pick `name` -- writing a
+      // bare '#name' back immediately would strip any section-specific
+      // sub-state suffix (e.g. Places' '?v=sd&b=terrain') before that
+      // section's own script gets a chance to read it, breaking restore on
+      // a SECOND reload (the first reload still works off the pre-strip
+      // hash, but the strip happens during that same load, so a follow-up
+      // reload sees only the bare hash). A real tab CLICK still normalizes
+      // to the bare section name -- that's a deliberate "go to this section
+      // fresh" action, not a restore.
+      if (!skipHash) history.replaceState(null, '', '#' + name);
       var at = document.querySelector('.tab[data-view="' + name + '"]');
       if (at) at.scrollIntoView({{behavior: 'smooth', block: 'nearest', inline: 'center'}});
     }}
     tabs.forEach(function(t) {{
       t.addEventListener('click', function() {{ activateView(t.dataset.view); }});
     }});
-    var hash = (location.hash || '').replace('#', '');
-    activateView(document.getElementById('view-' + hash) ? hash : 'overview');
+    // The hash may carry a section-specific sub-state after '?' (e.g. the
+    // Places hero's View/Map selection, '#places?v=sd&b=terrain') -- strip it
+    // before matching a view id, or the lookup below always misses and falls
+    // back to 'overview'. Each section's own script (if any) re-reads
+    // location.hash itself to restore its sub-state; this routing IIFE only
+    // owns the section-level part.
+    var hash = (location.hash || '').replace('#', '').split('?')[0];
+    activateView(document.getElementById('view-' + hash) ? hash : 'overview', true);
   }})();
 
   // ─── Mobile: re-fit charts, thin crowded axes, simplify ──────────────────
