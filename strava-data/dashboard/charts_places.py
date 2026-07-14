@@ -4,6 +4,7 @@ JSON. Returns one self-contained raw HTML string (the chart_calendar() raw-strin
 precedent) -- NOT a Plotly figure. All heavy Places code lives here, not in
 charts_production.py. Imports are stdlib + numpy only (no pandas)."""
 
+import datetime as _dt
 import json
 import math
 import os
@@ -678,7 +679,11 @@ def chart_places_homes(rows):
 
 
 def _html_escape(s):
-    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+    # Escapes text AND attribute contexts: the Pass C passport/peaks place
+    # third-party activity TITLES inside aria-label="..." attributes, so quotes
+    # must be escaped too or a title with a `"` injects attributes (XSS).
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+             .replace('"', "&quot;").replace("'", "&#39;"))
 
 
 # Card markup (one per home). En-dash / times / middot are HTML entities.
@@ -1374,6 +1379,800 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   window.addEventListener('resize', resize);
   retint();
   resize();
+})();
+</script>
+</div>"""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Pass C — Passport (Module 3) + Peaks (Module 4)
+#
+# Both builders sit BELOW the two-homes cards inside #view-places and return one
+# self-contained raw HTML string each. The analytical heart is trip-clustering by
+# time-gap-away-from-home (Wrinkle A) + a peaks record book that catches the
+# home-adjacent giants trip-clustering misses (Wrinkle B). Editorial copy (region
+# names, captions, badges) is hardcoded exactly as the hero's key-trip detail is;
+# structure, dates, sport tags, geometry and the states/provinces count are LIVE.
+#
+# INJECTED-JSON XSS RULE (as Pass B): the geometry payload `PC` carries ONLY
+# numeric arrays + fly boxes, keyed by an opaque slot id. Every display string
+# (region/caption/dates/tags/badge/title/coord) is rendered SERVER-SIDE into the
+# card HTML and _html_escape'd there -- the athlete's activity TITLES are
+# third-party and json.dumps does NOT escape </script>.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Canadian provinces present in _STATE_BOXES (everything else there is a US state).
+_PROVINCES = {"BC", "AB", "SK", "MB", "ON", "QC"}
+
+_MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+# Sport -> passport tag word. Unknowns fall back to a lowercased sport type.
+_SPORT_TAG = {
+    "Run": "run", "TrailRun": "trail run", "Walk": "walk", "Hike": "hike",
+    "NordicSki": "nordic ski", "AlpineSki": "alpine ski", "Snowboard": "snowboard",
+    "Ride": "ride", "EBikeRide": "e-bike", "MountainBikeRide": "mtb",
+    "StandUpPaddling": "SUP", "IceSkate": "skate", "Pickleball": "pickleball",
+}
+
+# Curated featured-trip copy, in filmstrip order. Matched to a live cluster by a
+# UNIQUE title substring `sig` (NOT a geo box -- the two Michigan trips overlap
+# geographically). `sig` also selects the signature activity whose GPS drives the
+# thumbnail. Badge facts are the PINNED superlatives (northernmost = Vancouver,
+# NOT the mock's factually-wrong "Maine 45.2N"). badge = (css_class, text) | None.
+_PASSPORT_TRIPS = [
+    {"sig": "Whitney",      "region": "Sierra Nevada · CA",
+     "caption": "Mt. Whitney from Whitney Portal & JMT",
+     "badge": ("hi",    "Highest point · 14,507 ft")},
+    {"sig": "Maine Hut",    "region": "Western Maine",
+     "caption": "Maine Hut Trail — Days 1–3",
+     "badge": ("east",  "Easternmost · 70.2°W")},
+    {"sig": "Stanley Park", "region": "Seattle → Vancouver",
+     "caption": "Vancouver — Stanley Park",
+     "badge": ("north", "Northernmost · 49.3°N")},
+    {"sig": "Snow Snake",   "region": "Northern Michigan",
+     "caption": "Snow Snake",                         "badge": None},
+    {"sig": "Muggy",        "region": "Mid-Michigan",
+     "caption": "Muggy in Michigan",                  "badge": None},
+    {"sig": "Jay Peak",     "region": "Jay Peak · VT",
+     "caption": "Jay Peak Spring Riding",             "badge": None},
+    {"sig": "Whaleback",    "region": "Upper Valley · VT/NH",
+     "caption": "Whaleback & Hanover holiday",        "badge": None},
+]
+
+# Peaks record book (Module 4): singular moments, catches Wrinkle-B giants. Each
+# row's value/title is hardcoded editorial copy; `sig` finds the source activity
+# for the sparkline + lat/lng. FIRST-IN-SAN-DIEGO is special-cased to the live
+# earliest SD-box activity (its title is the athlete's, rendered/escaped here).
+_PEAKS_DEF = [
+    {"overline": "HIGHEST POINT",        "value": "14,507 ft",
+     "title": "Mt. Whitney via Whitney Portal & JMT", "sig": "Mt. Whitney"},
+    {"overline": "NORTHERNMOST",         "value": "49.3°N",
+     "title": "Stanley Park, Vancouver",             "sig": "Stanley Park Bike"},
+    {"overline": "HOME-ADJACENT GIANT",  "value": "10,800 ft",
+     "title": "Mt. San Jacinto from Marion Trailhead", "sig": "San Jacinto"},
+    {"overline": "EASTERNMOST",          "value": "70.2°W",
+     "title": "Maine Hut Trail — Day 3",        "sig": "Maine Hut Trail Day 3"},
+    {"overline": "FIRST IN SAN DIEGO",   "value": "Apr 2025",
+     "title": None,                                  "sig": "__first_sd__"},
+    {"overline": "LONGEST SINGLE CLIMB", "value": "6,752 ft",
+     "title": "Mt. Whitney via Whitney Portal & JMT", "sig": "Mt. Whitney"},
+]
+
+
+def _pdate(s):
+    """Parse start_date_local ('YYYY-MM-DDTHH:MM:SS[Z]') -> datetime or None."""
+    s = (s or "").strip().replace("Z", "")
+    if not s:
+        return None
+    try:
+        return _dt.datetime.fromisoformat(s)
+    except ValueError:
+        try:
+            return _dt.datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            return None
+
+
+def _act_latlng(r):
+    """(lat, lng) from an activity's start_latlng ('lat,lng'), or None."""
+    ll = (r.get("start_latlng") or "").strip()
+    if not ll:
+        return None
+    parts = ll.split(",")
+    if len(parts) != 2:
+        return None
+    lat, lng = mf(parts[0].strip()), mf(parts[1].strip())
+    return (lat, lng) if lat is not None and lng is not None else None
+
+
+def _act_home(r):
+    """'sd' | 'bos' | None for an activity, by start_latlng-in-home-box."""
+    ll = _act_latlng(r)
+    if ll is None:
+        return None
+    lat, lng = ll
+    if _in_box(lng, lat, _SD_BOX):
+        return "sd"
+    if _in_box(lng, lat, _BOS_BOX):
+        return "bos"
+    return None
+
+
+def _rdp_keep(xy, eps):
+    """RDP returning the KEPT indices (so parallel altitude/grade arrays subset
+    the same way). Iterative; mirrors _rdp's perpendicular-distance test."""
+    n = len(xy)
+    if n < 3:
+        return list(range(n))
+    keep = [False] * n
+    keep[0] = keep[-1] = True
+    stack = [(0, n - 1)]
+    while stack:
+        a, b = stack.pop()
+        ax, ay = xy[a]
+        bx, by = xy[b]
+        dx, dy = bx - ax, by - ay
+        den = math.hypot(dx, dy)
+        dmax = 0.0
+        idx = -1
+        for i in range(a + 1, b):
+            px, py = xy[i]
+            d = (math.hypot(px - ax, py - ay) if den == 0
+                 else abs(dy * px - dx * py + bx * ay - by * ax) / den)
+            if d > dmax:
+                dmax = d
+                idx = i
+        if dmax > eps and idx != -1:
+            keep[idx] = True
+            stack.append((a, idx))
+            stack.append((idx, b))
+    return [i for i in range(n) if keep[i]]
+
+
+def _load_trip_geo(aid, cap=120):
+    """Read ONE activity's stream and return decimated thumbnail geometry:
+    {path:[u,v,...] fit to the route's own cos-lat bbox, aspect preserved;
+     grade:[g,...] = grade_pct/12 clamped to +-1 (descent/flat/climb color);
+     elev:[e,...] = altitude_m normalized 0..1; bbox:(lat0,lat1,lng0,lng1)}.
+    Only the handful of signature/peak streams are read (not all 344)."""
+    import csv
+    fn = os.path.join(STREAMS_DIR, str(aid) + ".csv")
+    if not os.path.exists(fn):
+        return None
+    raw = []
+    with open(fn, encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            ln = mf((row.get("lng") or "").strip())
+            la = mf((row.get("lat") or "").strip())
+            if ln is None or la is None:
+                continue
+            al = mf((row.get("altitude_m") or "").strip())
+            gr = mf((row.get("grade_pct") or "").strip())
+            raw.append((ln, la, al if al is not None else 0.0,
+                        gr if gr is not None else 0.0))
+    if len(raw) < 2:
+        return None
+    xy = [(p[0], p[1]) for p in raw]
+    idx = _rdp_keep(xy, RDP_EPS)
+    if len(idx) > cap:
+        idx = [idx[round(i * (len(idx) - 1) / (cap - 1))] for i in range(cap)]
+    pts = [raw[i] for i in idx]
+    lngs = [p[0] for p in pts]
+    lats = [p[1] for p in pts]
+    alts = [p[2] for p in pts]
+    grs = [p[3] for p in pts]
+    ln0, ln1 = min(lngs), max(lngs)
+    la0, la1 = min(lats), max(lats)
+    coslat = math.cos(math.radians((la0 + la1) / 2.0))
+    ww = (ln1 - ln0) * coslat or 1e-6
+    wh = (la1 - la0) or 1e-6
+    sc = 1.0 / max(ww, wh)                      # uniform scale -> aspect preserved
+    cln, cla = (ln0 + ln1) / 2.0, (la0 + la1) / 2.0
+    path = []
+    for ln, la in zip(lngs, lats):
+        path.append(round(0.5 + (ln - cln) * coslat * sc, 4))
+        path.append(round(0.5 - (la - cla) * sc, 4))
+    amin, amax = min(alts), max(alts)
+    asp = (amax - amin) or 1.0
+    elev = [round((a - amin) / asp, 3) for a in alts]
+    grade = [round(max(-1.0, min(1.0, g / 12.0)), 3) for g in grs]
+    return {"path": path, "grade": grade, "elev": elev,
+            "bbox": (la0, la1, ln0, ln1)}
+
+
+def _fly_box(lat0, lat1, lng0, lng1, pad=0.05):
+    """A placesFlyTo target box (south, north, west, east) with a small pad."""
+    return {"lat0": round(lat0 - pad, 4), "lat1": round(lat1 + pad, 4),
+            "lng0": round(lng0 - pad, 4), "lng1": round(lng1 + pad, 4)}
+
+
+def _away_clusters(rows):
+    """Cluster every away activity (start_latlng outside both home boxes) by
+    time-gap-away-from-home: a new cluster starts wherever the day-gap to the
+    previous away activity exceeds 5 days. Geography is ignored inside a cluster
+    (Wrinkle A: the Pacific-NW trip roams Seattle->Vancouver and stays one)."""
+    away = []
+    for r in rows:
+        d = _pdate(r.get("start_date_local"))
+        ll = _act_latlng(r)
+        if d and ll and _act_home(r) is None:
+            away.append((d, ll, r))
+    away.sort(key=lambda x: x[0])
+    clusters, cur = [], []
+    for d, ll, r in away:
+        if cur and (d.date() - cur[-1][0].date()).days > 5:
+            clusters.append(cur)
+            cur = []
+        cur.append((d, ll, r))
+    if cur:
+        clusters.append(cur)
+    return clusters
+
+
+def _sport_tags(sports):
+    """'nordic ski x3', 'run x3', 'snowboard . alpine ski' (dot-joined, count>1
+    suffixed). Ordered by frequency then first appearance."""
+    c = Counter(sports)
+    parts = []
+    for sp, n in c.most_common():
+        word = _SPORT_TAG.get(sp, (sp or "").lower())
+        parts.append("%s ×%d" % (word, n) if n > 1 else word)
+    return " · ".join(parts)
+
+
+def _date_span(d0, d1):
+    """'Feb 7–9 · 2025' / 'Sep 29 – Oct 2 · 2025' / cross-year."""
+    if d0.year == d1.year and d0.month == d1.month:
+        if d0.day == d1.day:
+            return "%s %d · %d" % (_MONTHS[d0.month], d0.day, d0.year)
+        return "%s %d–%d · %d" % (_MONTHS[d0.month], d0.day, d1.day, d0.year)
+    if d0.year == d1.year:
+        return "%s %d – %s %d · %d" % (
+            _MONTHS[d0.month], d0.day, _MONTHS[d1.month], d1.day, d0.year)
+    return "%s %d %d – %s %d %d" % (
+        _MONTHS[d0.month], d0.day, d0.year, _MONTHS[d1.month], d1.day, d1.year)
+
+
+def _states_provinces(rows):
+    """Live distinct US states / Canadian provinces spanned by ALL away
+    activities, via _STATE_BOXES (first-match). Returns (n_states, n_provinces)."""
+    seen = set()
+    for r in rows:
+        if _act_home(r) is not None:
+            continue
+        ll = _act_latlng(r)
+        if ll is None:
+            continue
+        lat, lng = ll
+        for name, la, lb, lo, hi in _STATE_BOXES:
+            if la <= lat <= lb and lo <= lng <= hi:
+                seen.add(name)
+                break
+    prov = sum(1 for s in seen if s in _PROVINCES)
+    return len(seen) - prov, prov
+
+
+def _find_act(rows, sub):
+    """First activity whose title contains `sub` (case-insensitive)."""
+    sub = sub.lower()
+    for r in rows:
+        if sub in (r.get("name") or "").lower():
+            return r
+    return None
+
+
+def _passport_data(rows):
+    """Assemble the passport: featured stamps (curated order), brief-stop chips,
+    the geometry payload PC (slot -> {path,grade,elev,fly}), and header counts."""
+    clusters = _away_clusters(rows)
+    used = set()                       # cluster indices claimed by a curated trip
+    featured = []                      # display dicts, curated order
+    pc = {}
+
+    for spec in _PASSPORT_TRIPS:
+        sig = spec["sig"].lower()
+        for ci, c in enumerate(clusters):
+            if ci in used:
+                continue
+            sigact = next((r for _, _, r in c if sig in (r.get("name") or "").lower()),
+                          None)
+            if sigact is None:
+                continue
+            used.add(ci)
+            d0, d1 = c[0][0], c[-1][0]
+            lats = [ll[0] for _, ll, _ in c]
+            lngs = [ll[1] for _, ll, _ in c]
+            slot = "t%d" % len(featured)
+            geo = _load_trip_geo(sigact["id"]) or {}
+            pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
+                        "elev": geo.get("elev", []),
+                        "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
+            featured.append({
+                "slot": slot, "region": spec["region"], "caption": spec["caption"],
+                "dates": _date_span(d0, d1),
+                "tags": _sport_tags([r.get("sport_type") for _, _, r in c]),
+                "badge": spec["badge"]})
+            break
+
+    # Brief stops = single-day/single-activity clusters not claimed as featured.
+    # Unmatched MULTI-day clusters degrade to auto-featured (graceful; no code
+    # change needed for a future trip) rather than vanishing.
+    brief = []
+    for ci, c in enumerate(clusters):
+        if ci in used:
+            continue
+        d0, d1 = c[0][0], c[-1][0]
+        if len(c) == 1 and (d1 - d0).days == 0:
+            r = c[0][2]
+            ll = c[0][1]
+            slot = "b%d" % len(brief)
+            geo = _load_trip_geo(r["id"])
+            if geo:
+                la0, la1, ln0, ln1 = geo["bbox"]
+            else:
+                la0, la1, ln0, ln1 = ll[0], ll[0], ll[1], ll[1]
+            pc[slot] = {"fly": _fly_box(la0, la1, ln0, ln1)}
+            brief.append({"slot": slot, "title": r.get("name") or "",
+                          "date": "%s %d" % (_MONTHS[d0.month], d0.year)})
+        else:
+            lats = [ll[0] for _, ll, _ in c]
+            lngs = [ll[1] for _, ll, _ in c]
+            sigact = max(c, key=lambda x: (mf(x[2].get("total_elevation_gain_m")) or 0,
+                                           mf(x[2].get("distance_km")) or 0))[2]
+            slot = "t%d" % len(featured)
+            geo = _load_trip_geo(sigact["id"]) or {}
+            pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
+                        "elev": geo.get("elev", []),
+                        "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
+            featured.append({
+                "slot": slot, "region": "", "caption": sigact.get("name") or "",
+                "dates": _date_span(d0, d1),
+                "tags": _sport_tags([r.get("sport_type") for _, _, r in c]),
+                "badge": None})
+
+    n_states, n_prov = _states_provinces(rows)
+    return featured, brief, pc, n_states, n_prov
+
+
+def _peaks_data(rows):
+    """Assemble the 6 peak rows: display dicts (server-side strings) + geometry
+    payload keyed by slot (elev sparkline + fly box)."""
+    peaks = []
+    pc = {}
+    # First-in-San-Diego = earliest SD-box activity (the 'move', stated neutrally).
+    sd_acts = sorted(
+        ((_pdate(r.get("start_date_local")), r) for r in rows if _act_home(r) == "sd"
+         and _pdate(r.get("start_date_local"))),
+        key=lambda x: x[0])
+    first_sd = sd_acts[0][1] if sd_acts else None
+
+    for i, spec in enumerate(_PEAKS_DEF):
+        if spec["sig"] == "__first_sd__":
+            act = first_sd
+            title = (act.get("name") if act else "") or ""
+        else:
+            act = _find_act(rows, spec["sig"])
+            title = spec["title"]
+        slot = "p%d" % i
+        coord = ""
+        if act is not None:
+            geo = _load_trip_geo(act["id"])
+            ll = _act_latlng(act)
+            if ll:
+                coord = "%.2f°N  %.2f°W" % (ll[0], -ll[1])
+            if geo:
+                la0, la1, ln0, ln1 = geo["bbox"]
+                pc[slot] = {"elev": geo["elev"],
+                            "fly": _fly_box(la0, la1, ln0, ln1)}
+            elif ll:
+                pc[slot] = {"elev": [],
+                            "fly": _fly_box(ll[0], ll[0], ll[1], ll[1])}
+        peaks.append({"slot": slot, "overline": spec["overline"],
+                      "value": spec["value"], "title": title, "coord": coord})
+    return peaks, pc
+
+
+def _badge_html(badge):
+    if not badge:
+        return ""
+    cls, text = badge
+    return ('<span class="badge %s">%s</span>'
+            % (_html_escape(cls), _html_escape(text)))
+
+
+def chart_places_passport(rows):
+    """Passport filmstrip of trip stamps + brief-stop chips. Returns one
+    self-contained raw HTML string (geometry injected as slot-keyed numeric
+    JSON; every display string rendered/escaped server-side)."""
+    featured, brief, pc, n_states, n_prov = _passport_data(rows)
+    pc_json = json.dumps(pc, separators=(",", ":"), ensure_ascii=False)
+
+    stamps = []
+    for f in featured:
+        region = ('<div class="region">%s</div>' % _html_escape(f["region"])
+                  if f["region"] else "")
+        stamps.append(_STAMP.format(
+            slot=_html_escape(f["slot"]), badge=_badge_html(f["badge"]),
+            region=region, title=_html_escape(f["caption"]),
+            dates=_html_escape(f["dates"]), tags=_html_escape(f["tags"])))
+    chips = []
+    for b in brief:
+        chips.append(_CHIP.format(
+            slot=_html_escape(b["slot"]),
+            title=_html_escape(b["title"]), date=_html_escape(b["date"])))
+
+    prov_word = "province" if n_prov == 1 else "provinces"
+    state_word = "state" if n_states == 1 else "states"
+    meta = ("<b>%d</b> trips · <b>%d</b> %s &amp; <b>%d</b> %s"
+            % (len(featured), n_states, state_word, n_prov, prov_word))
+
+    geom = sum(1 for v in pc.values() if v.get("path"))
+    print("[places] passport: featured=%d brief=%d states=%d provinces=%d "
+          "geom_aids=%d json_kb=~%d"
+          % (len(featured), len(brief), n_states, n_prov, geom,
+             round(len(pc_json.encode("utf-8")) / 1024.0)))
+    if len(featured) != 7:
+        print("[places] NOTE: passport featured=%d (pinned 7) -- trip set drifted"
+              % len(featured))
+
+    return (_PASSPORT_TEMPLATE
+            .replace("__STAMPS__", "".join(stamps))
+            .replace("__CHIPS__", "".join(chips))
+            .replace("__META__", meta)
+            .replace("__PC_JSON__", pc_json))
+
+
+def chart_places_peaks(rows):
+    """Peaks record book (~6 rows). Returns one self-contained raw HTML string."""
+    peaks, pc = _peaks_data(rows)
+    pc_json = json.dumps(pc, separators=(",", ":"), ensure_ascii=False)
+
+    rows_html = []
+    for p in peaks:
+        coord = ('<div class="peak-coord">%s</div>' % _html_escape(p["coord"])
+                 if p["coord"] else "")
+        rows_html.append(_PEAK_ROW.format(
+            slot=_html_escape(p["slot"]), value=_html_escape(p["value"]),
+            overline=_html_escape(p["overline"]), title=_html_escape(p["title"]),
+            coord=coord))
+
+    print("[places] peaks: rows=%d highest=14507ft" % len(peaks))
+
+    return (_PEAKS_TEMPLATE
+            .replace("__ROWS__", "".join(rows_html))
+            .replace("__PC_JSON__", pc_json))
+
+
+# ─── Passport markup fragments (server-side rendered; strings _html_escape'd) ───
+_STAMP = """  <article class="stamp" tabindex="0" role="button" data-stamp="{slot}"
+    aria-label="{title} - view on map">
+    <div class="thumb"><canvas data-stamp="{slot}"></canvas>{badge}
+      <span class="viewmap">↗ view on map</span></div>
+    <div class="body">{region}
+      <h3 class="title">{title}</h3>
+      <div class="rowmeta"><span>{dates}</span><span class="tags">{tags}</span></div>
+    </div>
+  </article>
+"""
+
+_CHIP = ('  <span class="chip" tabindex="0" role="button" data-stamp="{slot}">'
+         '<i class="dot"></i>{title} · {date}</span>\n')
+
+_PEAK_ROW = """  <div class="peak-row" tabindex="0" role="button" data-stamp="{slot}"
+    aria-label="{overline}: {title}">
+    <div class="peak-val">{value}</div>
+    <div class="peak-main">
+      <div class="peak-overline">{overline}</div>
+      <div class="peak-title">{title}</div>
+    </div>
+    <canvas class="peak-spark" data-stamp="{slot}"></canvas>
+    {coord}
+  </div>
+"""
+
+
+# ─── Passport HTML/CSS/JS (ported from places-passport-mock.html; theme-aware) ──
+# Mock structure/CSS ported; the mock's own --run/--mtb/... palette is replaced by
+# the dashboard theme tokens, and the "design mock" foot note is dropped. Thumb
+# insets stay dark in BOTH themes (little map windows, pre-spec Module 3). Route
+# color = terrain grade (green/slate/red); elevation profile = violet. Click a
+# stamp/chip -> window.placesFlyTo(fly) (the Pass A hero hook).
+_PASSPORT_TEMPLATE = r"""<div class="places-passport">
+<style>
+  .places-passport{margin-top:34px}
+  .places-passport .pp-head{display:flex; align-items:flex-end; justify-content:space-between;
+    gap:24px; flex-wrap:wrap; margin-bottom:20px}
+  .places-passport .pp-lede{max-width:560px}
+  .places-passport .pp-eyebrow{font-family:'Geist Mono',ui-monospace,monospace; font-size:11px;
+    letter-spacing:.28em; text-transform:uppercase; color:var(--text-tertiary); margin:0 0 10px}
+  .places-passport h3.pp-h{margin:0 0 8px; font-size:clamp(21px,3vw,30px); font-weight:600;
+    letter-spacing:-.02em; color:var(--text-primary)}
+  .places-passport .pp-sub{margin:0; color:var(--text-secondary); font-size:15px; text-wrap:pretty}
+  .places-passport .pp-right{display:flex; flex-direction:column; gap:10px; align-items:flex-end}
+  .places-passport .pp-count{font-family:'Geist Mono',ui-monospace,monospace; font-size:12.5px;
+    color:var(--text-secondary); font-variant-numeric:tabular-nums}
+  .places-passport .pp-count b{color:var(--text-primary); font-weight:600}
+  .places-passport .gradkey{display:flex; align-items:center; gap:8px;
+    font-family:'Geist Mono',ui-monospace,monospace; font-size:10.5px;
+    color:var(--text-tertiary); letter-spacing:.04em}
+  .places-passport .gradbar{width:96px; height:7px; border-radius:4px;
+    background:linear-gradient(90deg,#4ade80,#8b949e 50%,#f87171)}
+
+  .places-passport .stripwrap{position:relative;
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 26px,#000 calc(100% - 26px),transparent);
+    mask-image:linear-gradient(to right,transparent,#000 26px,#000 calc(100% - 26px),transparent)}
+  .places-passport .strip{display:flex; gap:16px; overflow-x:auto; padding:6px 4px 16px;
+    scroll-snap-type:x proximity; scrollbar-width:thin;
+    scrollbar-color:var(--border) transparent}
+  .places-passport .strip::-webkit-scrollbar{height:8px}
+  .places-passport .strip::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px}
+
+  .places-passport .stamp{flex:0 0 clamp(260px,74vw,300px); scroll-snap-align:center;
+    background:var(--bg-glass); border:1px solid var(--border); border-radius:16px; overflow:hidden;
+    cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, border-color .2s;
+    box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .places-passport .stamp:hover{transform:translateY(-4px);
+    border-color:color-mix(in srgb,var(--accent) 45%,var(--border));
+    box-shadow:0 12px 30px rgba(0,0,0,.16)}
+  .places-passport .stamp:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+
+  .places-passport .thumb{position:relative; height:150px; background:#0a0e16; overflow:hidden}
+  .places-passport .thumb canvas{width:100%; height:100%; display:block}
+  .places-passport .badge{position:absolute; left:10px; top:10px;
+    font-family:'Geist Mono',ui-monospace,monospace; font-size:10px; letter-spacing:.06em;
+    text-transform:uppercase; color:#e6edf3; padding:5px 9px; border-radius:7px;
+    background:rgba(10,14,22,.66); border:1px solid rgba(230,237,243,.16); backdrop-filter:blur(3px)}
+  .places-passport .badge.hi{color:#fca5a5; border-color:rgba(248,113,113,.4)}
+  .places-passport .badge.north{color:#93c5fd; border-color:rgba(88,166,255,.4)}
+  .places-passport .badge.east{color:#4ade80; border-color:rgba(74,222,128,.4)}
+  .places-passport .viewmap{position:absolute; right:10px; bottom:10px;
+    font-family:'Geist Mono',ui-monospace,monospace; font-size:10.5px; color:#c9d1d9;
+    opacity:0; transform:translateY(4px); transition:.2s;
+    background:rgba(10,14,22,.6); padding:4px 8px; border-radius:6px}
+  .places-passport .stamp:hover .viewmap,
+  .places-passport .stamp:focus-visible .viewmap{opacity:1; transform:none}
+
+  .places-passport .body{padding:14px 16px 17px}
+  .places-passport .region{font-family:'Geist Mono',ui-monospace,monospace; font-size:10.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:7px}
+  .places-passport .title{margin:0 0 11px; font-size:16.5px; font-weight:600; line-height:1.28;
+    letter-spacing:-.01em; text-wrap:balance; color:var(--text-primary)}
+  .places-passport .rowmeta{display:flex; align-items:center; justify-content:space-between;
+    gap:10px; font-family:'Geist Mono',ui-monospace,monospace; font-size:11.5px;
+    color:var(--text-secondary); font-variant-numeric:tabular-nums}
+  .places-passport .tags{color:var(--text-tertiary); text-align:right}
+
+  .places-passport .brief{margin-top:22px; padding-top:20px; border-top:1px solid var(--border)}
+  .places-passport .brief h4{font-family:'Geist Mono',ui-monospace,monospace; font-size:11px;
+    letter-spacing:.2em; text-transform:uppercase; color:var(--text-tertiary); font-weight:500;
+    margin:0 0 12px}
+  .places-passport .chips{display:flex; flex-wrap:wrap; gap:9px}
+  .places-passport .chip{font-size:12.5px; color:var(--text-secondary); background:var(--bg-surface);
+    border:1px solid var(--border); padding:6px 11px; border-radius:999px; cursor:pointer;
+    transition:.16s}
+  .places-passport .chip:hover{color:var(--text-primary);
+    border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
+  .places-passport .chip:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .places-passport .chip .dot{display:inline-block; width:5px; height:5px; border-radius:50%;
+    margin-right:7px; background:var(--text-tertiary); vertical-align:middle}
+
+  @media (max-width:640px){
+    .places-passport .pp-head{align-items:flex-start}
+    .places-passport .pp-right{align-items:flex-start}
+  }
+  @media (prefers-reduced-motion:reduce){ .places-passport .stamp{transition:none} }
+</style>
+
+<div class="pp-head">
+  <div class="pp-lede">
+    <p class="pp-eyebrow">Places · The Passport</p>
+    <h3 class="pp-h">Everywhere that wasn't home</h3>
+    <p class="pp-sub">Each stretch of days away from Boston or San&nbsp;Diego gets one stamp &mdash;
+      weighted by memory, not miles. A multi-day summit sits beside a single morning run.</p>
+  </div>
+  <div class="pp-right">
+    <div class="pp-count">__META__</div>
+    <div class="gradkey"><span>descent</span><span class="gradbar"></span><span>climb</span></div>
+  </div>
+</div>
+
+<div class="stripwrap">
+  <div class="strip" id="places-strip">
+__STAMPS__
+  </div>
+</div>
+
+<div class="brief">
+  <h4>…and a few brief stops</h4>
+  <div class="chips">
+__CHIPS__
+  </div>
+</div>
+
+<script>
+(function(){
+  var PC = __PC_JSON__;
+  var root = document.querySelector('.places-passport');
+  if(!root) return;
+
+  // grade -> color (descent green, flat slate, climb red) -- palette hues only.
+  function gradeColor(g){
+    var G=[74,222,128], S=[139,148,158], R=[248,113,113], a, b, k;
+    if(g<0){ a=S; b=G; k=Math.min(1,-g); } else { a=S; b=R; k=Math.min(1,g); }
+    return 'rgb('+Math.round(a[0]+(b[0]-a[0])*k)+','+Math.round(a[1]+(b[1]-a[1])*k)+','
+      +Math.round(a[2]+(b[2]-a[2])*k)+')';
+  }
+
+  function drawThumb(cv){
+    var d = PC[cv.getAttribute('data-stamp')];
+    if(!d || !d.path || d.path.length<4) return;
+    var dpr=Math.min(window.devicePixelRatio||1,2);
+    var w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
+    cv.width=w*dpr; cv.height=h*dpr;
+    var ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    // faint graticule (mock)
+    ctx.strokeStyle='rgba(88,120,170,.08)'; ctx.lineWidth=1;
+    for(var i=1;i<5;i++){ ctx.beginPath();ctx.moveTo(i/5*w,0);ctx.lineTo(i/5*w,h);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i/5*h);ctx.lineTo(w,i/5*h);ctx.stroke(); }
+    var P=d.path, N=P.length/2, grade=d.grade||[], elev=d.elev||[];
+    // uniform-fit the route bbox into the upper region (aspect preserved)
+    var mx=22, top=8, botLimit=h*0.66;
+    var umin=1e9,umax=-1e9,vmin=1e9,vmax=-1e9;
+    for(var q=0;q<N;q++){ var u=P[2*q],v=P[2*q+1];
+      if(u<umin)umin=u; if(u>umax)umax=u; if(v<vmin)vmin=v; if(v>vmax)vmax=v; }
+    var Wr=w-2*mx, Hr=botLimit-top;
+    var S=Math.min(Wr/((umax-umin)||1e-6), Hr/((vmax-vmin)||1e-6));
+    var ox=mx+(Wr-(umax-umin)*S)/2 - umin*S, oy=top+(Hr-(vmax-vmin)*S)/2 - vmin*S;
+    function X(u){ return ox+u*S; } function Y(v){ return oy+v*S; }
+    ctx.lineJoin=ctx.lineCap='round'; ctx.lineWidth=2.4; ctx.shadowBlur=6;
+    for(var k=1;k<N;k++){
+      var col=gradeColor(grade[k]!=null?grade[k]:0); ctx.strokeStyle=col; ctx.shadowColor=col;
+      ctx.beginPath(); ctx.moveTo(X(P[2*(k-1)]),Y(P[2*(k-1)+1]));
+      ctx.lineTo(X(P[2*k]),Y(P[2*k+1])); ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(230,237,243,.9)';
+    ctx.beginPath();ctx.arc(X(P[0]),Y(P[1]),2.6,0,6.283);ctx.fill();
+    ctx.beginPath();ctx.arc(X(P[2*(N-1)]),Y(P[2*(N-1)+1]),2.6,0,6.283);ctx.fill();
+    // violet elevation profile along the bottom
+    if(elev.length>1){
+      var bandH=h-(h*0.72)-6, me=elev.length;
+      function ex(j){ return mx+(j/(me-1))*(w-2*mx); }
+      function ey(j){ return h-6-elev[j]*bandH; }
+      ctx.beginPath(); ctx.moveTo(mx,h-6);
+      for(var j=0;j<me;j++) ctx.lineTo(ex(j),ey(j));
+      ctx.lineTo(w-mx,h-6); ctx.closePath();
+      ctx.fillStyle='rgba(167,139,250,.16)'; ctx.fill();
+      ctx.strokeStyle='rgba(167,139,250,.55)'; ctx.lineWidth=1.3; ctx.beginPath();
+      for(var j2=0;j2<me;j2++){ j2?ctx.lineTo(ex(j2),ey(j2)):ctx.moveTo(ex(j2),ey(j2)); }
+      ctx.stroke();
+    }
+  }
+
+  function drawAll(){ root.querySelectorAll('.thumb canvas').forEach(drawThumb); }
+  var strip=document.getElementById('places-strip');
+  if(window.ResizeObserver){ new ResizeObserver(drawAll).observe(strip); }
+  window.addEventListener('resize', function(){ clearTimeout(window.__ppRt);
+    window.__ppRt=setTimeout(drawAll,150); });
+  drawAll();
+
+  // click / keyboard -> fly the hero to this trip's box
+  function fly(el){
+    var d=PC[el.getAttribute('data-stamp')];
+    if(d && d.fly && window.placesFlyTo){
+      window.placesFlyTo(d.fly);
+      var hero=document.getElementById('places-hero');
+      if(hero && hero.scrollIntoView) hero.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }
+  var dragged=false;
+  root.querySelectorAll('[data-stamp]').forEach(function(el){
+    if(el.tagName==='CANVAS') return;
+    el.addEventListener('click', function(){ if(!dragged) fly(el); });
+    el.addEventListener('keydown', function(e){
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fly(el); } });
+  });
+
+  // drag-to-scroll the filmstrip (suppress the click that ends a drag)
+  var down=false, sx, sl;
+  strip.addEventListener('pointerdown', function(e){ down=true; dragged=false;
+    sx=e.clientX; sl=strip.scrollLeft; });
+  strip.addEventListener('pointermove', function(e){
+    if(!down) return;
+    if(Math.abs(e.clientX-sx)>4){ dragged=true; strip.scrollLeft=sl-(e.clientX-sx); } });
+  function up(){ down=false; setTimeout(function(){ dragged=false; },0); }
+  strip.addEventListener('pointerup', up);
+  strip.addEventListener('pointerleave', up);
+})();
+</script>
+</div>"""
+
+
+# ─── Peaks record book HTML/CSS/JS (no mock; reuses the elevation-profile draw) ─
+_PEAKS_TEMPLATE = r"""<div class="places-peaks">
+<style>
+  .places-peaks{margin-top:30px}
+  .places-peaks .pk-eyebrow{font-family:'Geist Mono',ui-monospace,monospace; font-size:11px;
+    letter-spacing:.28em; text-transform:uppercase; color:var(--text-tertiary); margin:0 0 4px}
+  .places-peaks h3.pk-h{margin:0 0 18px; font-size:clamp(21px,3vw,30px); font-weight:600;
+    letter-spacing:-.02em; color:var(--text-primary)}
+  .places-peaks .peak-row{display:grid;
+    grid-template-columns:minmax(96px,120px) 1fr 108px minmax(120px,150px);
+    align-items:center; gap:18px; padding:16px 6px; border-top:1px solid var(--border);
+    cursor:pointer; transition:background .16s}
+  .places-peaks .peak-row:last-child{border-bottom:1px solid var(--border)}
+  .places-peaks .peak-row:hover{background:var(--bg-glass)}
+  .places-peaks .peak-row:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+  .places-peaks .peak-val{font-family:'Geist Mono',ui-monospace,monospace;
+    font-size:clamp(20px,2.6vw,26px); font-weight:600; color:var(--text-primary);
+    letter-spacing:-.01em; font-variant-numeric:tabular-nums}
+  .places-peaks .peak-overline{font-family:'Geist Mono',ui-monospace,monospace; font-size:10px;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:4px}
+  .places-peaks .peak-title{font-size:15px; color:var(--text-primary); line-height:1.3;
+    text-wrap:pretty}
+  .places-peaks .peak-spark{width:108px; height:38px; display:block}
+  .places-peaks .peak-coord{font-family:'Geist Mono',ui-monospace,monospace; font-size:11.5px;
+    color:var(--text-secondary); text-align:right; font-variant-numeric:tabular-nums}
+  @media (max-width:640px){
+    .places-peaks .peak-row{grid-template-columns:minmax(84px,100px) 1fr; gap:6px 14px;
+      grid-template-areas:"val main" "spark coord"}
+    .places-peaks .peak-val{grid-area:val} .places-peaks .peak-main{grid-area:main}
+    .places-peaks .peak-spark{grid-area:spark; width:100px}
+    .places-peaks .peak-coord{grid-area:coord; align-self:center}
+  }
+</style>
+
+<p class="pk-eyebrow">Places · The Peaks</p>
+<h3 class="pk-h">A short record book</h3>
+__ROWS__
+
+<script>
+(function(){
+  var PC = __PC_JSON__;
+  var root = document.querySelector('.places-peaks');
+  if(!root) return;
+
+  function drawSpark(cv){
+    var d = PC[cv.getAttribute('data-stamp')];
+    if(!d || !d.elev || d.elev.length<2) return;
+    var elev=d.elev, dpr=Math.min(window.devicePixelRatio||1,2);
+    var w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
+    cv.width=w*dpr; cv.height=h*dpr;
+    var ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    var pad=3, me=elev.length, bandH=h-2*pad;
+    function ex(j){ return pad+(j/(me-1))*(w-2*pad); }
+    function ey(j){ return h-pad-elev[j]*bandH; }
+    ctx.beginPath(); ctx.moveTo(ex(0),h-pad);
+    for(var j=0;j<me;j++) ctx.lineTo(ex(j),ey(j));
+    ctx.lineTo(ex(me-1),h-pad); ctx.closePath();
+    ctx.fillStyle='rgba(167,139,250,.16)'; ctx.fill();
+    ctx.strokeStyle='rgba(167,139,250,.7)'; ctx.lineWidth=1.4; ctx.lineJoin='round';
+    ctx.beginPath();
+    for(var k=0;k<me;k++){ k?ctx.lineTo(ex(k),ey(k)):ctx.moveTo(ex(k),ey(k)); }
+    ctx.stroke();
+  }
+  function drawAll(){ root.querySelectorAll('.peak-spark').forEach(drawSpark); }
+  if(window.ResizeObserver){ new ResizeObserver(drawAll).observe(root); }
+  window.addEventListener('resize', function(){ clearTimeout(window.__pkRt);
+    window.__pkRt=setTimeout(drawAll,150); });
+  drawAll();
+
+  function fly(el){
+    var d=PC[el.getAttribute('data-stamp')];
+    if(d && d.fly && window.placesFlyTo){
+      window.placesFlyTo(d.fly);
+      var hero=document.getElementById('places-hero');
+      if(hero && hero.scrollIntoView) hero.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }
+  root.querySelectorAll('.peak-row').forEach(function(el){
+    el.addEventListener('click', function(){ fly(el); });
+    el.addEventListener('keydown', function(e){
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fly(el); } });
+  });
 })();
 </script>
 </div>"""

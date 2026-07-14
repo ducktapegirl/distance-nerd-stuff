@@ -951,3 +951,135 @@ A stripped static draw (no pan/zoom/labels/controls) -- port only the hero's pro
 - Streams loaded once (no second 344-file parse; hero build line unchanged tracks=324 pts=22045).
 - Long segment names don't clip/overflow the card; overline wording identical on both cards; no arrow.
 - Units policy still 0 (`min/km`,`km/h`,`kph`,`°C`); ASCII-only in Python prints.
+
+---
+
+## Places — Passport (Pass C · Module 3) + Peaks (Pass C · Module 4)
+
+Pass C of the Places plan. **Design = Opus spec-extension** (the single Fable dispatch was
+spent on the Pass A hero). Two builders — `chart_places_passport(rows)` (filmstrip of trip
+stamps) and `chart_places_peaks(rows)` (a restrained record book) — sit BELOW the two-homes
+cards inside `#view-places`, in normal `.card` flow, both theme-aware. Design source:
+`strava-data/mocks/places-passport-mock.html` — **port its structure/CSS/JS; this spec enumerates
+the deltas for real data.** Both return one self-contained raw HTML string (the `chart_calendar()`
+precedent). All numbers below come from the Pass-C Analyze recipe — implement, do not re-derive.
+
+Tone (pre-spec §1, D2/D3): neutral keepsake, weighted by meaning not volume. A 3-day summit sits
+beside a single morning run. Restraint over completeness.
+
+### Analyze recipe (pinned — the analytical heart)
+- **Trip clustering by time-gap-away-from-home** (Wrinkle A). Take every activity whose
+  `start_latlng` falls OUTSIDE both home boxes (`_SD_BOX`/`_BOS_BOX`), sort by
+  `start_date_local`, and split into clusters wherever the day-gap to the previous away activity
+  `> 5 days`. Geography is ignored inside a cluster (the Pacific-NW trip roams Seattle→Vancouver
+  ~180 mi and MUST stay one trip). Today: **11 clusters → 7 featured trips + 4 brief stops.**
+- **Featured vs brief:** a cluster is a **featured stamp** if it matches a curated trip (below);
+  a single-day/single-activity cluster with no curated match is a **brief-stop chip**. An
+  UNMATCHED multi-day cluster degrades gracefully to an auto-featured stamp (first-activity title
+  as caption, no region/badge) so a future trip renders without a code change — nothing dropped.
+- **Curated trip metadata is editorial copy, hardcoded** (region name, caption, badge) exactly as
+  the hero's key-trip detail lines are — matched to a live cluster by a **unique title substring**
+  `sig` (NOT a geo box: the two Michigan trips overlap geographically). `sig` also selects the
+  **signature activity** whose GPS drives the thumbnail. Curated list, in filmstrip order:
+
+  | # | `sig` substr | Region overline | Caption | Badge |
+  |---|---|---|---|---|
+  | 0 | `Whitney` | `Sierra Nevada · CA` | `Mt. Whitney from Whitney Portal & JMT` | `hi` `Highest point · 14,507 ft` |
+  | 1 | `Maine Hut` | `Western Maine` | `Maine Hut Trail — Days 1–3` | `east` `Easternmost · 70.2°W` |
+  | 2 | `Stanley Park` | `Seattle → Vancouver` | `Vancouver — Stanley Park` | `north` `Northernmost · 49.3°N` |
+  | 3 | `Snow Snake` | `Northern Michigan` | `Snow Snake` | — |
+  | 4 | `Muggy` | `Mid-Michigan` | `Muggy in Michigan` | — |
+  | 5 | `Jay Peak` | `Jay Peak · VT` | `Jay Peak Spring Riding` | — |
+  | 6 | `Whaleback` | `Upper Valley · VT/NH` | `Whaleback & Hanover holiday` | — |
+
+  - **Date span** and **sport tags** are computed LIVE from the cluster (`run ×3`, `nordic ski ×3`,
+    `snowboard · alpine ski`, …). Dates format `Mon d–d · YYYY` (or cross-month `Mon d – Mon d · YYYY`).
+  - **Badge FACTS are the pinned superlatives, not re-derived** — northernmost is **Vancouver
+    49.3°N**, NOT Maine (the mock's `Northernmost · 45.2°N` on Maine is FACTUALLY WRONG — Maine gets
+    `Easternmost · 70.2°W` instead). Badge classes: `hi` (red `#f87171`), `north` (blue `--accent`),
+    `east` (green `#4ade80`).
+- **Signature-activity geometry** (thumbnail): read that ONE activity's stream, RDP-decimate
+  (eps 0.0001) + cap 120 points, emit three parallel arrays — `path` (u/v fit to the activity's
+  OWN cos-lat bbox, centered/letterboxed into 0..1), `grade` (per-vertex `grade_pct/12` clamped to
+  ±1 → descent/flat/climb color), `elev` (per-vertex `altitude_m` normalized 0..1 for the profile).
+  Only ~11 distinct stream files are read (7 signatures + peaks, deduped) — NOT all 344.
+- **Brief stops** (4 today): `The worst timing choice · Jun 2025` · `Baldface Circle Trail · Jun 2025`
+  · `Omni Mt. Washington · Jul 2025` · `Mt San Jacinto from Marion Trailhead · Aug 2025`. Chip text =
+  live title + `Mon YYYY`; each chip flies the hero to its activity box on click.
+- **Header meta:** `<featured> trips · <states> states & <provinces> provinces`, all live: trips =
+  featured count; states/provinces from `_STATE_BOXES` over ALL away-activity start points. Today
+  **7 trips · 7 states & 1 province**.
+
+### Peaks record book (Module 4) — pinned 6 rows
+Genuinely singular moments; **catches home-adjacent giants trip-clustering misses (Wrinkle B —
+San Jacinto sits just north of the SD box as a same-day out-and-back)**. Each row: big mono value,
+slate overline, activity title, a tiny altitude-profile sparkline (reuse the passport's `elev`
+loader), lat/lng in mono, click → `placesFlyTo(box)`.
+
+| Overline | Value | Title | `sig`/id |
+|---|---|---|---|
+| `HIGHEST POINT` | `14,507 ft` | Mt. Whitney via Whitney Portal & JMT | `Mt. Whitney` |
+| `NORTHERNMOST` | `49.3°N` | Stanley Park, Vancouver | `Stanley Park Bike` |
+| `HOME-ADJACENT GIANT` | `10,800 ft` | Mt. San Jacinto from Marion Trailhead | `San Jacinto` |
+| `EASTERNMOST` | `70.2°W` | Maine Hut Trail — Day 3 | `Maine Hut Trail Day 3` |
+| `FIRST IN SAN DIEGO` | `Apr 2025` | (live: earliest SD-box activity title — `Time zone shakeout`) | earliest `g?` SD act |
+| `LONGEST SINGLE CLIMB` | `6,752 ft` | Mt. Whitney via Whitney Portal & JMT | `Mt. Whitney` |
+
+- Whitney legitimately holds two records (highest + longest climb); place them non-adjacent (rows
+  1 & 6). Values/titles are hardcoded editorial copy EXCEPT `FIRST IN SAN DIEGO`, whose title is the
+  live earliest-SD-activity name (`Time zone shakeout` today) — the "move," stated neutrally.
+- lat/lng shown from each activity's `start_latlng` (`{lat:.2f}°N  {lng:.2f}°W`).
+
+### Injected-JSON XSS rule (IMPORTANT — same as Pass B)
+The geometry payload (const `PC`) carries **only numeric fields** keyed by activity id:
+`{ "<aid>": {"path":[u,v,…], "grade":[…], "elev":[…]}, … }` + a parallel `fly` box per stamp/peak.
+`json.dumps(separators=(",",":"))`, compact. **Every display string** (region, caption, dates,
+tags, badge text, brief-stop titles, peak titles/coords) is rendered SERVER-SIDE into the card
+HTML and `_html_escape`d there — NEVER spliced into the `<script>` (the athlete's activity TITLES
+are third-party; `json.dumps` does not escape `<`/`/`). Each stamp/peak/chip element carries
+`data-stamp="<aid>"` (geometry lookup) and `data-fly='{"lat0":…}'` OR the JS reads `fly` from `PC`
+by id. Titles may contain emoji (`Snow Snake 🐍`) — fine in HTML; Python `print()` must use `_ascii()`.
+
+### Markup / builders
+- **`chart_places_passport(rows)`** → `<section>`-less raw HTML: port the mock's `.wrap/.head/
+  .stripwrap/.strip/.stamp/.thumb/.body/.brief/.chips` structure and CSS **verbatim** (already
+  theme-aware via `prefers-color-scheme` + `:root[data-theme]`), restyled onto dashboard tokens
+  where the mock used its own `--run/--mtb/...` (map to `--running/--mtb/--elevation/--hike`). Drop
+  the mock's `.foot` "design mock" note. Stamp thumbnails stay **dark insets in both themes** (fixed
+  dark ground `#0a0e16`, the mock's `.thumb` bg) — little map windows. Each `.stamp` is a
+  `<button>`/`article[tabindex=0]` with `data-stamp`/`data-fly`; hover reveals `↗ view on map`;
+  click → `window.placesFlyTo(fly)`. Featured stamps in curated order; brief stops as `.chip`s.
+- **`chart_places_peaks(rows)`** → raw HTML: a `.places-peaks` list of 6 `.peak-row`s (no mock —
+  reuse the passport's thumbnail canvas code for the altitude sparkline only, drawn violet
+  `--elevation`, no route). Each row: `.peak-val` (big Geist Mono), `.peak-overline` (slate
+  small-caps), `.peak-title`, `<canvas class="peak-spark" data-stamp>`, `.peak-coord` (mono).
+  Row is a button → `placesFlyTo(fly)`.
+- **Thumbnail JS** (ported `drawThumb`): swap the seeded squiggle for the injected `path`; color
+  each segment `i` by `gradeColor(grade[i])` (mock's green/slate/red lerp verbatim — descent green
+  `#4ade80` / flat slate `#8b949e` / climb red `#f87171`); draw the violet `elev` profile along the
+  bottom. DPR-cap 2, `ResizeObserver` per canvas (cards start in a hidden tab). Respect
+  `prefers-reduced-motion` (the hover-lift only; no line-drawing animation — pre-spec §7).
+- **Wiring (`page.py`):** thread `places_passport` + `places_peaks` through
+  `_build_main_charts`→`build_page`→`_assemble_html` exactly as `places_homes` is; render inside
+  `#view-places` AFTER homes: `{places_hero}{places_homes}{places_passport}{places_peaks}`. Build
+  them right after homes with `print("  places passport...")` / `print("  places peaks...")`.
+- **No new palette hex** (green/slate/red/violet are existing tokens). **No new data files.**
+
+### Build prints (ASCII only)
+`[places] passport: featured=7 brief=4 states=7 provinces=1 geom_aids=11 json_kb=~22`
+`[places] peaks: rows=6 highest=14507ft`
+Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches zero clusters
+(a retitle/refetch surfaced) — never a hard assert (deploy must not break on data growth).
+
+### Verify vs recipe (developer asserts / QA checks)
+- 7 featured stamps in curated order; Whitney first with `Highest point · 14,507 ft`; Maine
+  `Easternmost · 70.2°W` (NOT northernmost); Vancouver `Northernmost · 49.3°N`. 4 brief chips.
+- Each thumbnail: a recognizable route colored by grade (Whitney climbs hard/red to its peak;
+  Michigan stays flat/slate) with a violet elevation profile; dark inset in BOTH themes.
+- Peaks: 6 rows, values `14,507 ft / 49.3°N / 10,800 ft / 70.2°W / Apr 2025 / 6,752 ft`; San
+  Jacinto present (Wrinkle B); `FIRST IN SAN DIEGO` title is live (`Time zone shakeout`).
+- Click a stamp/peak/chip → hero flies to that box (View buttons deactivate); `placesFlyTo` exists.
+- Geometry JSON carries no display strings (grep the `<script>` for a segment/activity title →
+  none); titles are HTML-escaped server-side; emoji renders.
+- Both themes legible; mobile: filmstrip scroll-snaps + drag-scrolls, peaks stack; no h-scroll on body.
+- ASCII-only Python prints; units policy 0.
