@@ -960,19 +960,72 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   #places-hero .places-fs:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   #places-hero .places-fs svg{width:16px; height:16px; stroke:currentColor; fill:none;
     stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+
+  /* Explicit zoom/pan-reset controls. Desktop: bottom-right, clear of the
+     mid-height Boston label and above the footer. Mobile: the top-right
+     corner is vacated once .places-controls relocates to the bottom (below),
+     so the zoom cluster moves there instead of fighting the bottom row. */
+  #places-hero .places-zoom{
+    position:absolute; right:clamp(22px,4vw,52px); bottom:clamp(96px,17vh,140px);
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    opacity:0; animation:places-fade 800ms ease .6s forwards;
+  }
+  #places-hero .places-zoom-pair{
+    display:flex; flex-direction:column;
+    background:var(--bg-glass); border:1px solid var(--border);
+    border-radius:11px; overflow:hidden;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  }
+  #places-hero .places-zoom-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:36px; height:36px; padding:0; background:transparent; border:none;
+    color:var(--text-secondary); cursor:pointer;
+    transition:color .18s, background .18s;
+  }
+  #places-hero .places-zoom-pair .places-zoom-btn:first-child{
+    border-bottom:1px solid var(--border-subtle);
+  }
+  #places-hero .places-zoom-btn:hover{color:var(--text-primary); background:rgba(255,255,255,.06)}
+  :root.light #places-hero .places-zoom-btn:hover{background:rgba(20,24,31,.05)}
+  #places-hero .places-zoom-btn:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+  #places-hero .places-zoom-btn:disabled{opacity:.35; cursor:default}
+  #places-hero .places-zoom-btn:disabled:hover{color:var(--text-secondary); background:transparent}
+  #places-hero .places-zoom-btn svg{width:16px; height:16px; stroke:currentColor; fill:none;
+    stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
   @media (max-width:640px){
     #places-hero .places-controls{
-      top:auto; bottom:96px; right:clamp(14px,4vw,52px); left:clamp(14px,4vw,52px);
+      /* Pre-existing overlap (found during zoom-control QA, unrelated to it):
+         the stacked mobile .places-foot (legend + stat, each wrapping to 2
+         lines at narrow widths) ran taller than the old 96px clearance and
+         collided with the Map row on every phone size tested (390/430/360/
+         320 CSS px). Verified via canvas pixel-scan (the on-canvas home
+         labels are data-driven, not a CSS box, so a purely-visual check is
+         required): 116px + the footer shrink below clears the Map-row/
+         legend overlap on ALL sizes tested. On the two narrowest (<=360px)
+         it can still nudge the on-canvas label band -- a second, deeper
+         pre-existing crowding issue on legacy-width phones that predates
+         this fix too (confirmed via the same pixel-scan against the old
+         96px baseline); left as a follow-up rather than a full mobile-chrome
+         rework bundled into a zoom-controls change. */
+      top:auto; bottom:116px;
+      right:clamp(14px,4vw,52px); left:clamp(14px,4vw,52px);
       align-items:stretch;
     }
     #places-hero .places-seg{justify-content:center}
     #places-hero .places-fs{align-self:flex-end}
-    #places-hero .places-foot{flex-direction:column; align-items:flex-start}
-    #places-hero .places-stat{text-align:left}
+    #places-hero .places-foot{
+      flex-direction:column; align-items:flex-start;
+      gap:8px; padding-top:clamp(10px,2vh,18px); padding-bottom:clamp(10px,2vh,18px);
+    }
+    #places-hero .places-legend{gap:6px 14px}
+    #places-hero .places-stat{text-align:left; line-height:1.35}
+    #places-hero .places-zoom{
+      top:clamp(22px,4vh,44px); right:clamp(14px,4vw,52px); bottom:auto;
+    }
   }
   @media (prefers-reduced-motion:reduce){
     #places-hero canvas, #places-hero .places-caption,
-    #places-hero .places-controls, #places-hero .places-foot{
+    #places-hero .places-controls, #places-hero .places-foot, #places-hero .places-zoom{
       animation:none; opacity:1; transform:none;
     }
   }
@@ -1010,6 +1063,20 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       <span><i class="dot" style="background:#4ade80"></i>Hike</span>
     </div>
     <div class="places-stat"><b>__ACT__</b> activities &middot; <b>__REGIONS__</b> regions &middot; <b>__STATES__</b> states &amp; provinces</div>
+  </div>
+  <div class="places-zoom" role="group" aria-label="Zoom">
+    <div class="places-zoom-pair">
+      <button class="places-zoom-btn" id="places-zoom-in" type="button" aria-label="Zoom in">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="places-zoom-btn" id="places-zoom-out" type="button" aria-label="Zoom out">
+        <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <button class="places-fs" id="places-zoom-reset" type="button"
+            aria-label="Reset view" title="Reset to default view">
+      <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+    </button>
   </div>
   <div class="places-hint" id="places-hint"></div>
 </div>
@@ -1212,6 +1279,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     }
     ctx.globalCompositeOperation='source-over';
     drawLabels();
+    updateZoomButtons();
   }
 
   // ── labels + declutter ──────────────────────────────────────────────────
@@ -1394,6 +1462,29 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     clearTimeout(hintT);
     hintT=setTimeout(function(){ hint.classList.remove('show'); }, 1200);
   }
+
+  // ── explicit zoom / reset controls ───────────────────────────────────────
+  var zoomInBtn = document.getElementById('places-zoom-in');
+  var zoomOutBtn = document.getElementById('places-zoom-out');
+  var zoomResetBtn = document.getElementById('places-zoom-reset');
+  function updateZoomButtons(){
+    if(!zoomInBtn) return;
+    zoomInBtn.disabled = cur.s >= 400 - 1e-6;
+    zoomOutBtn.disabled = cur.s <= 0.65 + 1e-6;
+  }
+  function zoomStep(factor){
+    cancelAnimationFrame(anim);
+    tweenTo({s:clampS(cur.s*factor), fx:cur.fx, fy:cur.fy});
+  }
+  if(zoomInBtn)  zoomInBtn.addEventListener('click', function(){ zoomStep(1.5); });
+  if(zoomOutBtn) zoomOutBtn.addEventListener('click', function(){ zoomStep(1/1.5); });
+  if(zoomResetBtn) zoomResetBtn.addEventListener('click', function(){
+    // Reuse the "All" view button's own click handler (single source of truth
+    // for the default camera + lens-clear + button-sync), rather than
+    // duplicating its target/lens logic here.
+    var allBtn = hero.querySelector('[data-frame="all"]');
+    if(allBtn) allBtn.click();
+  });
 
   function zoomAt(mx,my,factor){
     var wx=cur.fx+(mx-W/2)/(PD.ww*S0*cur.s);

@@ -1151,3 +1151,50 @@ UNDER the vector basemap. Real elevation, not the retired ring placeholder.
 - Terrain mode shows real relief (Sierra at the Whitney label, Rockies, Cascades
   near Vancouver; flat east); concentric rings gone.
 - No JS errors on terrain toggle / fly / theme / Trips lens; body h-overflow 0.
+
+---
+
+## Places — Hero zoom/pan controls (explicit UI)
+
+Follow-on to the shipped Places build. The hero previously relied entirely on implicit
+gestures (drag, Ctrl/Cmd+scroll, pinch, dblclick) with no visible affordance — adds an
+explicit `+`/`−`/reset control cluster on the map itself.
+
+### Markup + placement
+- New `.places-zoom` group inside `.places-chrome`: a `.places-zoom-pair` (two stacked
+  `+`/`−` buttons in one glass pill, styled like `.places-seg`) plus a separate circular
+  reset button reusing the `.places-fs` (fullscreen button) class for visual consistency.
+- **Desktop:** bottom-right (`right:clamp(22px,4vw,52px); bottom:clamp(96px,17vh,140px)`)
+  — clear of the mid-height Boston label and above the footer.
+- **Mobile (<=640px):** top-right (`top:clamp(22px,4vh,44px); right:clamp(14px,4vw,52px)`)
+  — the corner vacated once `.places-controls` (View/Map) relocates to the bottom.
+
+### Behavior
+- `+`/`−` zoom at the CURRENT CAMERA CENTER (not cursor position — there is no cursor for
+  a button click), via the existing `tweenTo`/`clampS` machinery (620ms ease, snaps under
+  `prefers-reduced-motion`), factor 1.5 / (1/1.5) per click.
+- Both buttons `disabled` at the zoom bounds (`cur.s>=400` / `cur.s<=0.65`), updated every
+  `draw()` call via `updateZoomButtons()`.
+- **Reset** button triggers a `.click()` on the existing `[data-frame="all"]` View button
+  rather than duplicating its target/lens/button-sync logic — single source of truth for
+  "default view."
+- No new palette hex; reuses `.places-fs`/`.places-seg` glass styling.
+
+### Bonus fix bundled in (pre-existing, found via this QA pass — see mobile section)
+The mobile `.places-controls` (View/Map rows) collided with `.places-foot` (legend+stat)
+on every phone size tested; on the narrowest (<=360px) it also nudged the on-canvas home
+labels. Verified via canvas pixel-scan (labels are drawn, not DOM, so a visual check is
+required) against the OLD 96px baseline: the footer/legend collision existed on ALL sizes
+tested (390/430/360/320 CSS px) and the label collision already existed on the two
+narrowest. Fixed footer/legend fully (shrunk mobile `.places-foot` padding/gap, bumped the
+controls offset to 116px) on all sizes tested; the deeper narrow-phone (<=360px) label
+crowding is improved but not fully eliminated — flagged as a follow-up, not bundled into
+this pass (would need moving the fullscreen toggle out of `.places-controls` or a broader
+mobile chrome rework).
+
+### Verify
+- Zoom in/out via buttons changes `cur.s`; buttons disable at bounds; reset returns to the
+  exact `{s:1,fx:0.5,fy:0.5}` default and re-syncs the View button states.
+- Desktop: zoom cluster clear of Boston label and footer in both themes.
+- Mobile: zoom cluster clear of the caption and the (relocated) View/Map controls; the
+  View/Map-vs-footer collision is gone on 320-430px widths (canvas pixel-scan verified).
