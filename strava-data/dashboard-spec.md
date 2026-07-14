@@ -817,3 +817,137 @@ Port the mock's floating chrome, restyled onto dashboard components:
 - Nav shows `Places` (no `Map`); `view-map` section gone; `CLICK_IDS` no longer contains
   `chart-map`; `window.placesFlyTo` exists and accepts `'sd'` and a `{lat0,lat1,lng0,lng1}` box.
 - Build print (ASCII): `[places] hero: tracks=324 pts=21372 json_kb=~470`.
+
+---
+
+## Places — Two Homes (Pass B)
+
+Pass B (Module 2) of the Places plan. **Design = Opus spec-extension** (the single Fable dispatch
+was spent on the Pass A hero; the aesthetic is already established). Two **equal** glass cards —
+San Diego and Boston — that sit BELOW the hero inside `view-places`, in normal `.card` flow.
+Neutral keepsake tone: equal weight, no arrow, not before/after. Verified numbers from the analyst
+Pass-B recipe (implement live at build time per the "counts stay live" precedent; do not freeze).
+
+### Section placement
+- New builder **`chart_places_homes(rows)`** in `charts_places.py`, returning one self-contained raw
+  HTML string (style + two cards + one script). Wire it in `page.py` INSIDE `#view-places`, AFTER
+  the hero: `<section id="view-places" class="view">{places_hero}{places_homes}</section>` (thread a
+  `places_homes` param the same way `places_hero` is threaded through
+  `_build_main_charts`/`_assemble_html`/`build_page`; build it right after the hero with a
+  `print("  places homes...")` line).
+- **Load streams ONCE.** The hero already loads+decimates+classifies every track via `_load_tracks`.
+  Refactor so the stream load is shared, not repeated: extract a module-level memoized helper (e.g.
+  `_places_tracks(rows)` that caches `_load_tracks`'s `(tracks, extents)` for the process) and have
+  BOTH `chart_places_hero` and `chart_places_homes` call it. No second 344-file parse.
+
+### Data (injected JSON, const `PH`, compact `json.dumps(separators=(",",":"))`)
+Reuse the hero's already-decimated tracks; filter to each home by the track group `g`
+(`g==0` San Diego, `g==1` Boston) and project into each thumbnail's OWN per-metro frame:
+```
+{
+ "sd":  { "fr": {lng0,lngspan,lat1,latspan,ww,wh},   // per-metro frame (below)
+          "tracks": [ {"c":<bucket>, "p":[u,v, u,v, ...]}, ... ],  // u/v in 0..1 of the SD frame
+          "mi": 782, "seg": "Canyon entrance via Salix", "segN": 34, "era": "2025–now" },
+ "bos": { "fr": {...}, "tracks": [...], "mi": 530, "seg": "Cataldo East", "segN": 20,
+          "era": "2024–2025" }
+}
+```
+- **Per-metro frame** = each home's drawn-track extent + 6% margin (equal treatment = each metro fit
+  to its OWN card, NOT a shared span), then the hero's projection: `ww = lngspan*COSLAT` (COSLAT
+  0.7551), `wh = latspan`. Pinned boxes (raw extent + 6%): **SD lat 32.588..33.246, lng
+  -117.298..-116.916**; **Boston lat 42.263..42.519, lng -71.723..-70.972**. Compute u/v in Python
+  with the hero's `_uv`.
+  - **SD northern-tail fallback:** if the SD thumbnail reads sparse at build/QA, clip the SD frame to
+    the 99th-pct box **lat 32.635..33.100, lng -117.275..-116.985** (documented analyst alternative).
+    Default to the +6% box; switch only if QA flags sparseness.
+- Reused point counts at the hero's cap-150 decimation: SD ~12,491 pts / Boston ~7,668 pts (cheap;
+  no lighter cap needed).
+- **Stats computed LIVE at build time** (not frozen), by `start_latlng`-in-box (the Pass-A
+  155/137 definition — NOT the `g` stream grouping, which differs by <=5):
+  - `mi` = round(sum(distance_km in box) * KM_TO_MI). Today: SD 781.6->**782**, Boston 529.5->**530**.
+    Plain `mi`, NO thousands comma (both are 3-digit).
+  - `seg`/`segN` = most-repeated Strava segment: join `segment_efforts.csv` -> activity -> home box,
+    `Counter` per segment_id, take `most_common(1)`, label via `segment_name` (from efforts or
+    `segments_summary.csv`), count = effort tally. Skip efforts whose activity isn't in either box.
+    Today: SD **Canyon entrance via Salix / 34**, Boston **Cataldo East / 20** (robust; clear
+    margins 34-vs-26, 20-vs-12; identical under activity-home vs segment-location binning).
+  - `era` = the home-era label, **hardcoded per home** (`2025–now` SD, `2024–2025` Boston) with
+    an en-dash. This is the "moved away" narrative, NOT literal min/max (Boston has 4 return-visit
+    activities in 2026 -> a literal `2024-2026` would muddy the story; keep the era label).
+  - Print an ASCII line `[places] homes: sd_mi=782 sd_seg="..."x34 bos_mi=530 bos_seg="..."x20`
+    and a soft `[places] NOTE:` if `mi` drifts far from 782/530 or the segment winner changes (so a
+    refetch surfacing a different/joke-named winner is visible to QA -- do NOT hard-assert).
+
+### Card markup + layout
+```html
+<div class="places-homes">
+  <div class="places-home">
+    <canvas class="places-home-map" id="chart-places-home-sd" role="img"
+      aria-label="San Diego route heatmap"></canvas>
+    <div class="places-home-body">
+      <div class="places-home-name">San Diego</div>
+      <div class="places-home-stats">
+        <div class="phs-mi"><b>782</b> mi</div>
+        <div class="phs-seg"><span class="phs-ovl">Most-repeated segment</span>
+          Canyon entrance via Salix &middot; 34&times;</div>
+        <div class="phs-era">2025&ndash;now</div>
+      </div>
+    </div>
+  </div>
+  <div class="places-home"> ... Boston (chart-places-home-bos) ... </div>
+</div>
+```
+- **`.places-homes`**: `display:flex; gap:16px; margin-top:16px;` (matches the card grid gap). On
+  `max-width:640px` -> `flex-direction:column`. The whole block sits in the 1100px content column
+  (same as the now-column-aligned hero).
+- **`.places-home`** (each card, EQUAL): `flex:1 1 0; min-width:0;` glass card reusing the dashboard
+  card look -- `background:var(--bg-glass); border:1px solid var(--border); border-radius:16px;
+  overflow:hidden;` (theme-aware, like every other `.card`). No hover-lift, no arrow.
+- **`.places-home-map`** (the dark heatmap thumbnail): `display:block; width:100%; height:200px;`
+  (mobile `height:170px`). **Dark-committed in BOTH themes** -- a dark inset "little window" per
+  pre-spec: fixed dark ground `background: radial-gradient(120% 120% at 50% 45%, #101725 0%,
+  #0d1117 55%, #05070a 100%)` and additive `globalCompositeOperation='lighter'` glow with the
+  **fixed dark-theme sport hexes** (bucket -> teal `#2dd4bf`, amber `#f59e0b`, violet `#a78bfa`,
+  green `#4ade80`, slate `#8b949e`) -- NO light/multiply swap, NO CSS-var reads. It does not
+  participate in `__placesHeroRedraw`.
+- **`.places-home-body`**: `padding:14px 16px 16px;`.
+  - **`.places-home-name`**: Geist, `font-size:15px; font-weight:600; color:var(--text-primary);
+    margin-bottom:8px;` -- `San Diego` / `Boston`.
+  - **`.places-home-stats`**: the 3-line mono block, `font-family:'Geist Mono',...; font-size:12.5px;
+    color:var(--text-secondary); display:flex; flex-direction:column; gap:4px;
+    font-variant-numeric:tabular-nums;`.
+    - `.phs-mi b`: `color:var(--text-primary); font-weight:600;` (the number pops; unit slate).
+    - `.phs-seg`: the segment line. `.phs-ovl` = a small-caps overline BEFORE the value, IDENTICAL on
+      both cards (`display:block; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+      color:var(--text-tertiary); margin-bottom:2px;`). The value + `N&times;` follow. Long segment
+      names must not overflow: `.phs-seg{ overflow-wrap:anywhere; }` (or clamp to 2 lines with
+      ellipsis) -- verify no clip at card width.
+    - `.phs-era`: `color:var(--text-tertiary);` -- the era label.
+- **Equal treatment:** both cards identical size/height/type scale/overline wording; the only
+  differences are the data values and the thumbnail geometry. Do NOT relabel the segment overline by
+  sport (SD's winner is MTB, Boston's is Run -- keep the neutral `Most-repeated segment` on both).
+
+### Thumbnail renderer (per canvas)
+A stripped static draw (no pan/zoom/labels/controls) -- port only the hero's projection + glow loop:
+- On boot per canvas: DPR-cap 2; `S0 = min(W/fr.ww, H/fr.wh)`; project each track point
+  `x = W/2 + (u-0.5)*fr.ww*S0`, `y = H/2 + (v-0.5)*fr.wh*S0` (centered letterbox, camera fixed at
+  s=1, fx=fy=0.5 -- the metro already fills the frame via its own `fr`). Or equivalently precompute
+  u/v already in-frame and scale to the canvas; either matches the hero.
+- `lineJoin/lineCap='round'`, `lineWidth = max(0.8, 1.0)`, additive glow, per-track alpha
+  `0.34 + 0.12*deterministic_jitter` (reuse the hero's `(i*0.6180339887)%1` jitter). Sport color by
+  bucket (fixed dark hexes above). No graticule needed (thumbnail); optional very-faint one is fine.
+- Draw once on `ResizeObserver` (cards start in a hidden tab -> observe each `.places-home-map` so
+  first layout triggers the draw, same reasoning as the hero). No theme hook (dark-committed).
+- Respect `prefers-reduced-motion` only insofar as there is no animation to begin with (static draw).
+
+### Verify vs recipe (developer asserts / QA checks)
+- Two equal cards render below the hero, side-by-side on desktop, stacked on mobile.
+- Thumbnails: each shows a dense, recognizable metro heatmap (SD wider coastal sprawl; Boston
+  tighter) as a DARK inset in BOTH light and dark page themes.
+- Stat lines exact today: SD `782 mi` / `Most-repeated segment` / `Canyon entrance via Salix &middot; 34&times;`
+  / `2025&ndash;now`; Boston `530 mi` / `Cataldo East &middot; 20&times;` / `2024&ndash;2025`.
+- Names computed live; build print `[places] homes:` shows sd_mi=782 bos_mi=530 and the two segment
+  winners; no drift NOTE today.
+- Streams loaded once (no second 344-file parse; hero build line unchanged tracks=324 pts=22045).
+- Long segment names don't clip/overflow the card; overline wording identical on both cards; no arrow.
+- Units policy still 0 (`min/km`,`km/h`,`kph`,`°C`); ASCII-only in Python prints.
