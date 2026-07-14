@@ -1083,3 +1083,40 @@ Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches
   none); titles are HTML-escaped server-side; emoji renders.
 - Both themes legible; mobile: filmstrip scroll-snaps + drag-scrolls, peaks stack; no h-scroll on body.
 - ASCII-only Python prints; units policy 0.
+
+---
+
+## Places — Basemap (Glow vector layer)
+
+Follow-on to the shipped Places build (`places-basemap-plan.md`). Adds a faint
+geographic layer under the hero's route glow so the section reads as a real map
+(especially in light mode, where the glow alone was near-invisible on white).
+Retires the mock's concentric-ring terrain placeholder.
+
+### Architecture (keeps Option A intact)
+- **Vector, drawn on the SAME canvas in the SAME projection** — NOT tiles, NOT a
+  reprojected Mercator layer. Coastline / state-province / lake polylines are
+  projected through the existing `projX`/`projY` (equirectangular + `COSLAT`), so
+  they register with the routes exactly at every zoom, with no runtime network.
+- **Asset:** `strava-data/assets/basemap.json` (checked in, ~80 KB), regenerated
+  by `strava-data/tools/gen_basemap.py` from Natural Earth 50m coastline / admin-1
+  lines / lakes — clipped to the map extent (lat 24..55, lng -135..-60), RDP-
+  simplified, rounded to 3 decimals, small lakes dropped (bbox diag < 0.6°). Pure
+  numeric `[lng,lat,...]` polylines → safe to inline into `<script>`.
+- **Build:** `chart_places_hero` reads the asset via `_load_basemap()` (missing →
+  soft WARNING, hero still works) and inlines it as `__BM_JSON__`; JS converts to
+  Float32 u/v once at boot (same frame as routes). Console: `[places] basemap: json_kb=~81`.
+
+### Render (`drawBasemap()`, called top of `draw()` under the glow)
+- Order: `clearRect → drawGraticule → drawBasemap → glow tracks → labels`.
+- Slate (`--text-secondary`), **faint** (D3): coast/lakes alpha 0.16 dark / 0.26
+  light, admin 0.085 dark / 0.15 light; line widths 0.9/0.8/0.7. Re-read on every
+  `retint()` so both themes resolve. Drawn in BOTH Glow and Terrain modes (Terrain
+  will layer a hillshade image under this — separate follow-up).
+- **No new palette hex** (slate is a token); no new runtime dependency.
+
+### Verify
+- Coastline/borders/Great Lakes register with the home labels (San Diego on the
+  SoCal coast, Boston on the MA coast, Vancouver PNW) at All zoom and after fly-to.
+- Faint in both themes; light mode now legibly geographic; routes stay the subject.
+- Concentric-ring placeholder gone; no JS errors on terrain toggle / fly / theme.

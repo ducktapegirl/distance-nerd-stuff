@@ -12,7 +12,7 @@ from collections import Counter
 
 import numpy as np
 
-from .config import KM_TO_MI, STREAMS_DIR
+from .config import ASSETS_DIR, KM_TO_MI, STREAMS_DIR
 from .data import load_segment_efforts, load_segments, mf
 
 # ── Pinned constants (analyst Pass-A recipe; see dashboard-spec "Places") ──────
@@ -406,6 +406,22 @@ def _build_views(fr):
     return views
 
 
+def _load_basemap():
+    """Read the checked-in vector basemap asset (compact JSON of numeric
+    [lng,lat,...] polylines for coast/admin/lakes) to inline into the hero.
+    Returns the raw JSON text, or 'null' if missing (basemap draws nothing;
+    the hero still works). Pure numbers -> safe to splice into <script>."""
+    path = os.path.join(ASSETS_DIR, "basemap.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            txt = f.read().strip()
+        return txt or "null"
+    except FileNotFoundError:
+        print("[places] WARNING: assets/basemap.json missing "
+              "(run tools/gen_basemap.py) -- hero draws no basemap")
+        return "null"
+
+
 def chart_places_hero(rows):
     """Build the Places hero: load streams, assemble the injected `PD` payload,
     and return one self-contained raw HTML string (style + canvas + chrome +
@@ -469,8 +485,13 @@ def chart_places_hero(rows):
         print("[places] WARNING: total points %d drift %.1f%% from 21372 (>5%%)"
               % (total_pts, drift * 100))
 
+    bm_json = _load_basemap()
+    bm_kb = len(bm_json.encode("utf-8")) / 1024.0
+    print("[places] basemap: json_kb=~%d" % round(bm_kb))
+
     html = (_HERO_TEMPLATE
             .replace("__PD_JSON__", pd_json)
+            .replace("__BM_JSON__", bm_json)
             .replace("__ACT__", str(counts["act"]))
             .replace("__REGIONS__", str(counts["regions"]))
             .replace("__STATES__", str(counts["states"])))
@@ -986,6 +1007,22 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
             base:(t.g<2 ? 0.30 : 0.50) + 0.12*jitter};
   });
 
+  // Vector basemap (coast / admin / lakes): flat [lng,lat,...] polylines ->
+  // Float32 u/v once at boot, same frame as the routes so it registers exactly.
+  var BM_RAW = __BM_JSON__;
+  function toUV(list){
+    return (list||[]).map(function(p){
+      var m=p.length/2, uv=new Float32Array(p.length);
+      for(var k=0;k<m;k++){
+        uv[2*k]   = (p[2*k]   - PD.lng0)/PD.lngspan;
+        uv[2*k+1] = (PD.lat1 - p[2*k+1])/PD.latspan;
+      }
+      return uv;
+    });
+  }
+  var BM = BM_RAW ? {coast:toUV(BM_RAW.coast), admin:toUV(BM_RAW.admin),
+                     lakes:toUV(BM_RAW.lakes)} : null;
+
   // ── Theme colors (re-read on every retint) ──────────────────────────────
   var probe = document.createElement('span');
   probe.style.display='none'; hero.appendChild(probe);
@@ -1006,7 +1043,8 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       route: [ readVar('--running'), readVar('--mtb'), readVar('--elevation'),
                hexRGB('#4ade80'), readVar('--other') ],
       tp: readVar('--text-primary'),
-      ts: readVar('--text-secondary')
+      ts: readVar('--text-secondary'),
+      bm: readVar('--text-secondary')      // slate -> faint basemap lines
     };
   }
 
@@ -1057,33 +1095,38 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     }
   }
 
-  // terrain relief placeholder: concentric rings at the two mountain trips
-  function drawContours(){
-    var anchors = [];
-    for(var i=0;i<PD.labels.length;i++){
-      var L=PD.labels[i];
-      if(L.name==='SIERRA' || L.name==='MAINE') anchors.push(L);
-    }
-    ctx.strokeStyle = TH.light ? 'rgba('+TH.ts[0]+','+TH.ts[1]+','+TH.ts[2]+',0.12)'
-                               : 'rgba(212,160,116,.13)';
-    ctx.lineWidth=1;
-    var rs = Math.min(cur.s, 3);
-    for(var a=0;a<anchors.length;a++){
-      var cx=projX(anchors[a].u), cy=projY(anchors[a].v);
-      for(var r=1;r<=5;r++){
+  // Vector basemap: faint coast / state-province / lake lines drawn under the
+  // route glow, in the same projection so they register with the routes (D3:
+  // a quiet grounding, not a legible map). Replaces the mock's concentric-ring
+  // terrain placeholder. Light ground needs more alpha to read than the dark.
+  function drawBasemap(){
+    if(!BM) return;
+    var s = TH.bm;
+    var aWater = TH.light ? 0.26 : 0.16;
+    var aAdmin = TH.light ? 0.15 : 0.085;
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    function strokeSet(set, alpha, lw){
+      ctx.strokeStyle = 'rgba('+s[0]+','+s[1]+','+s[2]+','+alpha+')';
+      ctx.lineWidth = lw;
+      for(var i=0;i<set.length;i++){
+        var uv=set[i], n=uv.length/2;
         ctx.beginPath();
-        ctx.ellipse(cx,cy, r*16*0.6*rs, r*12*0.6*rs, 0,0,6.283);
+        for(var k=0;k<n;k++){ var x=projX(uv[2*k]), y=projY(uv[2*k+1]);
+          if(k) ctx.lineTo(x,y); else ctx.moveTo(x,y); }
         ctx.stroke();
       }
     }
+    strokeSet(BM.admin, aAdmin, 0.7);          // state / province lines (faintest)
+    strokeSet(BM.coast, aWater, 0.9);          // coastline
+    strokeSet(BM.lakes, aWater, 0.8);          // lakes (Great Lakes et al.)
   }
 
   function draw(){
     if(!TH) retint();
     if(W===0) return;
     ctx.clearRect(0,0,W,H);
-    if(terrain) drawContours();
     drawGraticule();
+    drawBasemap();
 
     ctx.globalCompositeOperation = TH.light ? 'multiply' : 'lighter';
     ctx.lineJoin='round'; ctx.lineCap='round';
