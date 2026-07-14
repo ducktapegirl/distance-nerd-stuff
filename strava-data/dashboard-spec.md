@@ -1056,15 +1056,17 @@ by id. Titles may contain emoji (`Snow Snake 🐍`) — fine in HTML; Python `pr
   small-caps), `.peak-title`, `<canvas class="peak-spark" data-stamp>`, `.peak-coord` (mono).
   Row is a button → `placesFlyTo(fly)`.
 - **Thumbnail JS** (ported `drawThumb`): swap the seeded squiggle for the injected `path`; color
-  each segment `i` by `gradeColor(grade[i])` (mock's green/slate/red lerp verbatim — descent green
-  `#4ade80` / flat slate `#8b949e` / climb red `#f87171`); draw the violet `elev` profile along the
-  bottom. DPR-cap 2, `ResizeObserver` per canvas (cards start in a hidden tab). Respect
-  `prefers-reduced-motion` (the hover-lift only; no line-drawing animation — pre-spec §7).
+  each segment `i` by `gradeColor(grade[i])` — a **cool/warm diverging lerp**: descent blue
+  `#58a6ff` (the dashboard's `--accent`) / flat slate `#8b949e` / climb amber `#f59e0b` (the MTB
+  sport token). Colorblind-safe; replaces the mock's red/green pair (revised post-ship per athlete
+  review — red/green is the classic colorblind-unfriendly diverging scheme). Draw the violet `elev`
+  profile along the bottom. DPR-cap 2, `ResizeObserver` per canvas (cards start in a hidden tab).
+  Respect `prefers-reduced-motion` (the hover-lift only; no line-drawing animation — pre-spec §7).
 - **Wiring (`page.py`):** thread `places_passport` + `places_peaks` through
   `_build_main_charts`→`build_page`→`_assemble_html` exactly as `places_homes` is; render inside
   `#view-places` AFTER homes: `{places_hero}{places_homes}{places_passport}{places_peaks}`. Build
   them right after homes with `print("  places passport...")` / `print("  places peaks...")`.
-- **No new palette hex** (green/slate/red/violet are existing tokens). **No new data files.**
+- **No new palette hex** (blue/slate/amber/violet are existing tokens). **No new data files.**
 
 ### Build prints (ASCII only)
 `[places] passport: featured=7 brief=4 states=7 provinces=1 geom_aids=11 json_kb=~22`
@@ -1075,8 +1077,9 @@ Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches
 ### Verify vs recipe (developer asserts / QA checks)
 - 7 featured stamps in curated order; Whitney first with `Highest point · 14,507 ft`; Maine
   `Easternmost · 70.2°W` (NOT northernmost); Vancouver `Northernmost · 49.3°N`. 4 brief chips.
-- Each thumbnail: a recognizable route colored by grade (Whitney climbs hard/red to its peak;
-  Michigan stays flat/slate) with a violet elevation profile; dark inset in BOTH themes.
+- Each thumbnail: a recognizable route colored by grade (Whitney climbs hard/amber to its peak;
+  Michigan stays flat/slate) with a violet elevation profile; theme-aware (dark ground/dark mode,
+  light ground/light mode — see "Places passport: theme-aware stamp thumbnails").
 - Peaks: 6 rows, values `14,507 ft / 49.3°N / 10,800 ft / 70.2°W / Apr 2025 / 6,752 ft`; San
   Jacinto present (Wrinkle B); `FIRST IN SAN DIEGO` title is live (`Time zone shakeout`).
 - Click a stamp/peak/chip → hero flies to that box (View buttons deactivate); `placesFlyTo` exists.

@@ -1985,7 +1985,7 @@ _PASSPORT_TEMPLATE = r"""<div class="places-passport">
     font-family:'Geist Mono',ui-monospace,monospace; font-size:10.5px;
     color:var(--text-tertiary); letter-spacing:.04em}
   .places-passport .gradbar{width:96px; height:7px; border-radius:4px;
-    background:linear-gradient(90deg,#4ade80,#8b949e 50%,#f87171)}
+    background:linear-gradient(90deg,#58a6ff,#8b949e 50%,#f59e0b)}
 
   /* pp-strip-outer wraps the (masked) stripwrap + the two nav arrows. Arrows are
      SIBLINGS of stripwrap (not descendants) so the edge-fade mask never dims
@@ -2118,10 +2118,12 @@ __CHIPS__
   var root = document.querySelector('.places-passport');
   if(!root) return;
 
-  // grade -> color (descent green, flat slate, climb red) -- palette hues only.
+  // grade -> color (cool descent blue, flat slate, warm climb amber) -- reuses
+  // the dashboard's existing --accent / MTB tokens, not new hex. Colorblind-safe
+  // cool/warm diverging pair (replaces the red/green scheme).
   function gradeColor(g){
-    var G=[74,222,128], S=[139,148,158], R=[248,113,113], a, b, k;
-    if(g<0){ a=S; b=G; k=Math.min(1,-g); } else { a=S; b=R; k=Math.min(1,g); }
+    var D=[88,166,255], S=[139,148,158], C=[245,158,11], a, b, k;
+    if(g<0){ a=S; b=D; k=Math.min(1,-g); } else { a=S; b=C; k=Math.min(1,g); }
     return 'rgb('+Math.round(a[0]+(b[0]-a[0])*k)+','+Math.round(a[1]+(b[1]-a[1])*k)+','
       +Math.round(a[2]+(b[2]-a[2])*k)+')';
   }
