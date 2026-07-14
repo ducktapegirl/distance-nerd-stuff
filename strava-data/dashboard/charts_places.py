@@ -469,13 +469,16 @@ def chart_places_hero(rows):
 _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
 <style>
   #places-hero{
-    position:relative; width:100vw; margin-left:calc(50% - 50vw);
+    position:relative; width:100%;
     overflow:hidden;
-    border-top:1px solid var(--border-subtle);
-    border-bottom:1px solid var(--border-subtle);
+    border:1px solid var(--border-subtle);
+    border-radius:16px;
     height:clamp(560px, calc(100svh - 150px), 900px);
     background:radial-gradient(120% 120% at 50% 42%, #101725 0%, #0d1117 42%, #05070a 100%);
     transition:background .6s ease;
+  }
+  #places-hero:fullscreen{
+    width:100vw; height:100vh; max-height:none; border:none; border-radius:0;
   }
   #places-hero.terrain{
     background:radial-gradient(120% 120% at 50% 42%, #1a1512 0%, #120f11 44%, #08060a 100%);
@@ -552,12 +555,25 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     opacity:0; pointer-events:none; transition:opacity .25s ease; white-space:nowrap;
   }
   #places-hero .places-hint.show{opacity:1}
+  #places-hero .places-fs{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; padding:0;
+    background:var(--bg-glass); border:1px solid var(--border);
+    border-radius:10px; color:var(--text-secondary); cursor:pointer;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    transition:color .18s, background .18s;
+  }
+  #places-hero .places-fs:hover{color:var(--text-primary)}
+  #places-hero .places-fs:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  #places-hero .places-fs svg{width:16px; height:16px; stroke:currentColor; fill:none;
+    stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
   @media (max-width:640px){
     #places-hero .places-controls{
       top:auto; bottom:96px; right:clamp(14px,4vw,52px); left:clamp(14px,4vw,52px);
       align-items:stretch;
     }
     #places-hero .places-seg{justify-content:center}
+    #places-hero .places-fs{align-self:flex-end}
     #places-hero .places-foot{flex-direction:column; align-items:flex-start}
     #places-hero .places-stat{text-align:left}
   }
@@ -575,6 +591,11 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
 <div class="places-chrome">
   <div class="places-caption"><p class="places-eyebrow">Places</p></div>
   <div class="places-controls">
+    <button class="places-fs" id="places-fs" type="button"
+            aria-label="Toggle fullscreen" title="Fullscreen" aria-pressed="false">
+      <svg class="fs-open" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      <svg class="fs-close" viewBox="0 0 24 24" style="display:none"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+    </button>
     <div class="seg-filter places-seg" role="group" aria-label="View">
       <span class="places-seg-lbl">View</span>
       <button class="seg-btn active" data-frame="all"    aria-pressed="true">All</button>
@@ -895,6 +916,28 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       draw();
     });
   });
+
+  // ── fullscreen toggle (feature-detected) ────────────────────────────────
+  var fsBtn = document.getElementById('places-fs');
+  var fsSupported = !!(hero.requestFullscreen);
+  if(fsBtn){
+    if(!fsSupported){
+      fsBtn.style.display='none';   // e.g. iOS Safari on non-video elements
+    } else {
+      fsBtn.addEventListener('click', function(){
+        if(!document.fullscreenElement){ hero.requestFullscreen(); }
+        else { document.exitFullscreen(); }
+      });
+      document.addEventListener('fullscreenchange', function(){
+        var on = (document.fullscreenElement===hero);
+        var open=fsBtn.querySelector('.fs-open'), close=fsBtn.querySelector('.fs-close');
+        if(open)  open.style.display  = on ? 'none' : '';
+        if(close) close.style.display = on ? '' : 'none';
+        fsBtn.setAttribute('aria-pressed', on?'true':'false');
+        resize();   // belt-and-suspenders with the ResizeObserver
+      });
+    }
+  }
 
   // ── hint pill ───────────────────────────────────────────────────────────
   var hintT=null;

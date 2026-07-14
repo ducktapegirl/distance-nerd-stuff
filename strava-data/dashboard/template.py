@@ -65,10 +65,6 @@ CSS = f"""
 
 * {{ box-sizing: border-box; }}
 
-/* The Places hero breaks out to 100vw via a negative-margin bleed; clip any
-   horizontal overflow it would otherwise spawn (Places build delta 1). */
-body {{ overflow-x: clip; }}
-
 html, body {{
   margin: 0; padding: 0;
   background: var(--bg-base);
