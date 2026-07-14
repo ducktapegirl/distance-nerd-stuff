@@ -422,6 +422,21 @@ def _load_basemap():
         return "null"
 
 
+def _load_hillshade():
+    """Read the checked-in Terrain-mode shaded-relief PNG (LA, ~31 KB, generated
+    by tools/gen_hillshade.py) and base64-encode it for inlining as a data URI.
+    Returns '' if missing (Terrain mode then shows the vector basemap only)."""
+    import base64
+    path = os.path.join(ASSETS_DIR, "hillshade.png")
+    try:
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("ascii")
+    except FileNotFoundError:
+        print("[places] WARNING: assets/hillshade.png missing "
+              "(run tools/gen_hillshade.py) -- Terrain shows vector basemap only")
+        return ""
+
+
 def chart_places_hero(rows):
     """Build the Places hero: load streams, assemble the injected `PD` payload,
     and return one self-contained raw HTML string (style + canvas + chrome +
@@ -486,12 +501,15 @@ def chart_places_hero(rows):
               % (total_pts, drift * 100))
 
     bm_json = _load_basemap()
-    bm_kb = len(bm_json.encode("utf-8")) / 1024.0
-    print("[places] basemap: json_kb=~%d" % round(bm_kb))
+    hs_uri = _load_hillshade()
+    print("[places] basemap: json_kb=~%d hillshade_kb=~%d"
+          % (round(len(bm_json.encode("utf-8")) / 1024.0),
+             round(len(hs_uri) / 1024.0)))
 
     html = (_HERO_TEMPLATE
             .replace("__PD_JSON__", pd_json)
             .replace("__BM_JSON__", bm_json)
+            .replace("__HILLSHADE_URI__", hs_uri)
             .replace("__ACT__", str(counts["act"]))
             .replace("__REGIONS__", str(counts["regions"]))
             .replace("__STATES__", str(counts["states"])))
@@ -1023,6 +1041,18 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   var BM = BM_RAW ? {coast:toUV(BM_RAW.coast), admin:toUV(BM_RAW.admin),
                      lakes:toUV(BM_RAW.lakes)} : null;
 
+  // Terrain-mode shaded relief: an LA PNG covering a FIXED lat/lng box (matches
+  // tools/gen_hillshade.py) inlined as a data URI, drawn stretched to that box
+  // in the hero's equirectangular frame -> registers with the routes exactly.
+  var HS_BOX = {lat0:24, lat1:55, lng0:-135, lng1:-60};
+  var HS_URI = "__HILLSHADE_URI__";
+  var hsImg = null, hsReady = false;
+  if(HS_URI){
+    hsImg = new Image();
+    hsImg.onload = function(){ hsReady = true; if(typeof draw==='function') draw(); };
+    hsImg.src = "data:image/png;base64," + HS_URI;
+  }
+
   // ── Theme colors (re-read on every retint) ──────────────────────────────
   var probe = document.createElement('span');
   probe.style.display='none'; hero.appendChild(probe);
@@ -1121,10 +1151,25 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     strokeSet(BM.lakes, aWater, 0.8);          // lakes (Great Lakes et al.)
   }
 
+  // Terrain relief: dark ground -> light ridges show via source-over; light
+  // ground -> multiply so shadows darken the paper (highlights wash out on white).
+  function drawHillshade(){
+    if(!terrain || !hsReady) return;
+    var u0=(HS_BOX.lng0-PD.lng0)/PD.lngspan, u1=(HS_BOX.lng1-PD.lng0)/PD.lngspan;
+    var v0=(PD.lat1-HS_BOX.lat1)/PD.latspan, v1=(PD.lat1-HS_BOX.lat0)/PD.latspan;
+    var x0=projX(u0), y0=projY(v0);
+    ctx.save();
+    ctx.globalCompositeOperation = TH.light ? 'multiply' : 'source-over';
+    ctx.globalAlpha = TH.light ? 0.9 : 0.85;
+    ctx.drawImage(hsImg, x0, y0, projX(u1)-x0, projY(v1)-y0);
+    ctx.restore();
+  }
+
   function draw(){
     if(!TH) retint();
     if(W===0) return;
     ctx.clearRect(0,0,W,H);
+    drawHillshade();
     drawGraticule();
     drawBasemap();
 
