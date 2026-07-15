@@ -4,8 +4,7 @@
 
 I do, apparently. This is a little personal corner of the internet for poking
 at my own endurance-sports data: a **Strava dashboard** for cycling/running
-activities, and a **Running Log** dashboard for decades of races and training
-logs that predate Strava entirely.
+activities, and a **Running Log** my college running log that predated Strava entirely.
 
 **Live:**
 - 🏃 Running Log — https://ducktapegirl.github.io/distance-nerd-stuff/
@@ -25,7 +24,7 @@ published with GitHub Pages.
 
 ## Built by a team of robots (sort of)
 
-The Strava dashboard isn't just hand-coded — it's built and maintained by a
+The Strava dashboard isn't hand-coded — it's built and maintained by a
 small crew of Claude agents, each with one job: one decides what's
 interesting in the data, one designs how a new chart should look, one writes
 the actual code, one checks the result before it ships. I (a human) approve
