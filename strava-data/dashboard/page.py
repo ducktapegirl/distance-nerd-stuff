@@ -31,8 +31,22 @@ from .rollups_cards import (
     compute_stats, fast_seg_card, seg_consistency_picks, seg_fastest_picks,
     seg_overlap_pairs, stat_card,
 )
-from .template import CSS, THEME_INIT_JS, THEME_TOGGLE_SVGS, build_js
+from .template import (
+    CSS, THEME_INIT_JS, THEME_TOGGLE_SVGS, build_js, hash_init_js, view_paint_css,
+)
 from .theme import fig_html
+
+# Ordered nav sections. First entry is the default (shown for a missing/unknown
+# hash). Drives the tab bar, the pre-paint hash resolver, and the paint CSS.
+NAV_VIEWS = [
+    ("overview",    "Overview"),
+    ("volume",      "Volume"),
+    ("trends",      "Trends"),
+    ("segments",    "Segments"),
+    ("places",      "Places"),
+    ("exploratory", "Exploratory"),
+]
+VIEW_NAMES = [v for v, _ in NAV_VIEWS]
 
 
 def _activity_detail_json(rows):
@@ -284,14 +298,7 @@ def _build_stats_panel(rows, stats):
 
     nav_links = "".join(
         f'<button class="tab" data-view="{v}">{l}</button>'
-        for v, l in [
-            ("overview",  "Overview"),
-            ("volume",    "Volume"),
-            ("trends",    "Trends"),
-            ("segments",  "Segments"),
-            ("places",    "Places"),
-            ("exploratory", "Exploratory"),
-        ]
+        for v, l in NAV_VIEWS
     )
 
     theme_buttons = "".join(
@@ -323,8 +330,10 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=Geist+Mono:wght@400;600&display=swap" rel="stylesheet">
   {THEME_INIT_JS}
+  {hash_init_js(VIEW_NAMES)}
   {PLOTLY_CDN}
   <style>{CSS}</style>
+  <style>{view_paint_css(VIEW_NAMES)}</style>
   <script data-goatcounter="https://ducktapegirl.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
@@ -351,7 +360,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
 
 <main>
 
-<section id="view-overview" class="view active">
+<section id="view-overview" class="view">
   <div class="page-header">
     <h1>Overview</h1>
     <div class="date-range">{date_range}</div>
