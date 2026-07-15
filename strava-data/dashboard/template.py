@@ -529,6 +529,20 @@ main {{
 .rangeslider-handle-min:active,
 .rangeslider-handle-max:active {{ cursor: grabbing; }}
 
+/* Rangeslider bg/border: Plotly bakes these dark from charts_production.py's
+   BG_GLASS/BORDER_SUBTLE at build time, and applyChartTheme()'s Plotly.relayout
+   retint can't reliably win against Plotly's own lazy-render redraw -- override
+   via CSS instead (always wins the cascade, no timing dependency). Plotly bakes
+   the rgba's alpha as a separate fill-opacity/stroke-opacity next to an opaque
+   fill/stroke, so both must be forced to 1 or it multiplies against these vars'
+   own alpha. */
+.rangeslider-bg {{
+  fill: var(--bg-glass) !important;
+  fill-opacity: 1 !important;
+  stroke: var(--border-subtle) !important;
+  stroke-opacity: 1 !important;
+}}
+
 /* ── Responsive / mobile (kept last so overrides win by source order) ── */
 @media (max-width: 900px) {{
   .stat-grid {{ grid-template-columns: repeat(3, 1fr); }}
@@ -952,11 +966,6 @@ function syncRange(sourceId, ed) {{
           }}
         }}
       }}
-      // Weekly Volume rangeslider: retint its bg/border so it reads in light mode.
-      if (fl.xaxis && fl.xaxis.rangeslider) {{
-        upd['xaxis.rangeslider.bgcolor']     = cssVar('--bg-glass');
-        upd['xaxis.rangeslider.bordercolor'] = cssVar('--border-subtle');
-      }}
       try {{ Plotly.relayout(el, upd); }} catch (e) {{ /* chart may not be ready */ }}
       // 4. Colorbars (V6 "Avg HR") are baked per-trace via marker.colorbar.
       try {{
@@ -1088,24 +1097,28 @@ function syncRange(sourceId, ed) {{
       // not inline newPlot — see renderView above). Rendering here, while the
       // section is visible, gives each chart its real container width up front.
       renderView(name);
-      // Retint chart titles/axes to the current theme (color only; size-safe).
-      if (window.__applyChartTheme) window.__applyChartTheme();
       // A chart plotted the instant its view flips to display:block can still
       // read a 0 width before the browser lays the card out. Wait one frame for
-      // layout, THEN resize each chart to its container. (Don't autorange —
-      // several charts set intentional fixed ranges.)
+      // layout, THEN resize each chart to its container. (Don't autorange --
+      // several charts set intentional fixed ranges.) Retint AFTER resize, not
+      // before (spec R6) -- a retint issued right after a lazily-rendered
+      // chart's still-in-flight initial draw can get clobbered by that chart's
+      // own later redraw.
       if (window.Plotly) {{
         requestAnimationFrame(function() {{
           var view = document.getElementById('view-' + name);
           if (view) view.querySelectorAll('.js-plotly-plot').forEach(function(el) {{
             Plotly.Plots.resize(el);
           }});
+          if (window.__applyChartTheme) window.__applyChartTheme();
           // Apply mobile simplifications + thin crowded axes now that the view's
           // charts exist with real width (charts render lazily, so the boot-time
           // mobile pass couldn't reach a not-yet-shown section's charts).
           if (window.__applyMobile) window.__applyMobile();
           else if (window.__thinTicks) window.__thinTicks();
         }});
+      }} else if (window.__applyChartTheme) {{
+        window.__applyChartTheme();
       }}
       // Boot-time activation reads FROM the hash to pick `name` -- writing a
       // bare '#name' back immediately would strip any section-specific
