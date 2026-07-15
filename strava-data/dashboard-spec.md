@@ -1233,3 +1233,35 @@ consistent with the hero's existing modifier-key gesture language (Ctrl/Cmd+scro
   fit the selection; View buttons deactivate; canvas pixels differ before/after.
 - A normal (non-Shift) drag immediately after still pans, unaffected (regression check).
 - Both themes legible; no JS errors.
+
+---
+
+## Weekly Volume rangeslider light-mode fix + retint ordering (2026-07-15)
+
+R3 (Core Dashboard Refinements, 2026-06-11) specified retinting the Weekly Volume
+rangeslider's bg/border via a `Plotly.relayout` call in `applyChartTheme()`. That
+JS shipped correctly, but once charts started rendering lazily (commit `8f75a68`,
+"Fix nav lag: lazy-render charts and paint the right section first"), the relayout
+raced the chart's own un-awaited `Plotly.newPlot()` and no longer reliably
+repainted the already-drawn `<rect class="rangeslider-bg">` — it always loses,
+since the Volume tab (unlike Overview) is only ever lazily rendered.
+
+- **Superseded R3 with a CSS override** in `template.py`'s `CSS` f-string, next to
+  the existing rangeslider cursor rules: `.rangeslider-bg { fill:
+  var(--bg-glass) !important; fill-opacity: 1 !important; stroke:
+  var(--border-subtle) !important; stroke-opacity: 1 !important; }`. Immune to
+  Plotly relayout timing since the browser cascade applies it regardless of
+  when/how the element is drawn. `fill-opacity`/`stroke-opacity` are forced to 1
+  because Plotly bakes an rgba's alpha as a separate opacity attribute alongside
+  an opaque `fill`/`stroke`, which would otherwise multiply against the CSS
+  vars' own alpha. The `applyChartTheme()` branch that set
+  `xaxis.rangeslider.bgcolor`/`bordercolor` is removed as dead code now that CSS
+  owns this unconditionally.
+- **Implemented R6's retint-after-resize ordering**, which the shipped code
+  never actually did despite being spec'd: `activateView()` now calls
+  `window.__applyChartTheme()` after the `Plotly.Plots.resize()` loop (inside
+  the same `requestAnimationFrame` callback) instead of before it, with a
+  fallback direct call when `window.Plotly` never loaded so the non-Plotly
+  Places-hero canvas retint isn't lost in that edge case. This is the likely
+  root cause of the rangeslider race and may also affect other lazily-rendered,
+  JS-retinted elements (e.g. chart subtitles on a tab shown for the first time).
