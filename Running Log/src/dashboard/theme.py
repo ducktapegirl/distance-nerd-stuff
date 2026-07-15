@@ -1,5 +1,9 @@
 """Shared Plotly dark-theme styling and HTML-embedding helpers."""
 
+import json
+
+from plotly.utils import PlotlyJSONEncoder
+
 from dashboard.config import BG_ELEVATED, BORDER, BORDER_SUBTLE, PLOT_FONT_FAMILY, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_TERTIARY
 
 
@@ -37,13 +41,27 @@ def tidy_dark(fig, *, title=None):
     return fig
 
 
+_CHART_CONFIG = {"displayModeBar": False, "responsive": True}
+
+
 def fig_html(fig, height=320, div_id=None):
-    kwargs = dict(
-        full_html=False,
-        include_plotlyjs=False,
-        default_height=f"{height}px",
-        config={"displayModeBar": False, "responsive": True},
+    """Emit a chart as an inert placeholder div + a JSON spec script, instead of
+    an inline ``Plotly.newPlot`` that runs during page parse.
+
+    The page's ``renderView()`` (template.py) reads the spec and calls
+    ``Plotly.newPlot`` only when the chart's section is first shown. Deferring
+    rendering off the initial parse is what stops a direct link / tab switch from
+    stalling behind every *other* section's charts, and — because the chart is
+    only ever plotted while its container is visible — it renders at the correct
+    width (no 0-width-then-resize snap). The placeholder reserves the chart's
+    height so the card doesn't jump when it fills in.
+    """
+    div_id = div_id or f"chart-{id(fig)}"
+    spec = fig.to_plotly_json()
+    spec["config"] = _CHART_CONFIG
+    payload = json.dumps(spec, cls=PlotlyJSONEncoder).replace("</", "<\\/")
+    return (
+        f'<div id="{div_id}" class="lazy-chart" data-plotly="{div_id}" '
+        f'style="height:{height}px"></div>'
+        f'<script type="application/json" data-plotly-spec="{div_id}">{payload}</script>'
     )
-    if div_id:
-        kwargs["div_id"] = div_id
-    return fig.to_html(**kwargs)

@@ -27,7 +27,7 @@ def section_overview(rows, stats):
         stat_card_html("Active Days", f"{stats['activeDayPercentage']}%"),
     ]
     return f"""
-    <section id="view-overview" class="view active">
+    <section id="view-overview" class="view">
       <div class="page-header">
         <div class="eyebrow">DASHBOARD</div>
         <h1>Overview</h1>

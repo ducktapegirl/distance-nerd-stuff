@@ -1,6 +1,8 @@
 """The CSS f-string (themed via dashboard.config color tokens) and the JS
 raw-string that drive the dashboard's client-side interactivity."""
 
+import json
+
 from dashboard.config import (
     ACCENT, ACCENT_DIM, ACCENT_GLOW, BG_BASE, BG_ELEVATED, BG_GLASS, BG_SURFACE,
     BORDER, BORDER_SUBTLE, EASY_COLOR, LONG_COLOR, RACE_COLOR, TEMPO_COLOR,
@@ -974,29 +976,95 @@ THEME_INIT_JS = """<script>
 </script>"""
 
 
+def hash_init_js(view_names):
+    """Pre-paint section resolver: mirrors THEME_INIT_JS. Runs synchronously in
+    <head> so the correct section is chosen from the URL hash BEFORE first paint,
+    driving VIEW_PAINT_CSS. Without this the server-rendered 'active' section
+    (overview) paints first and the end-of-body router swaps it a beat later —
+    the "wrong section, then it corrects" flash. Falls back to the first view for
+    a missing/unknown hash."""
+    views = json.dumps(list(view_names))
+    default = view_names[0]
+    return f"""<script>
+(function () {{
+  try {{
+    var V = {views};
+    var h = (location.hash || '').replace('#', '').split('?')[0];
+    document.documentElement.setAttribute('data-view', V.indexOf(h) !== -1 ? h : '{default}');
+  }} catch (e) {{ document.documentElement.setAttribute('data-view', '{default}'); }}
+}})();
+</script>"""
+
+
+def view_paint_css(view_names):
+    """Per-view CSS that shows the section matching <html data-view> BEFORE the
+    router's .view.active toggles run. activateView keeps data-view in sync on
+    every switch, so this and .view.active always point at the same section."""
+    return "".join(
+        f'html[data-view="{v}"] #view-{v}{{display:block}}'
+        f'html[data-view="{v}"] .tab[data-view="{v}"]{{color:var(--text-primary)}}'
+        for v in view_names
+    )
+
+
 JS = r"""
 // ─── Tab nav ────────────────────────────────────────────────────────────────
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const target = tab.dataset.view;
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById('view-' + target).classList.add('active');
-    history.replaceState(null, '', '#' + target);
-    tab.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
-    // Trigger Plotly redraw on visible charts (in case sizes were 0)
-    document.querySelectorAll('#view-' + target + ' .js-plotly-plot').forEach(el => {
+// Charts ship as inert placeholder divs + JSON specs (fig_html), not inline
+// Plotly.newPlot. renderView() plots a section's charts the first time it's
+// shown, so a direct link / tab switch no longer stalls behind every other
+// section's charts, and each chart is plotted while visible (correct width, no
+// 0-width-then-resize snap).
+function renderView(name) {
+  if (!window.Plotly) return;
+  var view = document.getElementById('view-' + name);
+  if (!view) return;
+  view.querySelectorAll('[data-plotly]:not([data-rendered])').forEach(function(div) {
+    var spec = document.querySelector('[data-plotly-spec="' + div.id + '"]');
+    if (!spec) return;
+    var fig;
+    try { fig = JSON.parse(spec.textContent); } catch (e) { return; }
+    try { Plotly.newPlot(div.id, fig.data, fig.layout, fig.config); } catch (e) { return; }
+    div.setAttribute('data-rendered', '1');
+  });
+}
+window.__renderView = renderView;
+
+function activateView(target, skipHash) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  var tab = document.querySelector('.tab[data-view="' + target + '"]');
+  if (tab) tab.classList.add('active');
+  // Keep the pre-paint attribute (set by HASH_INIT_JS, which drives the
+  // "which section shows before JS runs" CSS) in sync with runtime switches.
+  document.documentElement.setAttribute('data-view', target);
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  var view = document.getElementById('view-' + target);
+  if (view) view.classList.add('active');
+  if (!skipHash) history.replaceState(null, '', '#' + target);
+  if (tab) tab.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
+  // Plot this section's charts on first activation, then retint to the current
+  // theme and (next frame, once the card has real width) fit + simplify.
+  renderView(target);
+  if (window.__applyChartTheme) window.__applyChartTheme();
+  requestAnimationFrame(function() {
+    if (view) view.querySelectorAll('.js-plotly-plot').forEach(function(el) {
       window.Plotly && window.Plotly.Plots.resize(el);
     });
-    // Thin crowded axes now that the view's charts have real width.
-    if (window.__thinTicks) window.__thinTicks();
+    if (window.__applyMobile) window.__applyMobile();
+    else if (window.__thinTicks) window.__thinTicks();
   });
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => activateView(tab.dataset.view));
 });
-const initialHash = (location.hash || '#overview').slice(1);
-const initialTab = document.querySelector('[data-view="' + initialHash + '"]') ||
-                   document.querySelector('[data-view="overview"]');
-if (initialTab) initialTab.click();
+function viewFromHash() {
+  var h = (location.hash || '').replace('#', '').split('?')[0];
+  return document.querySelector('.tab[data-view="' + h + '"]') ? h : 'overview';
+}
+// Direct hash edits / browser back-forward now route to the right section
+// (previously the hash was read only once, at boot).
+window.addEventListener('hashchange', function() { activateView(viewFromHash(), true); });
+activateView(viewFromHash(), true);
 
 // ─── Races: search / sort / filter ─────────────────────────────────────────
 (function() {
@@ -1439,6 +1507,10 @@ DATE_CHART_IDS.forEach(id => {
       }
     });
   }
+  // Reachable from the tab router so a lazily-rendered section's charts get
+  // retinted to the current theme on first show (charts render on activation,
+  // not at boot, so this can't only run once up front).
+  window.__applyChartTheme = applyChartTheme;
   function setActiveButton(mode) {
     document.querySelectorAll('.theme-toggle button').forEach(function(b) {
       b.classList.toggle('active', b.dataset.theme === mode);
@@ -1499,6 +1571,9 @@ DATE_CHART_IDS.forEach(id => {
     if (mix && mix._fullLayout) Plotly.relayout(mix, {'xaxis.nticks': mobile ? 6 : 0});
   }
   function applyMobile() { simplify(mq.matches); thinTicks(); }
+  // Reachable from the tab router so a lazily-rendered section's charts get the
+  // mobile simplifications on first show.
+  window.__applyMobile = applyMobile;
   // Debounced resize → re-fit active charts, then re-thin ticks for new width.
   var t;
   function onResize() {
