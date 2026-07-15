@@ -600,6 +600,38 @@ THEME_INIT_JS = """<script>
 </script>"""
 
 
+def hash_init_js(view_names):
+    """Pre-paint section resolver: mirrors THEME_INIT_JS. Runs synchronously in
+    <head> so the correct section is chosen from the URL hash BEFORE first paint,
+    driving VIEW_PAINT_CSS. Without this the server-rendered 'active' section
+    (overview) paints first and the end-of-body router swaps it a beat later —
+    the "wrong section, then it corrects" flash. Falls back to the first view for
+    a missing/unknown hash; the '?...' sub-state suffix is stripped before match."""
+    views = json.dumps(list(view_names))
+    default = view_names[0]
+    return f"""<script>
+(function () {{
+  try {{
+    var V = {views};
+    var h = (location.hash || '').replace('#', '').split('?')[0];
+    document.documentElement.setAttribute('data-view', V.indexOf(h) !== -1 ? h : '{default}');
+  }} catch (e) {{ document.documentElement.setAttribute('data-view', '{default}'); }}
+}})();
+</script>"""
+
+
+def view_paint_css(view_names):
+    """Per-view CSS that shows the section matching <html data-view> BEFORE the
+    router's .view.active toggles run. activateView keeps data-view in sync on
+    every switch, so this and .view.active always point at the same section."""
+    return "".join(
+        f'html[data-view="{v}"] #view-{v}{{display:block}}'
+        f'html[data-view="{v}"] .tab[data-view="{v}"]'
+        f'{{color:var(--text-primary);border-bottom-color:var(--accent)}}'
+        for v in view_names
+    )
+
+
 # ─── JS ───────────────────────────────────────────────────────────────────────
 
 def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text,
@@ -977,29 +1009,55 @@ function syncRange(sourceId, ed) {{
 }})();
 
 // ─── Wire listeners ─────────────────────────────────────────────────────────
-// Runs immediately: this script is the last node in <body>, so the DOM — and,
-// because the Plotly bundle is a render-blocking <head> script, every chart's
-// inline Plotly.newPlot — has already executed. Do NOT gate this on the window
-// `load` event: `load` also waits for web fonts, the map chart's tiles and the
-// analytics script, so tab routing / the detail panel / calendar clicks would be
-// dead until all of those finish (and forever if one hangs). Every Plotly call
-// below is also guarded so a blocked CDN (ad-blocker / privacy filter / offline)
-// can't throw and take the whole interactive UI down along with the charts.
+// Runs immediately: this script is the last node in <body>, so the whole DOM
+// (every section's placeholder divs + inert chart specs) has been parsed. The
+// Plotly bundle is a render-blocking <head> script, so window.Plotly is ready;
+// the charts themselves are plotted lazily per section by renderView(), not at
+// parse time. Do NOT gate this on the window `load` event: `load` also waits for
+// web fonts, the map chart's tiles and the analytics script, so tab routing /
+// the detail panel / calendar clicks would be dead until all of those finish
+// (and forever if one hangs). Every Plotly call below is also guarded so a
+// blocked CDN (ad-blocker / privacy filter / offline) can't throw and take the
+// whole interactive UI down along with the charts.
 (function() {{
-  SYNC_IDS.forEach(function(id) {{
-    var el = document.getElementById(id);
+  // ─── Lazy chart rendering ─────────────────────────────────────────────
+  // Charts are emitted (fig_html) as an inert placeholder div plus a
+  // <script type="application/json"> spec, NOT an inline Plotly.newPlot. We
+  // plot each section's charts the first time that section is shown, so a
+  // direct link / tab switch no longer stalls behind every other section's
+  // charts, and each chart is plotted while its container is visible (correct
+  // width, no 0-width-then-resize snap). Because the charts aren't rendered at
+  // boot, the SYNC/CLICK plotly event listeners can't be wired up front — they
+  // attach per chart in wireChart(), right after that chart's newPlot.
+  function wireChart(el) {{
     if (!el || typeof el.on !== 'function') return;
-    el.on('plotly_relayout', function(ed) {{ syncRange(id, ed); }});
-  }});
-  CLICK_IDS.forEach(function(id) {{
-    var el = document.getElementById(id);
-    if (!el || typeof el.on !== 'function') return;
-    el.on('plotly_click', function(data) {{
-      if (!data.points || !data.points.length) return;
-      var pt = data.points[0];
-      if (pt.customdata) showDetail(String(pt.customdata));
+    if (SYNC_IDS.indexOf(el.id) !== -1) {{
+      el.on('plotly_relayout', function(ed) {{ syncRange(el.id, ed); }});
+    }}
+    if (CLICK_IDS.indexOf(el.id) !== -1) {{
+      el.on('plotly_click', function(data) {{
+        if (!data.points || !data.points.length) return;
+        var pt = data.points[0];
+        if (pt.customdata) showDetail(String(pt.customdata));
+      }});
+    }}
+  }}
+  function renderView(name) {{
+    if (!window.Plotly) return;
+    var view = document.getElementById('view-' + name);
+    if (!view) return;
+    view.querySelectorAll('[data-plotly]:not([data-rendered])').forEach(function(div) {{
+      var spec = document.querySelector('[data-plotly-spec="' + div.id + '"]');
+      if (!spec) return;
+      var fig;
+      try {{ fig = JSON.parse(spec.textContent); }} catch (e) {{ return; }}
+      try {{ Plotly.newPlot(div.id, fig.data, fig.layout, fig.config); }}
+      catch (e) {{ return; }}
+      div.setAttribute('data-rendered', '1');
+      wireChart(div);
     }});
-  }});
+  }}
+  window.__renderView = renderView;
 
   // Calendar cells are hand-built SVG (not Plotly) — wire them to the day view.
   document.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {{
@@ -1020,25 +1078,33 @@ function syncRange(sourceId, ed) {{
       tabs.forEach(function(t) {{
         t.classList.toggle('active', t.dataset.view === name);
       }});
+      // Keep the pre-paint attribute (set by HASH_INIT_JS, which drives the
+      // "which section shows before JS runs" CSS) in sync with runtime switches.
+      document.documentElement.setAttribute('data-view', name);
       document.querySelectorAll('.view').forEach(function(v) {{
         v.classList.toggle('active', v.id === 'view-' + name);
       }});
+      // Plot this section's charts on first activation (they ship as inert JSON,
+      // not inline newPlot — see renderView above). Rendering here, while the
+      // section is visible, gives each chart its real container width up front.
+      renderView(name);
       // Retint chart titles/axes to the current theme (color only; size-safe).
       if (window.__applyChartTheme) window.__applyChartTheme();
-      // Charts laid out while their view was display:none render at 0 width, so
-      // Plotly leaves the SVG at its ~700px default and it overflows the card
-      // (clipped by .card{{overflow:hidden}}). Wait one frame for the now-visible
-      // card to lay out, THEN resize each chart to its container. Resizing
-      // synchronously here reads a 0 width, leaving the chart too wide. (Don't
-      // autorange — several charts set intentional fixed ranges.)
+      // A chart plotted the instant its view flips to display:block can still
+      // read a 0 width before the browser lays the card out. Wait one frame for
+      // layout, THEN resize each chart to its container. (Don't autorange —
+      // several charts set intentional fixed ranges.)
       if (window.Plotly) {{
         requestAnimationFrame(function() {{
           var view = document.getElementById('view-' + name);
           if (view) view.querySelectorAll('.js-plotly-plot').forEach(function(el) {{
             Plotly.Plots.resize(el);
           }});
-          // Thin crowded axes now that the view's charts have real width.
-          if (window.__thinTicks) window.__thinTicks();
+          // Apply mobile simplifications + thin crowded axes now that the view's
+          // charts exist with real width (charts render lazily, so the boot-time
+          // mobile pass couldn't reach a not-yet-shown section's charts).
+          if (window.__applyMobile) window.__applyMobile();
+          else if (window.__thinTicks) window.__thinTicks();
         }});
       }}
       // Boot-time activation reads FROM the hash to pick `name` -- writing a
@@ -1063,8 +1129,15 @@ function syncRange(sourceId, ed) {{
     // back to 'overview'. Each section's own script (if any) re-reads
     // location.hash itself to restore its sub-state; this routing IIFE only
     // owns the section-level part.
-    var hash = (location.hash || '').replace('#', '').split('?')[0];
-    activateView(document.getElementById('view-' + hash) ? hash : 'overview', true);
+    function viewFromHash() {{
+      var h = (location.hash || '').replace('#', '').split('?')[0];
+      return document.getElementById('view-' + h) ? h : 'overview';
+    }}
+    // Direct hash edits / browser back-forward now route to the right section
+    // (previously the hash was read only once, at boot). pushState/replaceState
+    // don't fire 'hashchange', so Places' sub-state writes won't re-trigger this.
+    window.addEventListener('hashchange', function() {{ activateView(viewFromHash(), true); }});
+    activateView(viewFromHash(), true);
   }})();
 
   // ─── Mobile: re-fit charts, thin crowded axes, simplify ──────────────────
@@ -1110,6 +1183,9 @@ function syncRange(sourceId, ed) {{
       }}
     }}
     function applyMobile() {{ simplify(mq.matches); thinTicks(); }}
+    // Reachable from activateView so a lazily-rendered section's charts get the
+    // mobile simplifications (rangeslider off, thinned ticks) on first show.
+    window.__applyMobile = applyMobile;
     // Debounced resize → re-fit active charts, then re-thin ticks for new width.
     var t;
     function onResize() {{
