@@ -10,7 +10,21 @@ from dashboard.sections import (
     section_volume, section_workout_mix,
 )
 from dashboard.stats import build_race_records, compute_stats
-from dashboard.template import CSS, JS, THEME_INIT_JS
+from dashboard.template import (
+    CSS, JS, THEME_INIT_JS, hash_init_js, view_paint_css,
+)
+
+# Ordered nav sections. First entry is the default (shown for a missing/unknown
+# hash). Drives the tab bar, the pre-paint hash resolver, and the paint CSS.
+NAV_VIEWS = [
+    ("overview",    "Overview"),
+    ("volume",      "Volume"),
+    ("mix",         "Workout Mix"),
+    ("performance", "Performance"),
+    ("races",       "Races"),
+    ("patterns",    "Patterns"),
+]
+VIEW_NAMES = [v for v, _ in NAV_VIEWS]
 
 
 def _compute_page_data(rows):
@@ -42,14 +56,10 @@ def _assemble_html(rows, sections, day_index_json):
         'h-3.066m-7.008-5.599l2.836 5.599h4.172L10.463 0l-7 13.828h4.169"/></svg>'
     )
 
-    tabs = """
-      <button class="tab" data-view="overview">Overview</button>
-      <button class="tab" data-view="volume">Volume</button>
-      <button class="tab" data-view="mix">Workout Mix</button>
-      <button class="tab" data-view="performance">Performance</button>
-      <button class="tab" data-view="races">Races</button>
-      <button class="tab" data-view="patterns">Patterns</button>
-    """
+    tabs = "".join(
+        f'<button class="tab" data-view="{v}">{l}</button>'
+        for v, l in NAV_VIEWS
+    )
 
     return f"""<!doctype html>
 <html lang="en">
@@ -61,8 +71,10 @@ def _assemble_html(rows, sections, day_index_json):
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   {THEME_INIT_JS}
+  {hash_init_js(VIEW_NAMES)}
   {PLOTLY_CDN}
   <style>{CSS}</style>
+  <style>{view_paint_css(VIEW_NAMES)}</style>
   <script data-goatcounter="https://ducktapegirl.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
