@@ -146,7 +146,9 @@ def main() -> int:
     report: dict = {"url": url, "viewport": [args.width, args.height]}
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=not args.headed)
+            browser = p.chromium.launch(
+                headless=not args.headed, executable_path="/opt/pw-browsers/chromium"
+            )
             context = browser.new_context(
                 viewport={"width": args.width, "height": args.height},
                 device_scale_factor=2, is_mobile=True, has_touch=True,
