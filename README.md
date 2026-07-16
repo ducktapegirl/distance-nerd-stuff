@@ -49,5 +49,5 @@ uv run python -m http.server 8765 --directory "Running Log"   # preview at local
 ```
 
 See [`CLAUDE.md`](CLAUDE.md) for the full build pipeline (fetch → analyze →
-build → deploy) and [`Handoffs/MIGRATION.md`](Handoffs/MIGRATION.md) for
+build → deploy) and [`Handoffs/migration.md`](Handoffs/migration.md) for
 one-time repo setup notes (GitHub Actions secrets, etc.).

@@ -83,7 +83,7 @@ The tabs are: **overview, volume, trends, segments, map, exploratory** — switc
 always filter to visible charts (`el.offsetParent !== null`) in any `preview_eval` audit.
 
 ### 6.0 Mobile layout checklist (390px pass only)
-At 390px, confirm the intentional mobile experience (see `Plans/MOBILE-REDESIGN-PLAN.md`):
+At 390px, confirm the intentional mobile experience (see `Plans/mobile-redesign-plan.md`):
 - [ ] The tab strip scrolls horizontally without wrapping; tap targets are reachable.
 - [ ] Charts visibly resize to the narrow viewport — no horizontal overflow, no fixed-px
       chart spilling past the card edge.
