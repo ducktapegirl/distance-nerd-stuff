@@ -391,7 +391,7 @@ def csv_append(path, rows, fieldnames):
     write_header = not path.exists()
     if not write_header:
         # Guard against schema drift: appending rows under a stale header
-        # silently corrupts the file (see KNOWN-ISSUES.md, 2026-06-10).
+        # silently corrupts the file (see Handoffs/strava-data/KNOWN-ISSUES.md, 2026-06-10).
         with open(path, newline="", encoding="utf-8") as f:
             existing = next(csv.reader(f), [])
         if existing != fieldnames:

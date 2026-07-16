@@ -1,5 +1,5 @@
 """Places hero: a bespoke <canvas> route-density map (additive glow), ported
-from strava-data/mocks/places-hero-mock.html with real GPS streams injected as
+from Specs/strava-data/mocks/places-hero-mock.html with real GPS streams injected as
 JSON. Returns one self-contained raw HTML string (the chart_calendar() raw-string
 precedent) -- NOT a Plotly figure. All heavy Places code lives here, not in
 charts_production.py. Imports are stdlib + numpy only (no pandas)."""

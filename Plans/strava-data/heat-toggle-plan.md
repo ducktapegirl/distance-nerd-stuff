@@ -32,7 +32,7 @@ the two can be compared 1:1.
 - Wired at `page.py:220` (`v4, v4m = chart_x_heat(rows)`), stats printed at
   `page.py:221-223`, rendered at `page.py:447` (`fig_html(v4,460,"chart-x-heat")`), caption
   at `page.py:448`.
-- Spec block: `dashboard-spec.md:130-144` (already describes the 4-band version).
+- Spec block: `Specs/strava-data/dashboard-spec.md:130-144` (already describes the 4-band version).
 - `SLOWER` is already covered by `applyChartTheme()` in `template.py` — no new color-theme
   work needed for the existing 4 bands.
 
@@ -50,7 +50,7 @@ chosen and fully specified, so **Intake and Ideate can be skipped**. Stages to r
   counts and per-view Welch stats for `apparent_temp_c` under the existing fixed edges
   (the air-temp numbers are already verified and in the spec); dispatch `strava-viz-design`
   to write the updated V4 spec block describing the toggle. Orchestrator writes it to
-  `strava-data/dashboard-spec.md`. **User approves the spec.**
+  `Specs/strava-data/dashboard-spec.md`. **User approves the spec.**
 - **Build** — dispatch `strava-developer` to implement (details below).
 - **QA** — dispatch `strava-qa` (build integrity, units policy, theme audit, toggle works
   in Preview MCP, label/clip checks). Loop back to Build on failures.
@@ -107,7 +107,7 @@ Target: `chart_x_heat(rows)` in `strava-data/dashboard/charts_exploratory.py:370
 
 ## Spec update (for `strava-viz-design` / orchestrator)
 Extend the **V4 — She Pays Pace, Not Heart, for Heat** block in
-`strava-data/dashboard-spec.md:130-144`: document the two precomputed views, the toggle
+`Specs/strava-data/dashboard-spec.md:130-144`: document the two precomputed views, the toggle
 control, shared axis limits derived from the union, and per-view Welch/n numbers (air-temp
 numbers already present; add apparent-temp numbers once the analyst verifies them).
 
@@ -120,12 +120,12 @@ numbers already present; add apparent-temp numbers once the analyst verifies the
    both light and dark themes render all four violins + the toggle correctly in each view.
 4. Confirm no other chart changed (diff scoped to `charts_exploratory.py` heat function,
    `page.py` heat card + stats print, `template.py` JS/CSS if toggle JS is added, and
-   `dashboard-spec.md` V4).
+   `Specs/strava-data/dashboard-spec.md` V4).
 
 ## Critical files
 - `strava-data/dashboard/charts_exploratory.py` (`chart_x_heat`, 370–459)
 - `strava-data/dashboard/page.py` (build call ~220, stats print ~221-223, card/caption
   ~445–449, toggle markup; segment-filter reference ~404–408)
 - `strava-data/dashboard/template.py` (toggle JS ~556–568, `.seg-btn` CSS ~403–424)
-- `strava-data/dashboard-spec.md` (V4 block 130–144)
+- `Specs/strava-data/dashboard-spec.md` (V4 block 130–144)
 - Orchestrator: `.claude/commands/strava.md`, `strava-data/AGENTS.md`
