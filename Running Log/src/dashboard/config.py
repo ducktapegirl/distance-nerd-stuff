@@ -8,7 +8,7 @@ CSV_PATH = os.path.join(BASE_DIR, "running_log.csv")
 OUT_PATH = os.path.join(BASE_DIR, "index.html")
 
 
-# ─── Design tokens (from design_handoff_running_log/README.md) ────────────────
+# ─── Design tokens (from Specs/running-log/design_handoff_running_log/README.md) ──
 
 ACCENT          = "#58a6ff"
 ACCENT_DIM      = "rgba(88, 166, 255, 0.08)"

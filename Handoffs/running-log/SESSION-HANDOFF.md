@@ -9,7 +9,7 @@ Latest commit: `57d2e8d` — "Restore cross-chart date sync, add click-to-detail
 
 ## Goal
 Replace the old Plotly dashboard with the dark glass / top-tab design from
-`Claude Design/design_handoff_running_log/`. See that folder's `README.md` for
+`Specs/running-log/design_handoff_running_log/`. See that folder's `README.md` for
 the full design spec — colors, type scale, components.
 
 ## Pipeline
@@ -61,12 +61,12 @@ MCP) — it renders `index.html` across desktop + mobile viewports and light + d
 
 ## Open / known issues to address next session
 1. **Strava button** still links to `strava.com/dashboard` — left as-is per user direction (revisit when a real local Strava dashboard exists; `strava-data/` currently has only raw CSVs).
-2. **`Rewrite Ideas.md`** — larger pass of UI tweaks (theme toggle, title size, axis-label contrast, Training Notes table layout, default heatmap mode, Volume/Mix/Performance/Races/Patterns layout fixes). Out of scope this session.
+2. **`Plans/running-log/Rewrite Ideas.md`** — larger pass of UI tweaks (theme toggle, title size, axis-label contrast, Training Notes table layout, default heatmap mode, Volume/Mix/Performance/Races/Patterns layout fixes). Out of scope this session.
 
 ## Reference files
-- **Design spec**: [Claude Design/design_handoff_running_log/README.md](Claude Design/design_handoff_running_log/README.md)
-- **Design HTML prototype**: [Claude Design/design_handoff_running_log/Running Log Dashboard.html](Claude Design/design_handoff_running_log/Running Log Dashboard.html) — open side-by-side for visual comparison
-- **Tweaks panel** (skipped for v1): [Claude Design/design_handoff_running_log/tweaks-panel.jsx](Claude Design/design_handoff_running_log/tweaks-panel.jsx)
+- **Design spec**: [Specs/running-log/design_handoff_running_log/README.md](../../Specs/running-log/design_handoff_running_log/README.md)
+- **Design HTML prototype**: [Specs/running-log/design_handoff_running_log/Running Log Dashboard.html](../../Specs/running-log/design_handoff_running_log/Running%20Log%20Dashboard.html) — open side-by-side for visual comparison
+- **Tweaks panel** (skipped for v1): [Specs/running-log/design_handoff_running_log/tweaks-panel.jsx](../../Specs/running-log/design_handoff_running_log/tweaks-panel.jsx)
 
 ## Key data facts
 

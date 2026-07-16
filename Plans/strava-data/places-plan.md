@@ -1,13 +1,13 @@
 # Places — Build Plan (model-split execution)
 
 **Status:** APPROVED PLAN — all open decisions confirmed (2026-07-13). Input to a `/strava` pipeline run.
-**Source of intent:** [`places-prespec.md`](places-prespec.md) (concept + module contracts).
-**Design mocks (in-repo):** [`mocks/places-hero-mock.html`](mocks/places-hero-mock.html),
-[`mocks/places-passport-mock.html`](mocks/places-passport-mock.html).
+**Source of intent:** [`Specs/strava-data/places-prespec.md`](../../Specs/strava-data/places-prespec.md) (concept + module contracts).
+**Design mocks (in-repo):** [`Specs/strava-data/mocks/places-hero-mock.html`](../../Specs/strava-data/mocks/places-hero-mock.html),
+[`Specs/strava-data/mocks/places-passport-mock.html`](../../Specs/strava-data/mocks/places-passport-mock.html).
 
 ## Context
 
-`places-prespec.md` defines a **Places** section that replaces the thin **Map** tab (start-point
+`Specs/strava-data/places-prespec.md` defines a **Places** section that replaces the thin **Map** tab (start-point
 dots hard-centered on San Diego, ignoring the 344 GPS stream files). Places is a story-first
 keepsake built from those streams: a full-bleed route/heatmap hero, twin home heatmaps, a
 passport filmstrip of trips, and a restrained peaks record book.
@@ -34,7 +34,7 @@ orchestrator runs in the **main session** (a subagent can't spawn subagents) —
 | Orchestration + gates | `/strava` (main session) | **Opus** | Drives the pipeline, writes the spec file, runs the review gate — strongest judgment. |
 | **Analyze** | `strava-data-analyst` | **Opus** | Correctness-critical: trip-clustering (time-gap-away-from-home, Wrinkle A), stream-draw perf across 344 tracks, projection/fit-to-bounds, superlatives incl. home-adjacent giants (Wrinkle B). Everything downstream trusts these numbers. |
 | Ideate (optional) | `strava-creativity` | **Opus** | Modules already specified; heavy ideation not required. Promote to Fable only on a larger budget. |
-| **Design** → spec | `strava-viz-design` | **★ Fable** | The one Fable dispatch. Scope is now *harden the mocks for real data* (label behavior vs. dense tracks, Trips lens over real coast-to-coast geometry, projection edge cases) + control/hover/label contracts. Fable's strength + precedent (it authored the dashboard's creative sections). Read-only; **orchestrator (Opus) writes the returned spec into `dashboard-spec.md`.** |
+| **Design** → spec | `strava-viz-design` | **★ Fable** | The one Fable dispatch. Scope is now *harden the mocks for real data* (label behavior vs. dense tracks, Trips lens over real coast-to-coast geometry, projection edge cases) + control/hover/label contracts. Fable's strength + precedent (it authored the dashboard's creative sections). Read-only; **orchestrator (Opus) writes the returned spec into `Specs/strava-data/dashboard-spec.md`.** |
 | **Build** | `strava-developer` | **Sonnet** (escalate to Opus) | High-volume, well-specified port of the mocks + real-data wiring. Escalate a specific piece to Opus only if it stalls (projection/perf, map fly-to). |
 | **QA** | `strava-qa` | **Sonnet** (default) | Both themes, mobile, label overlap, edge clipping, units policy. No override. |
 | **Review gate** | `/code-review` + `/security-review` | **Opus** (main session) | Correctness/safety on the diff, run at high effort. |
@@ -50,7 +50,7 @@ viz-design could cover Design if Fable is too scarce.
 The two mocks are **not just reference — they are near-production front-end.** The build largely
 **ports them and injects real data.**
 
-**Hero mock** (`mocks/places-hero-mock.html`) — a bespoke `<canvas>` renderer, **NOT Plotly, NOT
+**Hero mock** (`Specs/strava-data/mocks/places-hero-mock.html`) — a bespoke `<canvas>` renderer, **NOT Plotly, NOT
 tile-based.** It projects anchors to a dark radial-gradient canvas, draws routes as additive-blend
 glow (`ctx.globalCompositeOperation='lighter'`), and hand-rolls pan/zoom/wheel, tweened fly-to,
 on-canvas labels, and the `View` (All·SD·Boston·**Trips = highlight lens**, dims homes/brightens
@@ -59,7 +59,7 @@ trips/stays wide) + `Map` (Glow·Terrain) control rows. Palette = exact `config.
 fake routes at abstract positions** → the real build feeds it **real lat/lng projected +
 fit-to-bounds**.
 
-**Passport mock** (`mocks/places-passport-mock.html`) — essentially build-ready. HTML/CSS filmstrip
+**Passport mock** (`Specs/strava-data/mocks/places-passport-mock.html`) — essentially build-ready. HTML/CSS filmstrip
 (scroll-snap, edge-fade, drag-to-scroll, hover-lift, badges, region/title/date/tags, brief-stops
 chips, gradient key) + a per-thumbnail `<canvas>` drawing a terrain-graded route squiggle
 (green→slate→red via `gradeColor()`) + a violet elevation profile. **Already fully theme-aware**
@@ -90,7 +90,7 @@ Run through `/strava`, pausing at each gate. Each pass ends with build + QA + re
    per-track decimation/point budget; projection `lat/lng → normalized canvas coords` +
    fit-to-all-bounds so both coasts frame by default; per-view framings for SD/Boston zoom;
    confirm Trips stays wide; home-box counts (145/136); region/state/province counts. Pin numbers.
-2. **Design (Fable):** adapt the hero mock into `dashboard-spec.md` — harden for real data (labels
+2. **Design (Fable):** adapt the hero mock into `Specs/strava-data/dashboard-spec.md` — harden for real data (labels
    vs. dense tracks, Trips lens over real geometry, projection edges), div ids, control contracts,
    label rules, theme-swappable basemap treatment.
 3. **Build (Sonnet):** `charts_places.py` with `chart_places_hero()` returning a raw
@@ -141,13 +141,13 @@ Modules 3–4 share the trip/superlative precompute, so they land together.
 - **New:** `strava-data/dashboard/charts_places.py` — builders returning **raw HTML/`<canvas>`/JS
   strings**, not `go.Figure` (chart_calendar precedent); keeps large Places code out of
   `charts_production.py` (`charts_exploratory.py` precedent).
-- **Edit:** `dashboard-spec.md` (Design writes view specs); `dashboard/page.py` (retire `chart_map`
+- **Edit:** `Specs/strava-data/dashboard-spec.md` (Design writes view specs); `dashboard/page.py` (retire `chart_map`
   import/call, swap nav tuple + section id, add Places section HTML/JS, register any new click
   chart ids); `dashboard/config.py` (home-box constants only — reuse existing color/font tokens,
   **no new hex**); `dashboard/template.py` (any shared CSS/JS if not self-contained in the raw
   builder strings).
 - **Retire:** `chart_map()` in `dashboard/charts_production.py` and its `page.py` wiring.
-- **Design source (read-only):** `mocks/places-hero-mock.html`, `mocks/places-passport-mock.html`.
+- **Design source (read-only):** `Specs/strava-data/mocks/places-hero-mock.html`, `Specs/strava-data/mocks/places-passport-mock.html`.
 - **Reuse:** `fig_html`/`tidy_dark` (`theme.py`) where any real Plotly is used; `applyChartTheme()`
   (`template.py` JS); `mf`/`sport_category`/`fmt_pace` (`data.py`); the `.seg-filter`/`.seg-btn`
   control component; `KM_TO_MI`/`M_TO_FT`/`SPORT_COLORS`/`TRAIL_RUN_COLOR`/`HIKE_COLOR` (`config.py`).
