@@ -39,12 +39,15 @@ math needed on our side.
   layered on top of the MapLibre canvas** (`pointer-events:none` so gestures pass through to
   the map). It redraws on `map.on('move', drawGlow)` and `map.on('styledata', drawGlow)`.
 - **Three basemap modes**, implemented as MapLibre **style swaps** (one code path, `styleForMode(mode)`):
-  - **Glow** — `{version:8, sources:{}, layers:[{type:'background', paint:{'background-color':'rgba(0,0,0,0)'}}]}`
-    (fully transparent — the hero's CSS radial-gradient ground shows through). This is also
-    the automatic fallback whenever MapLibre or the key is unavailable.
-  - **Street** — MapTiler `streets-v2` (light theme) / `streets-v2-dark` (dark theme).
-  - **Terrain** — MapTiler `outdoor-v2` (real relief/hillshade tiles; this is a *light*
-    basemap regardless of page theme — see "Known non-issues" below).
+  Since the 2026-07 Backdrop follow-up, all three are a `SLUGS` table lookup +
+  `-dark` suffix in dark theme (`styleForMode(m)`): `{glow:'backdrop-v4',
+  street:'streets-v2', terrain:'outdoor-v2'}`.
+  - **Glow** — MapTiler `backdrop-v4` / `backdrop-v4-dark` (neutral greyscale ground built
+    for data overlays). The fully-transparent style (`tilelessStyle()`, formerly `glowStyle()`)
+    is now **only** the automatic fallback whenever MapLibre or the key is unavailable.
+  - **Street** — MapTiler `streets-v2` / `streets-v2-dark`.
+  - **Terrain** — MapTiler `outdoor-v2` / `outdoor-v2-dark` (real relief/hillshade tiles;
+    now has a dark variant like the others).
 - **Key/CDN wiring:** `config.MAPLIBRE_CDN` (JS+CSS from unpkg) is spliced into `<head>` in
   `page.py` next to `PLOTLY_CDN`. `config.MAPTILER_KEY = os.environ.get("MAPTILER_KEY", "")`
   is read at build time and spliced into the hero template replacing the `__MAPTILER_KEY__`
@@ -138,10 +141,9 @@ What *did* pass, via `window.maplibregl` being undefined → `HAS_ML=false` → 
 
 ## Known non-issues / already-considered tradeoffs (don't re-litigate these as bugs)
 
-- **Terrain mode's glow uses `multiply`, not `lighter`.** `outdoor-v2` is a light basemap
-  regardless of page theme, so `drawGlow()` computes `additive = !TH.light && mode!=='terrain'`
-  — Terrain always gets the ink-on-paper composite. If Terrain's glow looks "duller" than
-  Glow/Street, that's intentional, not a regression.
+- ~~**Terrain mode's glow uses `multiply`, not `lighter`.**~~ **OBSOLETE (2026-07 Backdrop
+  follow-up):** Terrain now has a dark variant (`outdoor-v2-dark`), so every mode tracks the
+  page theme and the composite is simply `additive = !TH.light` — no per-mode special case.
 - **Line width formula was tuned once already** (`ctx.lineWidth = Math.max(1.0, Math.min(2.6,
   0.5 + z*0.17))`, keyed to `map.getZoom()`) to approximately match the old canvas hero's
   visual weight at continental vs. city zoom. If it still looks off once real tiles are up,
