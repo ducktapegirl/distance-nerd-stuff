@@ -592,6 +592,25 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 > weight bumped to `max(1.4, min(3.0, 0.7+z*0.18))`. Paths are projected once into a `Path2D`
 > per track and stroked twice (cheaper than re-projecting on pan). Closes
 > `Plans/strava-data/places-basemap-contrast-future-work.md`.
+>
+> **FOLLOW-UP (2026-07 · shareable activity deep-links + hash-sync fix).** The hash contract
+> (`#places?v=<frame>&b=<base>`, built by `syncHashState()`/`applyHashState()`) gains a third,
+> mutually-exclusive param: **`a=<activityId>`** (the Strava activity id behind a Passport
+> stamp/brief chip/Peaks row), which supersedes `v=` when present — `b=` still composes
+> independently. The Pass C click handlers (below) call `window.placesLinkActivity(id)` right
+> after `placesFlyTo`, writing `#places?a=<id>`; on load, `applyHashState()` stashes it in
+> `pendingActivity` (parallel to the existing `pendingFrame`) so the fly-to fires on
+> `map.on('load')`, resolved against `window.placesFlyTargets` — a `{activityId: {lat0,lat1,
+> lng0,lng1}}` map the Passport/Peaks scripts publish from their own `PC` payload (`PC[slot].id`
+> alongside the existing `.fly`). An unresolvable/removed id falls back to the default (All)
+> frame — no console error.
+>
+> Bundled in the same pass: the page-level tab router (`template.py`'s `activateView`) previously
+> wrote a bare `#<section>` on every switch, which silently dropped Places' `v=`/`b=`/`a=`
+> sub-state on a return visit even though the hero still showed it — the URL and the page
+> disagreed. Fix: `activateView` now calls **`window.placesSyncHash()`** (`= syncHashState`)
+> instead of writing the hash itself when the target section is `places`, so returning to Places
+> re-asserts whatever sub-state is current; every other section is unaffected.
 
 Pass A (Foundation + Hero) of the approved Places plan (`Plans/strava-data/places-plan.md`, `places-prespec.md`).
 Design source: `mocks/places-hero-mock.html` — **port its structure/CSS/JS; this spec
@@ -1030,6 +1049,14 @@ A stripped static draw (no pan/zoom/labels/controls) -- port only the hero's pro
 
 ## Places — Passport (Pass C · Module 3) + Peaks (Pass C · Module 4)
 
+> **FOLLOW-UP (2026-07 · shareable links).** Every stamp/chip/peak's `fly()` handler now also
+> calls `window.placesLinkActivity(id)` immediately after `placesFlyTo(fly)`, writing
+> `#places?a=<activityId>` (full contract under "Places — Build-Ready Spec" above). Each `PC`
+> entry gains an `id` field — the same Strava activity id already fetched for `_load_trip_geo`
+> — alongside its existing `fly` box; the passport and peaks scripts each merge their entries
+> into one shared `window.placesFlyTargets` lookup so a link resolves regardless of which
+> script published it.
+
 Pass C of the Places plan. **Design = Opus spec-extension** (the single Fable dispatch was
 spent on the Pass A hero). Two builders — `chart_places_passport(rows)` (filmstrip of trip
 stamps) and `chart_places_peaks(rows)` (a restrained record book) — sit BELOW the two-homes
@@ -1157,6 +1184,8 @@ Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches
 - Peaks: 6 rows, values `14,507 ft / 49.3°N / 10,800 ft / 70.2°W / Apr 2025 / 6,752 ft`; San
   Jacinto present (Wrinkle B); `FIRST IN SAN DIEGO` title is live (`Time zone shakeout`).
 - Click a stamp/peak/chip → hero flies to that box (View buttons deactivate); `placesFlyTo` exists.
+- Click a stamp/peak → URL becomes `#places?a=<activityId>`; reloading that URL restores the same
+  zoomed activity; switching to another tab and back to Places preserves it (no bare `#places`).
 - Geometry JSON carries no display strings (grep the `<script>` for a segment/activity title →
   none); titles are HTML-escaped server-side; emoji renders.
 - Both themes legible; mobile: filmstrip scroll-snaps + drag-scrolls, peaks stack; no h-scroll on body.
