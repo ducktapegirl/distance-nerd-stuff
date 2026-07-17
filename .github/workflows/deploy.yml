@@ -44,6 +44,11 @@ jobs:
 
       - name: Build Strava dashboard
         run: uv run python strava-data/build_dashboard.py
+        env:
+          # MapTiler key for the Places hero's Street/Terrain basemap tiles. Set
+          # as a repo secret; must be domain-restricted to ducktapegirl.github.io
+          # since it ships in the public HTML. Absent -> the hero runs Glow-only.
+          MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
 
       - name: Build Running Log dashboard
         run: uv run python "Running Log/src/visualize_log.py"
