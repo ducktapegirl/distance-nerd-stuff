@@ -1,0 +1,13 @@
+# Normalize line endings to LF in the repository regardless of which OS checks
+# the file out or commits it -- this repo is worked on across both Windows and
+# Linux. `text=auto` lets Git decide text-vs-binary per file; the explicit `eol=lf`
+# rules below force LF on checkout for the source/text types actually in this repo.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
