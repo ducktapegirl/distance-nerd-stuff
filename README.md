@@ -3,8 +3,8 @@
 *seriously, who cares?*
 
 I do, apparently. This is a little personal corner of the internet for poking
-at my own endurance-sports data: a **Strava dashboard** for cycling/running
-activities, and a **Running Log** my college running log that predated Strava entirely.
+at my own endurance sports data: a **Strava dashboard** for activities pulling using the Strava API
+activities (2024+), and a **Running Log**: my college running log that predated Strava entirely (2003-2007).
 
 **Live:**
 - 🏃 Running Log — https://ducktapegirl.github.io/distance-nerd-stuff/
