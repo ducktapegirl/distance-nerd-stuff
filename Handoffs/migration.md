@@ -1,8 +1,6 @@
 # Migration notes — extracted from `Experiments`
 
-This repo was split out of `C:\Users\Alisha\Documents\Experiments` on 2026-06-12.
-It holds the **Running Log** and **Strava** projects so they can be developed,
-versioned, and deployed independently of the MATLAB/Simscape work.
+This repo was split out of a different repo that had a mix of early Claude experimentation projects/scratch work. Running Log and Strava Data were two ideas that I eventually merged.
 
 ## What came over
 
