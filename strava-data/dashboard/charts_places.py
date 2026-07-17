@@ -1030,7 +1030,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     </div>
     <div class="seg-filter places-seg" role="group" aria-label="Basemap">
       <span class="places-seg-lbl">Map</span>
-      <button class="seg-btn active" data-base="glow"    aria-pressed="true">Glow</button>
+      <button class="seg-btn active" data-base="glow"    aria-pressed="true">Overview</button>
       <button class="seg-btn"        data-base="street"  aria-pressed="false">Street</button>
       <button class="seg-btn"        data-base="terrain" aria-pressed="false">Terrain</button>
     </div>
@@ -1138,7 +1138,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   function mtStyle(slug){ return 'https://api.maptiler.com/maps/'+slug+'/style.json?key='+MT_KEY; }
   // Each mode maps to a MapTiler style whose exact '-dark' counterpart is used in
   // dark theme, so every basemap tracks the page theme through one code path.
-  var SLUGS = {glow:'backdrop-v4', street:'streets-v2', terrain:'outdoor-v2'};
+  var SLUGS = {glow:'backdrop-v4', street:'streets-v4', terrain:'topo-v4'}; //Consider aquarelle-v4 for streets
   // Glow's light-theme ground is a custom MapTiler style ("BackgroundGhost") tuned
   // to the near-white/faint-line look the hero had before the MapTiler conversion --
   // lighter than stock Backdrop, so no CSS wash is layered on top of it. Dark theme
@@ -1165,7 +1165,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       bounds: allBounds,
       fitBoundsOptions: {padding: 34, animate: false},
       attributionControl: {compact: true},
-      cooperativeGestures: true,   // ctrl+scroll / two-finger -> page still scrolls
       dragRotate: false, pitchWithRotate: false,
       renderWorldCopies: false, minZoom: 1, maxZoom: 16, fadeDuration: 120
     });
