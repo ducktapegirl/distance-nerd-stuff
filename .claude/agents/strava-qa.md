@@ -15,7 +15,7 @@ Run `python strava-data/build_dashboard.py` and confirm it exits cleanly and reg
 (If imports fail unexpectedly, fall back to `"/c/Users/Alisha/anaconda3/python.exe"`.)
 
 ## 2. Spec compliance
-Read `strava-data/dashboard-spec.md`. For each spec section:
+Read `Specs/strava-data/dashboard-spec.md`. For each spec section:
 - [ ] Does the chart exist in `strava-data/strava.html`?
 - [ ] Right data (right file, right columns, right transform)?
 - [ ] Sport-type / date filters respected?
@@ -83,7 +83,7 @@ The tabs are: **overview, volume, trends, segments, map, exploratory** — switc
 always filter to visible charts (`el.offsetParent !== null`) in any `preview_eval` audit.
 
 ### 6.0 Mobile layout checklist (390px pass only)
-At 390px, confirm the intentional mobile experience (see `MOBILE-REDESIGN-PLAN.md`):
+At 390px, confirm the intentional mobile experience (see `Plans/mobile-redesign-plan.md`):
 - [ ] The tab strip scrolls horizontally without wrapping; tap targets are reachable.
 - [ ] Charts visibly resize to the narrow viewport — no horizontal overflow, no fixed-px
       chart spilling past the card edge.

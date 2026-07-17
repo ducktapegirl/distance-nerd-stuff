@@ -49,5 +49,23 @@ uv run python -m http.server 8765 --directory "Running Log"   # preview at local
 ```
 
 See [`CLAUDE.md`](CLAUDE.md) for the full build pipeline (fetch → analyze →
-build → deploy) and [`MIGRATION.md`](MIGRATION.md) for one-time repo setup
-notes (GitHub Actions secrets, etc.).
+build → deploy) and [`Handoffs/migration.md`](Handoffs/migration.md) for
+one-time repo setup notes (GitHub Actions secrets, etc.).
+
+## Future work
+
+Ideas that are written up but not built yet, pulled from the `Plans/` folder:
+
+- **Places hero mobile crowding** — on narrow phones (≤360px) the Places hero's
+  bottom controls (fullscreen toggle + filters) can collide with the data-driven
+  home-location labels drawn on the map canvas; there's just not enough vertical
+  room at that width. A few fix options are on the table, from carving the
+  fullscreen toggle out into its own element to a bigger mobile-chrome rework.
+  See [`Plans/strava-data/places-future-work.md`](Plans/strava-data/places-future-work.md).
+- **A real WBGT heat-stress index** — the Exploratory tab's heat-vs-pace charts
+  run on a "WBGT-lite" proxy (temperature + UV) today because the data has no
+  humidity or solar readings. The plan is to pull those fields from the weather
+  API already in use and compute an actual WBGT (wet-bulb globe temperature) —
+  though the honest expectation is it'll explain only a few more percent of pace
+  variance than the proxy already does.
+  See [`Plans/strava-data/wbgt-future-work.md`](Plans/strava-data/wbgt-future-work.md).
