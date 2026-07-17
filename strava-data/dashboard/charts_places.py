@@ -12,7 +12,7 @@ from collections import Counter
 
 import numpy as np
 
-from .config import ASSETS_DIR, KM_TO_MI, STREAMS_DIR
+from .config import KM_TO_MI, MAPTILER_KEY, STREAMS_DIR
 from .data import load_segment_efforts, load_segments, mf
 
 # ── Pinned constants (analyst Pass-A recipe; see dashboard-spec "Places") ──────
@@ -406,37 +406,6 @@ def _build_views(fr):
     return views
 
 
-def _load_basemap():
-    """Read the checked-in vector basemap asset (compact JSON of numeric
-    [lng,lat,...] polylines for coast/admin/lakes) to inline into the hero.
-    Returns the raw JSON text, or 'null' if missing (basemap draws nothing;
-    the hero still works). Pure numbers -> safe to splice into <script>."""
-    path = os.path.join(ASSETS_DIR, "basemap.json")
-    try:
-        with open(path, encoding="utf-8") as f:
-            txt = f.read().strip()
-        return txt or "null"
-    except FileNotFoundError:
-        print("[places] WARNING: assets/basemap.json missing "
-              "(run tools/gen_basemap.py) -- hero draws no basemap")
-        return "null"
-
-
-def _load_hillshade():
-    """Read the checked-in Terrain-mode shaded-relief PNG (LA, ~31 KB, generated
-    by tools/gen_hillshade.py) and base64-encode it for inlining as a data URI.
-    Returns '' if missing (Terrain mode then shows the vector basemap only)."""
-    import base64
-    path = os.path.join(ASSETS_DIR, "hillshade.png")
-    try:
-        with open(path, "rb") as f:
-            return base64.b64encode(f.read()).decode("ascii")
-    except FileNotFoundError:
-        print("[places] WARNING: assets/hillshade.png missing "
-              "(run tools/gen_hillshade.py) -- Terrain shows vector basemap only")
-        return ""
-
-
 def chart_places_hero(rows):
     """Build the Places hero: load streams, assemble the injected `PD` payload,
     and return one self-contained raw HTML string (style + canvas + chrome +
@@ -500,16 +469,16 @@ def chart_places_hero(rows):
         print("[places] WARNING: total points %d drift %.1f%% from 21372 (>5%%)"
               % (total_pts, drift * 100))
 
-    bm_json = _load_basemap()
-    hs_uri = _load_hillshade()
-    print("[places] basemap: json_kb=~%d hillshade_kb=~%d"
-          % (round(len(bm_json.encode("utf-8")) / 1024.0),
-             round(len(hs_uri) / 1024.0)))
+    # The Street/Terrain basemap now comes from MapLibre + MapTiler tiles at
+    # runtime, so the old inlined vector coastline / hillshade PNG are no longer
+    # injected (the "Glow" mode is the tile-free dark ground). The MapTiler key is
+    # spliced in here from the build environment; empty -> Glow-only fallback.
+    print("[places] basemap: maplibre tiles, maptiler_key=%s"
+          % ("set" if MAPTILER_KEY else "MISSING (glow-only)"))
 
     html = (_HERO_TEMPLATE
             .replace("__PD_JSON__", pd_json)
-            .replace("__BM_JSON__", bm_json)
-            .replace("__HILLSHADE_URI__", hs_uri)
+            .replace("__MAPTILER_KEY__", MAPTILER_KEY)
             .replace("__ACT__", str(counts["act"]))
             .replace("__REGIONS__", str(counts["regions"]))
             .replace("__STATES__", str(counts["states"])))
@@ -882,17 +851,34 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   :root.light #places-hero.terrain{
     background:radial-gradient(120% 120% at 50% 42%, var(--bg-base) 0%, var(--bg-surface) 100%);
   }
-  #places-hero canvas{
+  /* MapLibre paints its tiled basemap here; transparent so the hero's radial
+     gradient shows through in Glow mode (Street/Terrain tiles cover it). */
+  #places-hero #places-map{
     position:absolute; inset:0; width:100%; height:100%; display:block;
-    cursor:grab; touch-action:pan-y;
+    background:transparent; z-index:0;   /* stacking context: map + its controls stay below */
+  }
+  #places-hero .maplibregl-canvas{ background:transparent; }
+  /* The route glow is a 2D canvas overlay on top of the map. pointer-events:none
+     lets pan/zoom/click reach the MapLibre canvas underneath. */
+  #chart-places-hero{
+    position:absolute; inset:0; width:100%; height:100%; display:block;
+    pointer-events:none; z-index:1;
     opacity:0; animation:places-rise 1100ms ease .12s forwards;
   }
-  #places-hero canvas:active{cursor:grabbing}
-  #places-hero.shift-down canvas{cursor:crosshair}
+  /* Lift MapLibre's attribution + cooperative-gesture chrome clear of the footer,
+     and tint the attribution glass to match the dark theme. */
+  #places-hero .maplibregl-ctrl-bottom-right{ margin-bottom:clamp(58px,11vh,104px); }
+  #places-hero .maplibregl-ctrl-attrib{
+    background:var(--bg-glass); backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+  }
+  #places-hero .maplibregl-ctrl-attrib,
+  #places-hero .maplibregl-ctrl-attrib a{ color:var(--text-tertiary); }
+  #places-hero .seg-btn:disabled{ opacity:.4; cursor:default; }
   @keyframes places-rise{from{opacity:0} to{opacity:1}}
   @keyframes places-fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
 
-  #places-hero .places-chrome{position:absolute; inset:0; pointer-events:none}
+  #places-hero .places-chrome{position:absolute; inset:0; pointer-events:none; z-index:2}
   #places-hero .places-chrome > *{pointer-events:auto}
 
   #places-hero .places-caption{
@@ -940,15 +926,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     font-variant-numeric:tabular-nums;
   }
   #places-hero .places-stat b{color:var(--text-primary); font-weight:500}
-  #places-hero .places-hint{
-    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    font-family:'Geist Mono',ui-monospace,monospace; font-size:11px;
-    color:var(--text-secondary); background:var(--bg-glass);
-    border:1px solid var(--border-subtle); padding:8px 14px; border-radius:999px;
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-    opacity:0; pointer-events:none; transition:opacity .25s ease; white-space:nowrap;
-  }
-  #places-hero .places-hint.show{opacity:1}
   #places-hero .places-fs{
     display:inline-flex; align-items:center; justify-content:center;
     width:34px; height:34px; padding:0;
@@ -1025,26 +1002,16 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     }
   }
   @media (prefers-reduced-motion:reduce){
-    #places-hero canvas, #places-hero .places-caption,
+    #chart-places-hero, #places-hero .places-caption,
     #places-hero .places-controls, #places-hero .places-foot, #places-hero .places-zoom{
       animation:none; opacity:1; transform:none;
     }
   }
-
-  /* Selection zoom (desktop only, Shift+drag): a marquee rectangle that fits
-     the camera to whatever's dragged out, on release. */
-  #places-hero .places-selrect{
-    position:absolute; display:none; z-index:2; pointer-events:none;
-    border:1.5px dashed var(--accent);
-    background:color-mix(in srgb, var(--accent) 15%, transparent);
-  }
-  @media (hover:none){ #places-hero .places-selrect{ display:none !important; } }
 </style>
 
+<div id="places-map" aria-hidden="true"></div>
 <canvas id="chart-places-hero" role="img"
   aria-label="Map of every GPS route: San Diego and Boston home clusters plus trips across North America"></canvas>
-<div class="places-selrect" id="places-selrect"
-     aria-label="Selection zoom rectangle"></div>
 
 <div class="places-chrome">
   <div class="places-caption"><p class="places-eyebrow">Places</p></div>
@@ -1064,6 +1031,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     <div class="seg-filter places-seg" role="group" aria-label="Basemap">
       <span class="places-seg-lbl">Map</span>
       <button class="seg-btn active" data-base="glow"    aria-pressed="true">Glow</button>
+      <button class="seg-btn"        data-base="street"  aria-pressed="false">Street</button>
       <button class="seg-btn"        data-base="terrain" aria-pressed="false">Terrain</button>
     </div>
   </div>
@@ -1090,7 +1058,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
     </button>
   </div>
-  <div class="places-hint" id="places-hint"></div>
 </div>
 
 <script>
@@ -1100,56 +1067,35 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   var cv   = document.getElementById('chart-places-hero');
   if(!cv) return;
   var ctx  = cv.getContext('2d');
-  var hint = document.getElementById('places-hint');
   var reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
 
-  var W=0, H=0, dpr=1, S0=1;
-
-  // Flatten track coords to Float32 u/v once at boot (float32 in 0..1 far
-  // exceeds the 5-decimal source precision). HIKE bucket keeps its literal.
+  // ── injected data ─────────────────────────────────────────────────────────
+  // Tracks keep their raw [lng,lat,...] pairs; MapLibre owns the Web Mercator
+  // projection now, so every point is projected through map.project() at draw
+  // time (no bespoke equirectangular frame -> perfect tile registration at all
+  // latitudes). base = per-track glow alpha + golden-ratio jitter (unchanged).
   var TRACKS = PD.tracks.map(function(t, i){
-    var p = t.p, m = p.length/2;
-    var uv = new Float32Array(p.length);
-    for(var k=0;k<m;k++){
-      var lng=p[2*k], lat=p[2*k+1];
-      uv[2*k]   = (lng - PD.lng0)/PD.lngspan;
-      uv[2*k+1] = (PD.lat1 - lat)/PD.latspan;
-    }
-    // deterministic organic alpha jitter (replaces the mock's rng)
     var jitter = (i*0.6180339887) % 1;
-    return {c:t.c, g:t.g, uv:uv, n:m,
+    return {c:t.c, g:t.g, p:t.p, n:t.p.length/2,
             base:(t.g<2 ? 0.30 : 0.50) + 0.12*jitter};
   });
-
-  // Vector basemap (coast / admin / lakes): flat [lng,lat,...] polylines ->
-  // Float32 u/v once at boot, same frame as the routes so it registers exactly.
-  var BM_RAW = __BM_JSON__;
-  function toUV(list){
-    return (list||[]).map(function(p){
-      var m=p.length/2, uv=new Float32Array(p.length);
-      for(var k=0;k<m;k++){
-        uv[2*k]   = (p[2*k]   - PD.lng0)/PD.lngspan;
-        uv[2*k+1] = (PD.lat1 - p[2*k+1])/PD.latspan;
-      }
-      return uv;
-    });
-  }
-  var BM = BM_RAW ? {coast:toUV(BM_RAW.coast), admin:toUV(BM_RAW.admin),
-                     lakes:toUV(BM_RAW.lakes)} : null;
-
-  // Terrain-mode shaded relief: an LA PNG covering a FIXED lat/lng box (matches
-  // tools/gen_hillshade.py) inlined as a data URI, drawn stretched to that box
-  // in the hero's equirectangular frame -> registers with the routes exactly.
-  var HS_BOX = {lat0:24, lat1:55, lng0:-135, lng1:-60};
-  var HS_URI = "__HILLSHADE_URI__";
-  var hsImg = null, hsReady = false;
-  if(HS_URI){
-    hsImg = new Image();
-    hsImg.onload = function(){ hsReady = true; if(typeof draw==='function') draw(); };
-    hsImg.src = "data:image/png;base64," + HS_URI;
+  // Labels arrive as normalized u/v (the old frame); reconstruct lng/lat once so
+  // they project through the map exactly like the routes.
+  var LABELS = PD.labels.map(function(L){
+    return {k:L.k, name:L.name, coord:L.coord, sub:L.sub,
+            lng: PD.lng0 + L.u*PD.lngspan, lat: PD.lat1 - L.v*PD.latspan};
+  });
+  // Geographic bounds for the framed views (reconstructed from the old u/v rects).
+  var allBounds = [[PD.lng0, PD.lat1 - PD.latspan], [PD.lng0 + PD.lngspan, PD.lat1]];
+  function viewBounds(name){
+    var vw = PD.views[name];
+    if(!vw) return allBounds;
+    var west  = PD.lng0 + vw.u0*PD.lngspan, east  = PD.lng0 + vw.u1*PD.lngspan;
+    var north = PD.lat1 - vw.v0*PD.latspan, south = PD.lat1 - vw.v1*PD.latspan;
+    return [[west, south], [east, north]];
   }
 
-  // ── Theme colors (re-read on every retint) ──────────────────────────────
+  // ── theme colors (re-read on every retint) ────────────────────────────────
   var probe = document.createElement('span');
   probe.style.display='none'; hero.appendChild(probe);
   function readVar(name){
@@ -1161,131 +1107,112 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   function hexRGB(h){
     return [ parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16) ];
   }
+  function isLight(){ return document.documentElement.classList.contains('light'); }
   var TH = null;
   function retint(){
-    var light = document.documentElement.classList.contains('light');
     TH = {
-      light: light,
+      light: isLight(),
       route: [ readVar('--running'), readVar('--mtb'), readVar('--elevation'),
                hexRGB('#4ade80'), readVar('--other') ],
       tp: readVar('--text-primary'),
-      ts: readVar('--text-secondary'),
-      bm: readVar('--text-secondary')      // slate -> faint basemap lines
+      ts: readVar('--text-secondary')
     };
   }
 
-  // view/camera state
-  var cur = {s:1, fx:0.5, fy:0.5};
-  var anim = null, terrain=false, lens='none';
+  // ── MapLibre basemap (Glow / Street / Terrain) ────────────────────────────
+  var MT_KEY = "__MAPTILER_KEY__";
+  var HAS_ML = !!window.maplibregl;
+  var TILES_OK = HAS_ML && MT_KEY.length > 0;
+  var mode = 'glow';                     // glow | street | terrain
+  var lens = 'none';                     // 'trips' dims the two home clusters
+  var map = null;
 
-  function clampS(s){ return Math.min(400, Math.max(0.65, s)); }
+  function tilelessStyle(){
+    // Tile-free: a transparent background so the hero's radial-gradient ground
+    // shows through. This is ONLY the graceful-degradation ground when tiles/key
+    // are absent -- it is not a selectable look (Glow renders Backdrop tiles).
+    return {version:8, sources:{}, layers:[
+      {id:'bg', type:'background', paint:{'background-color':'rgba(0,0,0,0)'}}
+    ]};
+  }
+  function mtStyle(slug){ return 'https://api.maptiler.com/maps/'+slug+'/style.json?key='+MT_KEY; }
+  // Each mode maps to a MapTiler style whose exact '-dark' counterpart is used in
+  // dark theme, so every basemap tracks the page theme through one code path.
+  var SLUGS = {glow:'backdrop-v4', street:'streets-v2', terrain:'outdoor-v2'};
+  function styleForMode(m){
+    if(!TILES_OK) return tilelessStyle();
+    var slug = SLUGS[m] || SLUGS.glow;
+    return mtStyle(slug + (isLight() ? '' : '-dark'));
+  }
+  function applyMapStyle(){ if(map) map.setStyle(styleForMode(mode)); }
 
-  function resize(){
+  function initMap(){
+    if(map || !HAS_ML) return;
+    map = new maplibregl.Map({
+      container: 'places-map',
+      style: styleForMode(mode),
+      bounds: allBounds,
+      fitBoundsOptions: {padding: 34, animate: false},
+      attributionControl: {compact: true},
+      cooperativeGestures: true,   // ctrl+scroll / two-finger -> page still scrolls
+      dragRotate: false, pitchWithRotate: false,
+      renderWorldCopies: false, minZoom: 1, maxZoom: 16, fadeDuration: 120
+    });
+    if(map.touchZoomRotate) map.touchZoomRotate.disableRotation();
+    map.on('move', drawGlow);
+    map.on('styledata', drawGlow);
+    map.on('load', function(){ if(pendingFrame){ goFrame(pendingFrame, false); } drawGlow(); });
+  }
+
+  // ── projection + glow overlay ─────────────────────────────────────────────
+  var dpr = 1;
+  function fallbackProject(lng, lat){
+    // Only used when MapLibre is unavailable: a static equirectangular fit of the
+    // full extent, so the glow still renders (no pan/zoom) rather than a blank box.
+    var w = hero.clientWidth, h = hero.clientHeight;
+    var s = Math.min(w/PD.ww, h/PD.wh);
+    var u = (lng - PD.lng0)/PD.lngspan, v = (PD.lat1 - lat)/PD.latspan;
+    return [ w/2 + (u-0.5)*PD.ww*s, h/2 + (v-0.5)*PD.wh*s ];
+  }
+  function projectPt(lng, lat){
+    if(map){ var p = map.project([lng, lat]); return [p.x, p.y]; }
+    return fallbackProject(lng, lat);
+  }
+  function sizeCanvas(w, h){
     dpr = Math.min(window.devicePixelRatio||1, 2);
-    W = hero.clientWidth; H = hero.clientHeight;
-    if(W===0 || H===0) return;
-    S0 = Math.min(W/PD.ww, H/PD.wh);
-    cv.width = W*dpr; cv.height = H*dpr;
+    var nw = Math.round(w*dpr), nh = Math.round(h*dpr);
+    if(cv.width!==nw || cv.height!==nh){ cv.width=nw; cv.height=nh; }
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    draw();
   }
-
-  function projX(u){ return W/2 + (u - cur.fx)*PD.ww*S0*cur.s; }
-  function projY(v){ return H/2 + (v - cur.fy)*PD.wh*S0*cur.s; }
-
-  // ── graticule (adaptive real lat/lng lines) ─────────────────────────────
-  var STEPS=[10,5,2,1,0.5,0.2,0.1,0.05];
-  function drawGraticule(){
-    var pxPerDeg = S0*cur.s;           // vertical px per degree latitude
-    var step = STEPS[STEPS.length-1];
-    for(var i=0;i<STEPS.length;i++){ if(STEPS[i]*pxPerDeg >= 72){ step=STEPS[i]; break; } }
-    ctx.lineWidth=1;
-    ctx.strokeStyle = TH.light ? 'rgba('+TH.ts[0]+','+TH.ts[1]+','+TH.ts[2]+',0.10)'
-                     : (terrain ? 'rgba(120,96,72,.10)' : 'rgba(88,120,170,.09)');
-    // visible lng range from screen edges
-    var uMin = cur.fx + (0 - W/2)/(PD.ww*S0*cur.s);
-    var uMax = cur.fx + (W - W/2)/(PD.ww*S0*cur.s);
-    var lngMin = PD.lng0 + uMin*PD.lngspan, lngMax = PD.lng0 + uMax*PD.lngspan;
-    var lo = Math.ceil(lngMin/step)*step, hi = lngMax;
-    for(var g=lo; g<=hi; g+=step){
-      var x = projX((g - PD.lng0)/PD.lngspan);
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
-    }
-    var vMin = cur.fy + (0 - H/2)/(PD.wh*S0*cur.s);
-    var vMax = cur.fy + (H - H/2)/(PD.wh*S0*cur.s);
-    var latMax = PD.lat1 - vMin*PD.latspan, latMin = PD.lat1 - vMax*PD.latspan;
-    var loLat = Math.ceil(latMin/step)*step;
-    for(var la=loLat; la<=latMax; la+=step){
-      var y = projY((PD.lat1 - la)/PD.latspan);
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
-    }
-  }
-
-  // Vector basemap: faint coast / state-province / lake lines drawn under the
-  // route glow, in the same projection so they register with the routes (D3:
-  // a quiet grounding, not a legible map). Replaces the mock's concentric-ring
-  // terrain placeholder. Light ground needs more alpha to read than the dark.
-  function drawBasemap(){
-    if(!BM) return;
-    var s = TH.bm;
-    var aWater = TH.light ? 0.26 : 0.16;
-    var aAdmin = TH.light ? 0.15 : 0.085;
-    ctx.lineJoin='round'; ctx.lineCap='round';
-    function strokeSet(set, alpha, lw){
-      ctx.strokeStyle = 'rgba('+s[0]+','+s[1]+','+s[2]+','+alpha+')';
-      ctx.lineWidth = lw;
-      for(var i=0;i<set.length;i++){
-        var uv=set[i], n=uv.length/2;
-        ctx.beginPath();
-        for(var k=0;k<n;k++){ var x=projX(uv[2*k]), y=projY(uv[2*k+1]);
-          if(k) ctx.lineTo(x,y); else ctx.moveTo(x,y); }
-        ctx.stroke();
-      }
-    }
-    strokeSet(BM.admin, aAdmin, 0.7);          // state / province lines (faintest)
-    strokeSet(BM.coast, aWater, 0.9);          // coastline
-    strokeSet(BM.lakes, aWater, 0.8);          // lakes (Great Lakes et al.)
-  }
-
-  // Terrain relief: dark ground -> light ridges show via source-over; light
-  // ground -> multiply so shadows darken the paper (highlights wash out on white).
-  function drawHillshade(){
-    if(!terrain || !hsReady) return;
-    var u0=(HS_BOX.lng0-PD.lng0)/PD.lngspan, u1=(HS_BOX.lng1-PD.lng0)/PD.lngspan;
-    var v0=(PD.lat1-HS_BOX.lat1)/PD.latspan, v1=(PD.lat1-HS_BOX.lat0)/PD.latspan;
-    var x0=projX(u0), y0=projY(v0);
-    ctx.save();
-    ctx.globalCompositeOperation = TH.light ? 'multiply' : 'source-over';
-    ctx.globalAlpha = TH.light ? 0.9 : 0.85;
-    ctx.drawImage(hsImg, x0, y0, projX(u1)-x0, projY(v1)-y0);
-    ctx.restore();
-  }
-
-  function draw(){
+  function drawGlow(){
     if(!TH) retint();
-    if(W===0) return;
-    ctx.clearRect(0,0,W,H);
-    drawHillshade();
-    drawGraticule();
-    drawBasemap();
+    var w = hero.clientWidth, h = hero.clientHeight;
+    if(!w || !h) return;
+    sizeCanvas(w, h);
+    ctx.clearRect(0,0,w,h);
 
-    ctx.globalCompositeOperation = TH.light ? 'multiply' : 'lighter';
+    // Additive bloom on dark grounds (dark theme, every mode now has a dark
+    // basemap); multiply as ink-on-paper on the light-theme grounds.
+    var additive = !TH.light;
+    ctx.globalCompositeOperation = additive ? 'lighter' : 'multiply';
     ctx.lineJoin='round'; ctx.lineCap='round';
-    var lw = Math.max(0.8, 1.15*Math.min(cur.s,2));
-    ctx.lineWidth = lw;
+    // Zoom-scaled stroke: ~1.2px at continental zoom, ~2.4px zoomed into a city
+    // (matches the weight the canvas hero drew at its equivalent scales).
+    var z = map ? map.getZoom() : 3.6;
+    ctx.lineWidth = Math.max(1.0, Math.min(2.6, 0.5 + z*0.17));
     var alphaMul = TH.light ? 0.85 : 1.0;
 
-    for(var ti=0;ti<TRACKS.length;ti++){
+    for(var ti=0; ti<TRACKS.length; ti++){
       var t = TRACKS[ti], a = t.base;
       if(lens==='trips') a = (t.g<2) ? a*0.20 : Math.min(0.92, a*1.55);
       a *= alphaMul;
       var col = TH.route[t.c];
       ctx.strokeStyle = 'rgba('+col[0]+','+col[1]+','+col[2]+','+a+')';
       ctx.beginPath();
-      var uv=t.uv;
-      for(var k=0;k<t.n;k++){
-        var x=projX(uv[2*k]), y=projY(uv[2*k+1]);
-        if(k) ctx.lineTo(x,y); else ctx.moveTo(x,y);
+      var p = t.p;
+      for(var k=0; k<t.n; k++){
+        var xy = projectPt(p[2*k], p[2*k+1]);
+        if(k) ctx.lineTo(xy[0], xy[1]); else ctx.moveTo(xy[0], xy[1]);
       }
       ctx.stroke();
     }
@@ -1299,10 +1226,11 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     return !(a.x2 < b.x1 || b.x2 < a.x1 || a.y2 < b.y1 || b.y2 < a.y1);
   }
   function drawLabels(){
+    var W = hero.clientWidth, H = hero.clientHeight;
     var placed=[];
-    for(var i=0;i<PD.labels.length;i++){
-      var L=PD.labels[i];
-      var x=projX(L.u), y=projY(L.v);
+    for(var i=0;i<LABELS.length;i++){
+      var L=LABELS[i];
+      var xy=projectPt(L.lng, L.lat), x=xy[0], y=xy[1];
       if(x<-40||x>W+40||y<-40||y>H+40) continue;   // cull offscreen anchors
       var home = (L.k==='home');
       // alpha per lens state
@@ -1362,72 +1290,68 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     ctx.font="11px 'Geist Mono', ui-monospace, monospace";
     // Stack the mono sub-lines with a running offset so a label without a
     // coord line (the homes) closes the gap instead of leaving a hole.
+    // Light theme: real near-white basemaps need the coord/sub lines at full alpha
+    // to clear WCAG AA (4.5:1) -- the old 0.85x/0.9x fade measured as low as 3.56:1
+    // against Backdrop/Street/Terrain's near-white light grounds. Dark theme keeps
+    // the original fade (huge contrast headroom against the dark grounds there).
+    var coordMul = TH.light ? 1.0 : 0.85;
+    var subMul   = TH.light ? 1.0 : 0.9;
     if(L.coord){
       ly += 16;
-      ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*0.85)+')';
+      ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*coordMul)+')';
       ctx.fillText(L.coord, tx, ly);
     }
     if(L.sub){
       ly += 15;
-      ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*0.9)+')';
+      ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*subMul)+')';
       ctx.fillText(L.sub, tx, ly);
     }
     ctx.shadowBlur=0;
   }
 
-  // ── tween (geometric log-s, linear fx/fy) ───────────────────────────────
-  function tweenTo(v, newLens){
-    lens = (newLens===undefined) ? lens : newLens;
-    if(reduce){ cur={s:v.s, fx:v.fx, fy:v.fy}; draw(); return; }
-    var from={s:cur.s, fx:cur.fx, fy:cur.fy}, t0=performance.now(), dur=620;
-    cancelAnimationFrame(anim);
-    (function frame(now){
-      var k=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-k,3);
-      cur.s  = from.s * Math.pow(v.s/from.s, e);
-      cur.fx = from.fx + (v.fx-from.fx)*e;
-      cur.fy = from.fy + (v.fy-from.fy)*e;
-      draw();
-      if(k<1) anim=requestAnimationFrame(frame);
-    })(t0);
-  }
-
-  function fitBox(u0,u1,v0,v1){
-    var s = 0.94 * Math.min( W/((u1-u0)*PD.ww*S0), H/((v1-v0)*PD.wh*S0) );
-    return {s:clampS(s), fx:(u0+u1)/2, fy:(v0+v1)/2};
-  }
-  function frameTarget(name){
-    if(name==='all' || name==='trips') return {s:1, fx:0.5, fy:0.5};
-    var vw = PD.views[name];
-    return fitBox(vw.u0, vw.u1, vw.v0, vw.v1);
-  }
-
-  // Public fly-to hook (Pass C dependency).
-  window.placesFlyTo = function(target){
-    var name=null, tgt;
-    if(typeof target==='string'){
-      name=target;
-      tgt = frameTarget(target);
-      tweenTo(tgt, target==='trips' ? 'trips' : 'none');
-    } else if(target && typeof target==='object'){
-      var u0=(target.lng0-PD.lng0)/PD.lngspan, u1=(target.lng1-PD.lng0)/PD.lngspan;
-      var v0=(PD.lat1-target.lat1)/PD.latspan, v1=(PD.lat1-target.lat0)/PD.latspan;
-      tweenTo(fitBox(u0,u1,v0,v1), 'none');
-    }
-    // deactivate frame buttons unless the name matches
+  // ── camera framing (MapLibre) ─────────────────────────────────────────────
+  var pendingFrame = null;    // a View to apply once the map finishes loading
+  function setFrameButtons(name){
     hero.querySelectorAll('[data-frame]').forEach(function(b){
       var on = (b.dataset.frame===name);
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', on?'true':'false');
     });
+  }
+  function goFrame(v, animate){
+    lens = (v==='trips') ? 'trips' : 'none';
+    var bounds = (v==='sd' || v==='bos') ? viewBounds(v) : allBounds;
+    var pad = (v==='sd' || v==='bos') ? 60 : 34;
+    if(map){
+      map.fitBounds(bounds, {padding: pad, duration: 620,
+                             animate: animate!==false && !reduce});
+    }
+    drawGlow();
+  }
+
+  // Public fly-to hook: the passport stamps, home cards, and peak rows call this
+  // to zoom the main map onto a route (a named View, or a {lat0,lat1,lng0,lng1}
+  // box). Contract preserved from the canvas hero so those callers are untouched.
+  window.placesFlyTo = function(target){
+    var name = null;
+    if(typeof target==='string'){
+      name = target;
+      goFrame(target, true);
+    } else if(target && typeof target==='object'){
+      lens = 'none';
+      if(map){
+        map.fitBounds([[target.lng0, target.lat0], [target.lng1, target.lat1]],
+                      {padding: 50, duration: 620, animate: !reduce});
+      }
+      drawGlow();
+    }
+    setFrameButtons(name);
   };
 
-  // ── controls ────────────────────────────────────────────────────────────
-  // Persist the View/Map selection (NOT arbitrary fly-to boxes from the
-  // passport/peaks) into the URL hash, '#places?v=<frame>&b=<base>', reusing
-  // the same history.replaceState mechanism the page-level tab router uses --
-  // so reloading while on a non-default Places view restores it instead of
-  // always snapping back to the default camera. Omits a key at its default
-  // (v=all, b=glow) so the common case stays a bare '#places'.
+  // ── controls ──────────────────────────────────────────────────────────────
+  // Persist the View/Map selection into '#places?v=<frame>&b=<base>' (defaults
+  // v=all, b=glow are omitted) so a reload restores it -- same history.replaceState
+  // mechanism the page-level tab router uses.
   function syncHashState(){
     var activeFrame = hero.querySelector('[data-frame].active');
     var activeBase = hero.querySelector('[data-base].active');
@@ -1441,58 +1365,55 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   }
   hero.querySelectorAll('[data-frame]').forEach(function(b){
     b.addEventListener('click', function(){
-      hero.querySelectorAll('[data-frame]').forEach(function(o){
-        var on=(o===b); o.classList.toggle('active', on);
-        o.setAttribute('aria-pressed', on?'true':'false');
-      });
-      var v=b.dataset.frame;
-      tweenTo(frameTarget(v), v==='trips' ? 'trips' : 'none');
+      setFrameButtons(b.dataset.frame);
+      goFrame(b.dataset.frame, true);
       syncHashState();
     });
   });
+  // Street/Terrain need MapLibre + a MapTiler key; disable them otherwise so the
+  // hero stays on the tile-free Glow ground rather than a broken map.
   hero.querySelectorAll('[data-base]').forEach(function(b){
+    var m = b.dataset.base;
+    if((m==='street' || m==='terrain') && !TILES_OK){
+      b.disabled = true;
+      b.title = 'Map tiles unavailable';
+      return;
+    }
     b.addEventListener('click', function(){
       hero.querySelectorAll('[data-base]').forEach(function(o){
         var on=(o===b); o.classList.toggle('active', on);
         o.setAttribute('aria-pressed', on?'true':'false');
       });
-      terrain = b.dataset.base==='terrain';
-      hero.classList.toggle('terrain', terrain);
-      draw();
+      mode = m;
+      hero.classList.toggle('terrain', mode==='terrain');
+      applyMapStyle();
+      drawGlow();
       syncHashState();
     });
   });
 
-  // Restore the View/Map selection from the URL hash on boot (snap, no
-  // animated tween -- the camera should already be in place before the
-  // canvas's first paint, not visibly fly there). Only Places' own '?v=/&b='
-  // params, written by syncHashState() above; the page router (template.py)
-  // already stripped this suffix before matching the section id, so reading
-  // location.hash here again is safe and independent of that.
+  // Restore the View/Map selection from the URL hash on boot. Map selection sets
+  // `mode` before initMap so the map opens on the right basemap; the View is
+  // deferred to map 'load' via pendingFrame (no visible fly on first paint).
   (function applyHashState(){
     var h = location.hash || '';
     var qIdx = h.indexOf('?');
     if(h.indexOf('places')===-1 || qIdx===-1) return;
     var params = new URLSearchParams(h.slice(qIdx+1));
     var v = params.get('v'), bmode = params.get('b');
-    if(bmode==='terrain'){
-      terrain = true;
-      hero.classList.add('terrain');
+    if((bmode==='street' || bmode==='terrain') && TILES_OK){
+      mode = bmode;
+      hero.classList.toggle('terrain', mode==='terrain');
       hero.querySelectorAll('[data-base]').forEach(function(b){
-        var on = b.dataset.base==='terrain';
+        var on = b.dataset.base===bmode;
         b.classList.toggle('active', on);
         b.setAttribute('aria-pressed', on?'true':'false');
       });
     }
     if(v==='sd' || v==='bos' || v==='trips'){
-      var tgt = frameTarget(v);
-      cur = {s:tgt.s, fx:tgt.fx, fy:tgt.fy};
+      pendingFrame = v;
       lens = (v==='trips') ? 'trips' : 'none';
-      hero.querySelectorAll('[data-frame]').forEach(function(b){
-        var on = b.dataset.frame===v;
-        b.classList.toggle('active', on);
-        b.setAttribute('aria-pressed', on?'true':'false');
-      });
+      setFrameButtons(v);
     }
   })();
 
@@ -1513,35 +1434,24 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         if(open)  open.style.display  = on ? 'none' : '';
         if(close) close.style.display = on ? '' : 'none';
         fsBtn.setAttribute('aria-pressed', on?'true':'false');
-        resize();   // belt-and-suspenders with the ResizeObserver
+        if(map) map.resize();
+        drawGlow();
       });
     }
   }
 
-  // ── hint pill ───────────────────────────────────────────────────────────
-  var hintT=null;
-  function showHint(msg){
-    if(!hint) return;
-    hint.textContent=msg; hint.classList.add('show');
-    clearTimeout(hintT);
-    hintT=setTimeout(function(){ hint.classList.remove('show'); }, 1200);
-  }
-
-  // ── explicit zoom / reset controls ───────────────────────────────────────
+  // ── explicit zoom / reset controls (wired to the MapLibre camera) ─────────
   var zoomInBtn = document.getElementById('places-zoom-in');
   var zoomOutBtn = document.getElementById('places-zoom-out');
   var zoomResetBtn = document.getElementById('places-zoom-reset');
   function updateZoomButtons(){
-    if(!zoomInBtn) return;
-    zoomInBtn.disabled = cur.s >= 400 - 1e-6;
-    zoomOutBtn.disabled = cur.s <= 0.65 + 1e-6;
+    if(!zoomInBtn || !map) return;
+    var z = map.getZoom();
+    zoomInBtn.disabled  = z >= map.getMaxZoom() - 1e-3;
+    zoomOutBtn.disabled = z <= map.getMinZoom() + 1e-3;
   }
-  function zoomStep(factor){
-    cancelAnimationFrame(anim);
-    tweenTo({s:clampS(cur.s*factor), fx:cur.fx, fy:cur.fy});
-  }
-  if(zoomInBtn)  zoomInBtn.addEventListener('click', function(){ zoomStep(1.5); });
-  if(zoomOutBtn) zoomOutBtn.addEventListener('click', function(){ zoomStep(1/1.5); });
+  if(zoomInBtn)  zoomInBtn.addEventListener('click', function(){ if(map) map.zoomIn(); });
+  if(zoomOutBtn) zoomOutBtn.addEventListener('click', function(){ if(map) map.zoomOut(); });
   if(zoomResetBtn) zoomResetBtn.addEventListener('click', function(){
     // Reuse the "All" view button's own click handler (single source of truth
     // for the default camera + lens-clear + button-sync), rather than
@@ -1550,152 +1460,34 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     if(allBtn) allBtn.click();
   });
 
-  function zoomAt(mx,my,factor){
-    var wx=cur.fx+(mx-W/2)/(PD.ww*S0*cur.s);
-    var wy=cur.fy+(my-H/2)/(PD.wh*S0*cur.s);
-    cur.s=clampS(cur.s*factor);
-    cur.fx=wx-(mx-W/2)/(PD.ww*S0*cur.s);
-    cur.fy=wy-(my-H/2)/(PD.wh*S0*cur.s);
-    draw();
-  }
+  // Pan / scroll-zoom / pinch / double-click zoom / shift-drag box-zoom are all
+  // handled natively by MapLibre (with cooperativeGestures so the page still
+  // scrolls). The glow overlay tracks the camera via map.on('move', drawGlow).
 
-  // ── cooperative gestures ────────────────────────────────────────────────
-  var pointers=new Map(), mouseDrag=false, lx=0, ly=0, lastDist=0, lastCx=0, lastCy=0;
-  function localXY(e){ var r=cv.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; }
-
-  // ── selection zoom (desktop only): Shift+drag draws a marquee rectangle;
-  // releasing fits the camera to it (same fitBox/tweenTo the View buttons
-  // use). Mirrors placesFlyTo's custom-box handling: deactivates the named
-  // View buttons (this is a one-off framing, not one of them) and updates
-  // the URL hash the same way a button click would, so it round-trips
-  // through reload like any other camera state.
-  var selBox = null;             // {x0,y0,x1,y1} in canvas-local px while dragging
-  var selEl = document.getElementById('places-selrect');
-  function selRectFromBox(){
-    var x=Math.min(selBox.x0,selBox.x1), y=Math.min(selBox.y0,selBox.y1);
-    var w=Math.abs(selBox.x1-selBox.x0), h=Math.abs(selBox.y1-selBox.y0);
-    return {x:x,y:y,w:w,h:h};
-  }
-  function drawSelRect(){
-    if(!selEl) return;
-    var r=selRectFromBox();
-    selEl.style.left=r.x+'px'; selEl.style.top=r.y+'px';
-    selEl.style.width=r.w+'px'; selEl.style.height=r.h+'px';
-  }
-  function endSelection(){
-    if(!selBox) return;
-    var r=selRectFromBox();
-    selBox=null;
-    if(selEl) selEl.style.display='none';
-    if(r.w<8 || r.h<8) return;   // ignore an accidental shift-click/tiny drag
-    var u0=cur.fx+(r.x-W/2)/(PD.ww*S0*cur.s), u1=cur.fx+(r.x+r.w-W/2)/(PD.ww*S0*cur.s);
-    var v0=cur.fy+(r.y-H/2)/(PD.wh*S0*cur.s), v1=cur.fy+(r.y+r.h-H/2)/(PD.wh*S0*cur.s);
-    cancelAnimationFrame(anim);
-    tweenTo(fitBox(u0,u1,v0,v1), 'none');
-    hero.querySelectorAll('[data-frame]').forEach(function(b){
-      b.classList.remove('active'); b.setAttribute('aria-pressed','false');
-    });
-    if(typeof syncHashState==='function') syncHashState();
-  }
-
-  cv.addEventListener('pointerdown', function(e){
-    if(e.pointerType==='mouse' && e.shiftKey){
-      var xy0=localXY(e);
-      selBox={x0:xy0[0], y0:xy0[1], x1:xy0[0], y1:xy0[1]};
-      if(selEl){ selEl.style.display='block'; drawSelRect(); }
-      cv.setPointerCapture(e.pointerId);
-      cancelAnimationFrame(anim);
-      return;    // don't also start a pan drag
-    }
-    pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
-    cancelAnimationFrame(anim);
-    if(e.pointerType==='mouse'){ mouseDrag=true; lx=e.clientX; ly=e.clientY; cv.setPointerCapture(e.pointerId); }
-    else if(pointers.size===2){
-      var pts=[...pointers.values()];
-      lastDist=Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
-      lastCx=(pts[0].x+pts[1].x)/2; lastCy=(pts[0].y+pts[1].y)/2;
-    }
-  });
-  cv.addEventListener('pointermove', function(e){
-    if(selBox){
-      var xy=localXY(e);
-      selBox.x1=xy[0]; selBox.y1=xy[1];
-      drawSelRect();
-      return;
-    }
-    if(e.pointerType==='mouse'){
-      if(!mouseDrag) return;
-      cur.fx -= (e.clientX-lx)/(PD.ww*S0*cur.s);
-      cur.fy -= (e.clientY-ly)/(PD.wh*S0*cur.s);
-      lx=e.clientX; ly=e.clientY; draw(); return;
-    }
-    // touch
-    if(!pointers.has(e.pointerId)) return;
-    pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
-    if(pointers.size>=2){
-      e.preventDefault();
-      var pts=[...pointers.values()];
-      var dist=Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
-      var cxp=(pts[0].x+pts[1].x)/2, cyp=(pts[0].y+pts[1].y)/2;
-      // pan by centroid delta
-      cur.fx -= (cxp-lastCx)/(PD.ww*S0*cur.s);
-      cur.fy -= (cyp-lastCy)/(PD.wh*S0*cur.s);
-      // zoom by pinch ratio, anchored at centroid
-      if(lastDist>0){
-        var r=cv.getBoundingClientRect();
-        zoomAt(cxp-r.left, cyp-r.top, dist/lastDist);
-      }
-      lastDist=dist; lastCx=cxp; lastCy=cyp;
-      draw();
-    } else {
-      // one-finger horizontal intent -> hint (page still scrolls via pan-y)
-      var d0=pointers.get(e.pointerId);
-      showHint('Use two fingers to move the map');
-    }
-  });
-  function endPointer(e){
-    if(selBox){ endSelection(); }
-    pointers.delete(e.pointerId);
-    if(e.pointerType==='mouse') mouseDrag=false;
-    if(pointers.size<2) lastDist=0;
-  }
-  cv.addEventListener('pointerup', endPointer);
-  cv.addEventListener('pointercancel', endPointer);
-
-  // Crosshair cursor while Shift is held, signaling selection-zoom is armed
-  // (global listeners: the key can go down before the pointer enters the
-  // canvas). Cleared on blur so an alt-tab away doesn't strand the cursor.
-  document.addEventListener('keydown', function(e){ if(e.key==='Shift') hero.classList.add('shift-down'); });
-  document.addEventListener('keyup', function(e){ if(e.key==='Shift') hero.classList.remove('shift-down'); });
-  window.addEventListener('blur', function(){ hero.classList.remove('shift-down'); });
-
-  cv.addEventListener('wheel', function(e){
-    if(e.ctrlKey || e.metaKey){          // trackpad pinch arrives as ctrlKey wheel
-      e.preventDefault();
-      cancelAnimationFrame(anim);
-      var xy=localXY(e);
-      zoomAt(xy[0], xy[1], Math.exp(-e.deltaY*0.0012));
-    } else {
-      showHint('Ctrl + scroll to zoom');   // no preventDefault -> page scrolls
-    }
-  }, {passive:false});
-
-  cv.addEventListener('dblclick', function(e){
-    e.preventDefault();
-    cancelAnimationFrame(anim);
-    var xy=localXY(e);
-    zoomAt(xy[0], xy[1], 1.8);
-  });
-
-  // ── lifecycle ───────────────────────────────────────────────────────────
-  window.__placesHeroRedraw = function(){ retint(); resize(); };
+  // ── lifecycle ─────────────────────────────────────────────────────────────
+  // Re-inked by the page theme toggle (template.py applyChartTheme): retint the
+  // glow, and swap every mode's light/dark basemap variant. Only skip the restyle
+  // when there are no tiles (the ground is pure CSS, so setStyle would just flash).
+  window.__placesHeroRedraw = function(){
+    retint();
+    if(TILES_OK) applyMapStyle();
+    drawGlow();
+  };
+  // The Places section can mount hidden (inactive tab); create the map lazily on
+  // the first non-zero size, then keep it resized. WebGL context init on a 0x0
+  // container is unreliable, so deferring avoids a blank map on first activation.
   if(window.ResizeObserver){
-    var ro=new ResizeObserver(function(){ resize(); });
+    var ro=new ResizeObserver(function(){
+      if(!map){ if(hero.clientWidth>0) initMap(); }
+      else { map.resize(); }
+      drawGlow();
+    });
     ro.observe(hero);
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', function(){ if(map) map.resize(); drawGlow(); });
   retint();
-  resize();
+  if(hero.clientWidth>0) initMap();
+  drawGlow();
 })();
 </script>
 </div>"""
