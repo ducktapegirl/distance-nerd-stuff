@@ -1139,12 +1139,23 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   // Each mode maps to a MapTiler style whose exact '-dark' counterpart is used in
   // dark theme, so every basemap tracks the page theme through one code path.
   var SLUGS = {glow:'backdrop-v4', street:'streets-v2', terrain:'outdoor-v2'};
+  // Glow's light-theme ground is a custom MapTiler style ("BackgroundGhost") tuned
+  // to the near-white/faint-line look the hero had before the MapTiler conversion --
+  // lighter than stock Backdrop, so no CSS wash is layered on top of it. Dark theme
+  // still uses backdrop-v4-dark (no custom dark counterpart exists yet).
+  var GLOW_LIGHT_STYLE_ID = '019f7141-13e8-7ca3-bd1d-c8bc1184f396';
   function styleForMode(m){
     if(!TILES_OK) return tilelessStyle();
+    if(m==='glow' && isLight()) return mtStyle(GLOW_LIGHT_STYLE_ID);
     var slug = SLUGS[m] || SLUGS.glow;
     return mtStyle(slug + (isLight() ? '' : '-dark'));
   }
   function applyMapStyle(){ if(map) map.setStyle(styleForMode(mode)); }
+  // Reflect the active basemap mode as a class on the hero so CSS can target a
+  // single mode.
+  function setModeClass(){
+    hero.classList.toggle('terrain', mode==='terrain');
+  }
 
   function initMap(){
     if(map || !HAS_ML) return;
@@ -1191,31 +1202,52 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     sizeCanvas(w, h);
     ctx.clearRect(0,0,w,h);
 
-    // Additive bloom on dark grounds (dark theme, every mode now has a dark
-    // basemap); multiply as ink-on-paper on the light-theme grounds.
-    var additive = !TH.light;
-    ctx.globalCompositeOperation = additive ? 'lighter' : 'multiply';
     ctx.lineJoin='round'; ctx.lineCap='round';
-    // Zoom-scaled stroke: ~1.2px at continental zoom, ~2.4px zoomed into a city
-    // (matches the weight the canvas hero drew at its equivalent scales).
+    // Zoom-scaled stroke, a touch heavier than the original so colored routes read
+    // against both the near-white light ground and busy Street/Terrain detail.
     var z = map ? map.getZoom() : 3.6;
-    ctx.lineWidth = Math.max(1.0, Math.min(2.6, 0.5 + z*0.17));
+    var lw = Math.max(1.4, Math.min(3.0, 0.7 + z*0.18));
     var alphaMul = TH.light ? 0.85 : 1.0;
 
+    // Project each track's polyline once into a Path2D (with its colored-pass
+    // alpha), then stroke every path twice below — cheaper than re-projecting.
+    var paths = [];
     for(var ti=0; ti<TRACKS.length; ti++){
       var t = TRACKS[ti], a = t.base;
       if(lens==='trips') a = (t.g<2) ? a*0.20 : Math.min(0.92, a*1.55);
       a *= alphaMul;
-      var col = TH.route[t.c];
-      ctx.strokeStyle = 'rgba('+col[0]+','+col[1]+','+col[2]+','+a+')';
-      ctx.beginPath();
+      var pth = new Path2D();
       var p = t.p;
       for(var k=0; k<t.n; k++){
         var xy = projectPt(p[2*k], p[2*k+1]);
-        if(k) ctx.lineTo(xy[0], xy[1]); else ctx.moveTo(xy[0], xy[1]);
+        if(k) pth.lineTo(xy[0], xy[1]); else pth.moveTo(xy[0], xy[1]);
       }
-      ctx.stroke();
+      paths.push({path:pth, a:a, c:t.c});
     }
+
+    // Pass 1 — contrasting casing/standoff. Drawn source-over (a white casing
+    // under 'multiply', or a dark one under 'lighter', would be a no-op), and
+    // BEFORE any colored line so a casing never nicks a neighbour's color. White
+    // on light, near-ground-dark on dark; faded with each route's own alpha.
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineWidth = lw + 2.0;
+    ctx.strokeStyle = TH.light ? 'rgba(255,255,255,0.9)' : 'rgba(13,17,23,0.85)';
+    for(var ci=0; ci<paths.length; ci++){
+      ctx.globalAlpha = paths[ci].a;
+      ctx.stroke(paths[ci].path);
+    }
+    ctx.globalAlpha = 1;
+
+    // Pass 2 — the per-sport color. Additive bloom on the dark grounds; multiply
+    // as ink-on-paper on the light grounds. Sits on top of the casing.
+    ctx.globalCompositeOperation = TH.light ? 'multiply' : 'lighter';
+    ctx.lineWidth = lw;
+    for(var pi=0; pi<paths.length; pi++){
+      var col = TH.route[paths[pi].c];
+      ctx.strokeStyle = 'rgba('+col[0]+','+col[1]+','+col[2]+','+paths[pi].a+')';
+      ctx.stroke(paths[pi].path);
+    }
+
     ctx.globalCompositeOperation='source-over';
     drawLabels();
     updateZoomButtons();
@@ -1385,7 +1417,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         o.setAttribute('aria-pressed', on?'true':'false');
       });
       mode = m;
-      hero.classList.toggle('terrain', mode==='terrain');
+      setModeClass();
       applyMapStyle();
       drawGlow();
       syncHashState();
@@ -1403,7 +1435,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     var v = params.get('v'), bmode = params.get('b');
     if((bmode==='street' || bmode==='terrain') && TILES_OK){
       mode = bmode;
-      hero.classList.toggle('terrain', mode==='terrain');
       hero.querySelectorAll('[data-base]').forEach(function(b){
         var on = b.dataset.base===bmode;
         b.classList.toggle('active', on);
@@ -1416,6 +1447,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       setFrameButtons(v);
     }
   })();
+  setModeClass();   // set the boot mode class (glow by default, or hash-restored)
 
   // ── fullscreen toggle (feature-detected) ────────────────────────────────
   var fsBtn = document.getElementById('places-fs');

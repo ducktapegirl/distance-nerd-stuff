@@ -573,6 +573,25 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 > at 4.75–5.14:1 unfaded); dark theme keeps the original 0.85/0.9 fade since its dark grounds
 > give 4.75:1+ headroom regardless. Home labels (full alpha, `--text-primary`) were never
 > affected.
+>
+> **FOLLOW-UP (2026-07 · lighter Glow ground + route standoff).** Two changes, one pass. (1)
+> **Lighter Glow in light theme** — the raw Backdrop ground read heavier than the pre-MapTiler
+> canvas hero. Rather than a CSS wash over Backdrop, Glow's light-theme ground is now a **custom
+> MapTiler style** ("BackgroundGhost", style id `019f7141-13e8-7ca3-bd1d-c8bc1184f396`) purpose-
+> built for the near-white/faint-line look, selected in `styleForMode()` via
+> `if(m==='glow' && isLight()) return mtStyle(GLOW_LIGHT_STYLE_ID)`. Dark-theme Glow is
+> unchanged (`backdrop-v4-dark` — no custom dark counterpart yet); Street/Terrain are unchanged
+> in both themes. Uses the same `MAPTILER_KEY` as every other style (one account, one
+> domain-restricted key). An earlier version of this fix used a CSS `filter` wash on the stock
+> Backdrop ground instead — superseded once a custom style became available, since layering a
+> generic wash on a style already tuned to look right risks over- or under-lightening it. (2)
+> **Route standoff** — `drawGlow()` now draws each route in **two passes**: a contrasting
+> casing (white@.9 light / near-ground-dark@.85 dark, width `lw+2`, `source-over` so it isn't a
+> no-op under the colored pass's `multiply`/`lighter` composite — and all casings first so none
+> nicks a neighbour's colour), then the per-sport colour on top (its existing composite). Line
+> weight bumped to `max(1.4, min(3.0, 0.7+z*0.18))`. Paths are projected once into a `Path2D`
+> per track and stroked twice (cheaper than re-projecting on pan). Closes
+> `Plans/strava-data/places-basemap-contrast-future-work.md`.
 
 Pass A (Foundation + Hero) of the approved Places plan (`Plans/strava-data/places-plan.md`, `places-prespec.md`).
 Design source: `mocks/places-hero-mock.html` — **port its structure/CSS/JS; this spec
