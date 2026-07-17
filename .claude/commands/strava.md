@@ -20,7 +20,7 @@ Walk these stages, pausing for approval after each:
    Present the ranked idea menu and ask the user to pick the 1–3 views to build.
 4. **Design** — dispatch `strava-data-analyst` (Job B, verification) for the chosen view(s),
    then `strava-viz-design`. Viz-design is read-only and returns spec markdown — YOU write it
-   into `strava-data/dashboard-spec.md`. Show the user the spec for approval.
+   into `Specs/strava-data/dashboard-spec.md`. Show the user the spec for approval.
 5. **Build** — dispatch `strava-developer` to implement against the spec + transform recipe.
 6. **QA** — dispatch `strava-qa`. On FAIL/WARN, loop back to Build with the findings.
 7. **Review gate** — run `/code-review` and `/security-review` on the diff (goal 4: quality &

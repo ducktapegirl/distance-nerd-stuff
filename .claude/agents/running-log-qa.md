@@ -52,7 +52,7 @@ views keep their charts in the DOM, so always filter to visible charts
 `Running Log/src/qa.py` (`CHART_IDS`).
 
 ### 3.0 Mobile layout checklist (390px pass only)
-At 390px, confirm the intentional mobile experience (see `MOBILE-REDESIGN-PLAN.md`):
+At 390px, confirm the intentional mobile experience (see `Plans/mobile-redesign-plan.md`):
 - [ ] The tab strip scrolls horizontally without wrapping; tap targets (`.tab`, `.hm-toggle`,
       `.race-tab`, `.theme-toggle button`) are ≥40px.
 - [ ] Charts visibly resize to the narrow viewport — no horizontal overflow, no fixed-px chart

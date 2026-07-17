@@ -7,7 +7,7 @@
 Found during the zoom-controls QA pass (commit `e7094cd`), not something that pass
 introduced — confirmed via a canvas pixel-scan against the pre-change baseline that this
 already existed. Documenting here rather than leaving it only in a commit message /
-`dashboard-spec.md` verify-note, per the athlete's request for a standing to-do file.
+`Specs/strava-data/dashboard-spec.md` verify-note, per the athlete's request for a standing to-do file.
 
 ## The problem
 

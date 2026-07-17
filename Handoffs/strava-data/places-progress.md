@@ -1,8 +1,8 @@
 # Places — Build Progress & Handoff
 
-**Purpose:** resume the Places build (`places-plan.md`) cleanly in a fresh session. Read this first,
-then `places-plan.md` (the approved plan) and the `## Places` sections of `dashboard-spec.md`
-(the build contracts). Source of intent: `places-prespec.md`.
+**Purpose:** resume the Places build (`Plans/strava-data/places-plan.md`) cleanly in a fresh session. Read this first,
+then `Plans/strava-data/places-plan.md` (the approved plan) and the `## Places` sections of `Specs/strava-data/dashboard-spec.md`
+(the build contracts). Source of intent: `Specs/strava-data/places-prespec.md`.
 
 **Branch:** `claude/strava-places-plan-v9oxb3` (work here; do NOT create a new branch).
 **Execution model (from the plan):** run through the `/strava` orchestrator skill in the MAIN
@@ -89,8 +89,8 @@ stamps and peaks rows call this** for click-to-fly-into-hero (e.g. a stamp click
 ## Pass C — Passport (Module 3) + Peaks (Module 4)  ← ✅ DONE (recipe preserved for reference)
 
 Modules 3–4 share the trip/superlative precompute, so they land together. Full contracts in
-`places-prespec.md` §6 Modules 3–4 and `places-plan.md` Pass C. Second build-ready mock exists:
-**`strava-data/mocks/places-passport-mock.html`** (near-production; port its HTML/CSS/JS, swap seeded
+`Specs/strava-data/places-prespec.md` §6 Modules 3–4 and `Plans/strava-data/places-plan.md` Pass C. Second build-ready mock exists:
+**`Specs/strava-data/mocks/places-passport-mock.html`** (near-production; port its HTML/CSS/JS, swap seeded
 data for real). No mock for peaks (reuse the passport's canvas elevation-profile code).
 
 ### Analyze (Opus) — the analytical heart. Pin:

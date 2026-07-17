@@ -532,8 +532,8 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 
 ## Places — Build-Ready Spec
 
-Pass A (Foundation + Hero) of the approved Places plan (`places-plan.md`, `places-prespec.md`).
-Design source: `strava-data/mocks/places-hero-mock.html` — **port its structure/CSS/JS; this spec
+Pass A (Foundation + Hero) of the approved Places plan (`Plans/strava-data/places-plan.md`, `places-prespec.md`).
+Design source: `mocks/places-hero-mock.html` — **port its structure/CSS/JS; this spec
 enumerates every delta needed for real data.** Architecture is locked Option A: the hero is a
 **bespoke `<canvas>` renderer — NOT Plotly, NOT tiles.** `chart_places_hero(rows)` (new module
 `dashboard/charts_places.py`) returns one **raw HTML/`<canvas>`/JS string with real data injected
@@ -964,7 +964,7 @@ Pass C of the Places plan. **Design = Opus spec-extension** (the single Fable di
 spent on the Pass A hero). Two builders — `chart_places_passport(rows)` (filmstrip of trip
 stamps) and `chart_places_peaks(rows)` (a restrained record book) — sit BELOW the two-homes
 cards inside `#view-places`, in normal `.card` flow, both theme-aware. Design source:
-`strava-data/mocks/places-passport-mock.html` — **port its structure/CSS/JS; this spec enumerates
+`mocks/places-passport-mock.html` — **port its structure/CSS/JS; this spec enumerates
 the deltas for real data.** Both return one self-contained raw HTML string (the `chart_calendar()`
 precedent). All numbers below come from the Pass-C Analyze recipe — implement, do not re-derive.
 
@@ -1096,7 +1096,7 @@ Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches
 
 ## Places — Basemap (Glow vector layer)
 
-Follow-on to the shipped Places build (`places-basemap-plan.md`). Adds a faint
+Follow-on to the shipped Places build (`Plans/strava-data/places-basemap-plan.md`). Adds a faint
 geographic layer under the hero's route glow so the section reads as a real map
 (especially in light mode, where the glow alone was near-invisible on white).
 Retires the mock's concentric-ring terrain placeholder.
