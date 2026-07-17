@@ -552,6 +552,27 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 > `basemap.json`, and the `hillshade.png` terrain describe the **superseded** canvas basemap
 > and are retained for history; `_load_basemap`/`_load_hillshade` and those assets are no
 > longer used by the hero.
+>
+> **FOLLOW-UP (2026-07 · Backdrop ground + full dark mode).** **Glow** now renders a real
+> MapTiler **Backdrop** basemap (`backdrop-v4`) rather than the transparent style — a neutral
+> greyscale ground purpose-built for data overlays. The transparent style (`tilelessStyle()`,
+> formerly `glowStyle()`) is now **only** the no-tiles/no-key fallback. All three modes track
+> the page theme via one `styleForMode()` table (`{glow:'backdrop-v4', street:'streets-v2',
+> terrain:'outdoor-v2'}` + a `-dark` suffix in dark theme), so **Terrain now has a dark variant
+> (`outdoor-v2-dark`)** — it is no longer light-only. The glow composite consequently
+> simplifies to `additive = !TH.light` (the `mode!=='terrain'` special case is gone), and the
+> theme toggle now restyles every mode (gated on `TILES_OK`, not `mode!=='glow'`).
+>
+> **FOLLOW-UP (2026-07 · light-theme label contrast).** Manual review of the new Backdrop
+> ground found the non-home ("trip") label coord/sub lines (e.g. Vancouver, Sierra) hard to
+> read in light theme. Measured cause: `drawLabel()`'s `alpha*0.85`/`alpha*0.9` fade on those
+> lines computed as low as **3.56:1** against the real light basemaps' near-white backgrounds
+> (`backdrop-v4` `hsl(0,0%,100%)`, `streets-v2` `hsl(42,49%,93%)`, `outdoor-v2`
+> `hsl(120,4%,95%)`) — below WCAG AA's 4.5:1 for normal text. Fix: in light theme those
+> multipliers are now `1.0` (no fade — matches the name line's alpha, which already cleared AA
+> at 4.75–5.14:1 unfaded); dark theme keeps the original 0.85/0.9 fade since its dark grounds
+> give 4.75:1+ headroom regardless. Home labels (full alpha, `--text-primary`) were never
+> affected.
 
 Pass A (Foundation + Hero) of the approved Places plan (`Plans/strava-data/places-plan.md`, `places-prespec.md`).
 Design source: `mocks/places-hero-mock.html` — **port its structure/CSS/JS; this spec

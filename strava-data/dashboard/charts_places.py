@@ -1127,19 +1127,22 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   var lens = 'none';                     // 'trips' dims the two home clusters
   var map = null;
 
-  function glowStyle(){
+  function tilelessStyle(){
     // Tile-free: a transparent background so the hero's radial-gradient ground
-    // shows through. Also the graceful-degradation style if tiles/key are absent.
+    // shows through. This is ONLY the graceful-degradation ground when tiles/key
+    // are absent -- it is not a selectable look (Glow renders Backdrop tiles).
     return {version:8, sources:{}, layers:[
       {id:'bg', type:'background', paint:{'background-color':'rgba(0,0,0,0)'}}
     ]};
   }
   function mtStyle(slug){ return 'https://api.maptiler.com/maps/'+slug+'/style.json?key='+MT_KEY; }
+  // Each mode maps to a MapTiler style whose exact '-dark' counterpart is used in
+  // dark theme, so every basemap tracks the page theme through one code path.
+  var SLUGS = {glow:'backdrop-v4', street:'streets-v2', terrain:'outdoor-v2'};
   function styleForMode(m){
-    if(!TILES_OK) return glowStyle();
-    if(m==='street')  return mtStyle(isLight() ? 'streets-v2' : 'streets-v2-dark');
-    if(m==='terrain') return mtStyle('outdoor-v2');
-    return glowStyle();
+    if(!TILES_OK) return tilelessStyle();
+    var slug = SLUGS[m] || SLUGS.glow;
+    return mtStyle(slug + (isLight() ? '' : '-dark'));
   }
   function applyMapStyle(){ if(map) map.setStyle(styleForMode(mode)); }
 
@@ -1188,9 +1191,9 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     sizeCanvas(w, h);
     ctx.clearRect(0,0,w,h);
 
-    // Additive bloom on dark grounds (Glow / dark Street); multiply as ink-on-
-    // paper on bright grounds (light theme, or the light Terrain relief).
-    var additive = !TH.light && mode!=='terrain';
+    // Additive bloom on dark grounds (dark theme, every mode now has a dark
+    // basemap); multiply as ink-on-paper on the light-theme grounds.
+    var additive = !TH.light;
     ctx.globalCompositeOperation = additive ? 'lighter' : 'multiply';
     ctx.lineJoin='round'; ctx.lineCap='round';
     // Zoom-scaled stroke: ~1.2px at continental zoom, ~2.4px zoomed into a city
@@ -1287,14 +1290,20 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     ctx.font="11px 'Geist Mono', ui-monospace, monospace";
     // Stack the mono sub-lines with a running offset so a label without a
     // coord line (the homes) closes the gap instead of leaving a hole.
+    // Light theme: real near-white basemaps need the coord/sub lines at full alpha
+    // to clear WCAG AA (4.5:1) -- the old 0.85x/0.9x fade measured as low as 3.56:1
+    // against Backdrop/Street/Terrain's near-white light grounds. Dark theme keeps
+    // the original fade (huge contrast headroom against the dark grounds there).
+    var coordMul = TH.light ? 1.0 : 0.85;
+    var subMul   = TH.light ? 1.0 : 0.9;
     if(L.coord){
       ly += 16;
-      ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*0.85)+')';
+      ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*coordMul)+')';
       ctx.fillText(L.coord, tx, ly);
     }
     if(L.sub){
       ly += 15;
-      ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*0.9)+')';
+      ctx.fillStyle='rgba('+ts[0]+','+ts[1]+','+ts[2]+','+(alpha*subMul)+')';
       ctx.fillText(L.sub, tx, ly);
     }
     ctx.shadowBlur=0;
@@ -1457,11 +1466,11 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
 
   // ── lifecycle ─────────────────────────────────────────────────────────────
   // Re-inked by the page theme toggle (template.py applyChartTheme): retint the
-  // glow, and swap the Street/Terrain light/dark basemap variant (Glow needs no
-  // restyle -- its ground is CSS, so skip the setStyle flash there).
+  // glow, and swap every mode's light/dark basemap variant. Only skip the restyle
+  // when there are no tiles (the ground is pure CSS, so setStyle would just flash).
   window.__placesHeroRedraw = function(){
     retint();
-    if(mode!=='glow') applyMapStyle();
+    if(TILES_OK) applyMapStyle();
     drawGlow();
   };
   // The Places section can mount hidden (inactive tab); create the map lazily on
