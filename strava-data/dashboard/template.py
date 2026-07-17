@@ -1129,7 +1129,15 @@ function syncRange(sourceId, ed) {{
       // reload sees only the bare hash). A real tab CLICK still normalizes
       // to the bare section name -- that's a deliberate "go to this section
       // fresh" action, not a restore.
-      if (!skipHash) history.replaceState(null, '', '#' + name);
+      //
+      // EXCEPT Places, which owns its hash sub-state (?v=/?b=/?a=): ask its hero
+      // to re-assert that sub-state so returning to Places restores the full URL
+      // instead of a bare '#places' that desyncs the URL from the still-shown
+      // map/frame. Other sections just get their bare '#name'.
+      if (!skipHash) {{
+        if (name === 'places' && window.placesSyncHash) window.placesSyncHash();
+        else history.replaceState(null, '', '#' + name);
+      }}
       var at = document.querySelector('.tab[data-view="' + name + '"]');
       if (at) at.scrollIntoView({{behavior: 'smooth', block: 'nearest', inline: 'center'}});
     }}

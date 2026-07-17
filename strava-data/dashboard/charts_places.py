@@ -1171,7 +1171,11 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     if(map.touchZoomRotate) map.touchZoomRotate.disableRotation();
     map.on('move', drawGlow);
     map.on('styledata', drawGlow);
-    map.on('load', function(){ if(pendingFrame){ goFrame(pendingFrame, false); } drawGlow(); });
+    map.on('load', function(){
+      if(pendingActivity){ flyToActivity(pendingActivity, false); }
+      else if(pendingFrame){ goFrame(pendingFrame, false); }
+      drawGlow();
+    });
   }
 
   // ── projection + glow overlay ─────────────────────────────────────────────
@@ -1342,6 +1346,8 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
 
   // ── camera framing (MapLibre) ─────────────────────────────────────────────
   var pendingFrame = null;    // a View to apply once the map finishes loading
+  var pendingActivity = null; // an activity id (?a=) to fly to once the map loads
+  var curActivity = null;     // the currently deep-linked activity id, or null
   function setFrameButtons(name){
     hero.querySelectorAll('[data-frame]').forEach(function(b){
       var on = (b.dataset.frame===name);
@@ -1363,16 +1369,17 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   // Public fly-to hook: the passport stamps, home cards, and peak rows call this
   // to zoom the main map onto a route (a named View, or a {lat0,lat1,lng0,lng1}
   // box). Contract preserved from the canvas hero so those callers are untouched.
-  window.placesFlyTo = function(target){
+  window.placesFlyTo = function(target, animate){
+    var anim = (animate!==false) && !reduce;   // default animated; false = jump
     var name = null;
     if(typeof target==='string'){
       name = target;
-      goFrame(target, true);
+      goFrame(target, animate);
     } else if(target && typeof target==='object'){
       lens = 'none';
       if(map){
         map.fitBounds([[target.lng0, target.lat0], [target.lng1, target.lat1]],
-                      {padding: 50, duration: 620, animate: !reduce});
+                      {padding: 50, duration: 620, animate: anim});
       }
       drawGlow();
     }
@@ -1389,13 +1396,35 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     var v = activeFrame ? activeFrame.dataset.frame : 'all';
     var bmode = activeBase ? activeBase.dataset.base : 'glow';
     var parts = [];
-    if(v && v!=='all') parts.push('v='+v);
+    // A deep-linked activity (?a=) supersedes a named frame (?v=); base is independent.
+    if(curActivity) parts.push('a='+encodeURIComponent(curActivity));
+    else if(v && v!=='all') parts.push('v='+v);
     if(bmode && bmode!=='glow') parts.push('b='+bmode);
     var suffix = parts.length ? ('?'+parts.join('&')) : '';
     history.replaceState(null, '', '#places'+suffix);
   }
+  // Exposed so the page tab-router can re-assert Places' sub-state when Places
+  // becomes active again (otherwise it writes a bare '#places', desyncing the URL
+  // from the still-shown map).
+  window.placesSyncHash = syncHashState;
+  // Deep-link hook for stamp/peak clicks: record the activity id -> '#places?a=<id>'.
+  // placesFlyTo already cleared the frame buttons for a box target.
+  window.placesLinkActivity = function(id){
+    curActivity = id ? String(id) : null;
+    syncHashState();
+  };
+  // Resolve a deep-linked activity id to its fly box (published by the passport +
+  // peaks scripts into window.placesFlyTargets) and zoom to it. Unknown id falls
+  // back to the default frame, no console error.
+  function flyToActivity(id, animate){
+    var box = window.placesFlyTargets && window.placesFlyTargets[id];
+    if(!box){ curActivity = null; goFrame('all', animate); return; }
+    curActivity = String(id);
+    window.placesFlyTo(box, animate);
+  }
   hero.querySelectorAll('[data-frame]').forEach(function(b){
     b.addEventListener('click', function(){
+      curActivity = null;          // a named frame supersedes any ?a= deep link
       setFrameButtons(b.dataset.frame);
       goFrame(b.dataset.frame, true);
       syncHashState();
@@ -1431,7 +1460,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     var qIdx = h.indexOf('?');
     if(h.indexOf('places')===-1 || qIdx===-1) return;
     var params = new URLSearchParams(h.slice(qIdx+1));
-    var v = params.get('v'), bmode = params.get('b');
+    var v = params.get('v'), bmode = params.get('b'), a = params.get('a');
     if((bmode==='street' || bmode==='terrain') && TILES_OK){
       mode = bmode;
       hero.querySelectorAll('[data-base]').forEach(function(b){
@@ -1440,7 +1469,13 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         b.setAttribute('aria-pressed', on?'true':'false');
       });
     }
-    if(v==='sd' || v==='bos' || v==='trips'){
+    if(a){
+      // Deep link to a specific activity: defer the fly to map 'load' (the fly
+      // targets are published by the passport/peaks scripts, which run after this).
+      pendingActivity = a;
+      curActivity = a;
+      setFrameButtons(null);
+    } else if(v==='sd' || v==='bos' || v==='trips'){
       pendingFrame = v;
       lens = (v==='trips') ? 'trips' : 'none';
       setFrameButtons(v);
@@ -1826,7 +1861,7 @@ def _passport_data(rows):
             slot = "t%d" % len(featured)
             geo = _load_trip_geo(sigact["id"]) or {}
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
-                        "elev": geo.get("elev", []),
+                        "elev": geo.get("elev", []), "id": sigact["id"],
                         "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
             featured.append({
                 "slot": slot, "region": spec["region"], "caption": spec["caption"],
@@ -1852,7 +1887,7 @@ def _passport_data(rows):
                 la0, la1, ln0, ln1 = geo["bbox"]
             else:
                 la0, la1, ln0, ln1 = ll[0], ll[0], ll[1], ll[1]
-            pc[slot] = {"fly": _fly_box(la0, la1, ln0, ln1)}
+            pc[slot] = {"fly": _fly_box(la0, la1, ln0, ln1), "id": r["id"]}
             brief.append({"slot": slot, "title": r.get("name") or "",
                           "date": "%s %d" % (_MONTHS[d0.month], d0.year)})
         else:
@@ -1863,7 +1898,7 @@ def _passport_data(rows):
             slot = "t%d" % len(featured)
             geo = _load_trip_geo(sigact["id"]) or {}
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
-                        "elev": geo.get("elev", []),
+                        "elev": geo.get("elev", []), "id": sigact["id"],
                         "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
             featured.append({
                 "slot": slot, "region": "", "caption": sigact.get("name") or "",
@@ -1903,10 +1938,10 @@ def _peaks_data(rows):
                 coord = "%.2f°N  %.2f°W" % (ll[0], -ll[1])
             if geo:
                 la0, la1, ln0, ln1 = geo["bbox"]
-                pc[slot] = {"elev": geo["elev"],
+                pc[slot] = {"elev": geo["elev"], "id": act["id"],
                             "fly": _fly_box(la0, la1, ln0, ln1)}
             elif ll:
-                pc[slot] = {"elev": [],
+                pc[slot] = {"elev": [], "id": act["id"],
                             "fly": _fly_box(ll[0], ll[0], ll[1], ll[1])}
         peaks.append({"slot": slot, "overline": spec["overline"],
                       "value": spec["value"], "title": title, "coord": coord})
@@ -2170,6 +2205,13 @@ __CHIPS__
   var root = document.querySelector('.places-passport');
   if(!root) return;
 
+  // Publish each target's fly box under its stable Strava activity id so the hero
+  // can resolve a '#places?a=<id>' deep link on load (merged with the peaks payload).
+  window.placesFlyTargets = window.placesFlyTargets || {};
+  Object.keys(PC).forEach(function(s){
+    var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
+  });
+
   // grade -> color (cool descent blue, flat slate, warm climb amber) -- reuses
   // the dashboard's existing --accent / MTB tokens, not new hex. Colorblind-safe
   // cool/warm diverging pair (replaces the red/green scheme).
@@ -2249,6 +2291,7 @@ __CHIPS__
     var d=PC[el.getAttribute('data-stamp')];
     if(d && d.fly && window.placesFlyTo){
       window.placesFlyTo(d.fly);
+      if(d.id && window.placesLinkActivity){ window.placesLinkActivity(d.id); }
       var hero=document.getElementById('places-hero');
       if(hero && hero.scrollIntoView) hero.scrollIntoView({behavior:'smooth', block:'center'});
     }
@@ -2345,6 +2388,13 @@ __ROWS__
   var root = document.querySelector('.places-peaks');
   if(!root) return;
 
+  // Publish each target's fly box under its stable Strava activity id so the hero
+  // can resolve a '#places?a=<id>' deep link on load (merged with the passport payload).
+  window.placesFlyTargets = window.placesFlyTargets || {};
+  Object.keys(PC).forEach(function(s){
+    var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
+  });
+
   function drawSpark(cv){
     var d = PC[cv.getAttribute('data-stamp')];
     if(!d || !d.elev || d.elev.length<2) return;
@@ -2375,6 +2425,7 @@ __ROWS__
     var d=PC[el.getAttribute('data-stamp')];
     if(d && d.fly && window.placesFlyTo){
       window.placesFlyTo(d.fly);
+      if(d.id && window.placesLinkActivity){ window.placesLinkActivity(d.id); }
       var hero=document.getElementById('places-hero');
       if(hero && hero.scrollIntoView) hero.scrollIntoView({behavior:'smooth', block:'center'});
     }
