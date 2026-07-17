@@ -1,6 +1,14 @@
 # Future work: Places hero — route/glow contrast against the real basemaps
 
-**Status:** proposal / not started · **Created:** 2026-07-17 · **Owner:** unassigned
+**Status:** ✅ DONE (2026-07-17) — shipped alongside a lighter-Glow ground wash in the same
+pass. `drawGlow()` now draws a two-pass contrasting casing/standoff under each route (white on
+light, near-ground-dark on dark, `source-over` so it survives the colored pass's
+`multiply`/`lighter` composite), with the line weight bumped to `max(1.4, min(3.0, 0.7+z*0.18))`
+and paths projected once into a `Path2D` per track. See the "lighter Glow ground + route
+standoff" FOLLOW-UP banner in `Specs/strava-data/dashboard-spec.md`. Note carried over: the
+route/basemap contrast was **not** re-measured against live Street/Terrain tiles locally (the
+dev build has no MapTiler key → tileless fallback); tune the casing/weight and the wash values
+against the deployed site if they need adjusting. · **Created:** 2026-07-17 · **Owner:** unassigned
 
 ## Why
 
