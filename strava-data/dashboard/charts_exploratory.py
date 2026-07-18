@@ -295,9 +295,9 @@ def chart_x_archetypes(rows):
             line=dict(color=X_SLATE, width=1.5),
             showlegend=False, hoverinfo="skip",
         ))
-        # Pill bg uses the theme-adaptive X_ANN_BG (== DARK_PILL) so applyChartTheme()
-        # retints it in light mode (it relayouts ALL annotations by index, paper- or
-        # data-anchored).
+        # Pill bg uses the theme-adaptive X_ANN_BG; retinted in light mode by a CSS
+        # rule in template.py (not applyChartTheme()'s JS -- that couldn't reliably
+        # win the lazy-render race once charts stopped rendering eagerly at load).
         fig.add_annotation(x=ex, y=ey, text=lbl, showarrow=False,
                            font=dict(family=PLOT_FONT_FAMILY, size=9, color=X_SLATE),
                            bgcolor=X_ANN_BG)

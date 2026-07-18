@@ -1265,3 +1265,29 @@ since the Volume tab (unlike Overview) is only ever lazily rendered.
   Places-hero canvas retint isn't lost in that edge case. This is the likely
   root cause of the rangeslider race and may also affect other lazily-rendered,
   JS-retinted elements (e.g. chart subtitles on a tab shown for the first time).
+
+---
+
+## Annotation pill backgrounds light-mode fix (2026-07-18)
+
+Same root cause and same fix shape as the Weekly Volume rangeslider fix above:
+applyChartTheme()'s Plotly.relayout retint of annotation bgcolor couldn't
+reliably win against Plotly's own lazy-render redraw once charts started
+rendering lazily. Affected every dark "pill" annotation baked via
+charts_exploratory.py's `X_ANN_BG`, charts_production.py's
+`chart_run_hr_vs_temp`-local `DARK_PILL`, and rollups_cards.py's reuse of
+`X_ANN_BG` (e.g. the Exploratory tab's R-value and "circle = run / diamond =
+MTB" symbol-key pills) — they stayed dark grey in light theme.
+
+- Superseded the JS bgcolor retint with a CSS rule scoped to
+  `.annotation .bg[style*='fill-opacity: 0.65;']` (Plotly's generic
+  per-annotation background-rect class, qualified by the exact baked
+  fill-opacity so annotations with no visible pill, e.g. V8's risk-band edge
+  labels, are unaffected). Removed the now-dead `DARK_PILL`/`pillBg` JS
+  declarations and the relayout branch that used them.
+- Note for later: `X_ANN_BG` (charts_exploratory.py), the local `DARK_PILL`
+  (charts_production.py's `chart_run_hr_vs_temp`), and the CSS var literal
+  (template.py, now removed from JS but still baked at the two `--ann-pill-bg`
+  definitions) are three independent hardcoded `rgba(13,17,23,0.65)` strings
+  that happen to stay in sync by convention only. Worth a shared constant
+  someday; out of scope for this fix.

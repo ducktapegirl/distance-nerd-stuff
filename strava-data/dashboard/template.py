@@ -543,6 +543,26 @@ main {{
   stroke-opacity: 1 !important;
 }}
 
+/* Annotation "pill" backgrounds (Exploratory R-value/symbol-key pills, the
+   HR-vs-Temp caveat pill, the segment-grade-crossover pill): baked dark from
+   three independent but byte-identical rgba(13,17,23,0.65) definitions
+   (charts_exploratory.py's X_ANN_BG, charts_production.py's chart_run_hr_vs_temp-
+   local DARK_PILL, rollups_cards.py's reuse of X_ANN_BG) at build time. Same
+   failure mode as the rangeslider above -- applyChartTheme()'s Plotly.relayout
+   retint can't reliably win against Plotly's own lazy-render redraw -- so
+   override via CSS instead. Every annotation's background rect shares the
+   generic class "bg" (confirmed in the vendored Plotly source: annotations are
+   the ONLY DOM elements using this literal class), so scope through the
+   ".annotation" ancestor and further qualify on the exact baked fill-opacity,
+   so annotations with no visible pill (bgcolor rgba(0,0,0,0), e.g. V8's
+   risk-band edge labels) are left alone. fill-opacity is forced to 1 so it
+   doesn't multiply against --ann-pill-bg's own alpha (same reasoning as the
+   rangeslider fix). */
+.annotation .bg[style*='fill-opacity: 0.65;'] {{
+  fill: var(--ann-pill-bg) !important;
+  fill-opacity: 1 !important;
+}}
+
 /* ── Responsive / mobile (kept last so overrides win by source order) ── */
 @media (max-width: 900px) {{
   .stat-grid {{ grid-template-columns: repeat(3, 1fr); }}
@@ -884,8 +904,6 @@ function syncRange(sourceId, ed) {{
   // it the light->dark transition was one-way (label stuck at low-contrast light
   // grey on the dark plot).
   var GRAY_TEXT = ['#8b949e', '#e6edf3', '#424a53', 'rgb(66,74,83)'];
-  // The translucent dark pill bg baked into Exploratory annotations.
-  var DARK_PILL = 'rgba(13,17,23,0.65)';
   // Brand-colored annotation text (teal/amber/violet) is baked with the DARK
   // palette hex by the chart builders, but the dark variants are low-contrast on
   // white (amber 2.15, violet 2.72). Each pair maps both palette variants of a
@@ -920,7 +938,6 @@ function syncRange(sourceId, ed) {{
     var grid          = cssVar('--grid');
     var bgElevated    = cssVar('--bg-elevated');
     var border        = cssVar('--border');
-    var pillBg        = cssVar('--ann-pill-bg');
     // Current-theme brand variants for retinting brand-colored annotation text.
     var brandColors   = {{}};
     for (var bi = 0; bi < BRAND_TEXT.length; bi++) {{
@@ -948,8 +965,10 @@ function syncRange(sourceId, ed) {{
         }}
       }});
       // 3 & 5. Annotations: recolor gray-text ones to secondary text; retint
-      //        brand-colored ones to the current theme's brand variant.
-      //        Swap the dark pill bg for the theme-driven pill var.
+      //        brand-colored ones to the current theme's brand variant. (Pill
+      //        bg retinting now lives in a CSS rule next to .rangeslider-bg --
+      //        this relayout call couldn't reliably win the same lazy-render
+      //        race that hit the rangeslider.)
       if (fl.annotations) {{
         for (var i = 0; i < fl.annotations.length; i++) {{
           var a = fl.annotations[i];
@@ -960,9 +979,6 @@ function syncRange(sourceId, ed) {{
             if (bvar) {{
               upd['annotations[' + i + '].font.color'] = brandColors[bvar];
             }}
-          }}
-          if (a && normColor(a.bgcolor) === normColor(DARK_PILL)) {{
-            upd['annotations[' + i + '].bgcolor'] = pillBg;
           }}
         }}
       }}
