@@ -62,6 +62,22 @@ Ideas that are written up but not built yet, pulled from the `Plans/` folder:
   room at that width. A few fix options are on the table, from carving the
   fullscreen toggle out into its own element to a bigger mobile-chrome rework.
   See [`Plans/strava-data/places-future-work.md`](Plans/strava-data/places-future-work.md).
+- **Adaptive Places superlatives** — the Passport badges and Peaks record book
+  ("Highest point · 14,507 ft," "Northernmost · 49.3°N," …) are hardcoded
+  editorial copy today, so a bigger hike next week never supersedes an old
+  record, and a forked repo with different Strava data would render false
+  claims instead of blank ones. The plan splits the pinned copy into an
+  editorial config file, adds a CI step that detects when live data beats it,
+  and extends the `strava-maintenance` agent to propose the actual edit.
+  See [`Plans/strava-data/adaptive-superlatives-future-work.md`](Plans/strava-data/adaptive-superlatives-future-work.md).
+- **Bring your own data (forkable strava-data/)** — right now this repo really
+  is mine-only: home cities, superlatives, and even the analytics snippet are
+  hardcoded to me, and a fork would crash or quietly render someone else's
+  records. The plan: fix the genuine bugs and leaks, strip the personal data a
+  fork shouldn't ship, and add a `FORKING.md` + from-zero setup walkthrough so
+  the entry point (`strava-data/`, not the Running Log) is obvious. Depends on
+  the adaptive-superlatives work above; honestly not sure it's worth it yet.
+  See [`Plans/strava-data/byod-forkable-future-work.md`](Plans/strava-data/byod-forkable-future-work.md).
 - **A real WBGT heat-stress index** — the Exploratory tab's heat-vs-pace charts
   run on a "WBGT-lite" proxy (temperature + UV) today because the data has no
   humidity or solar readings. The plan is to pull those fields from the weather
