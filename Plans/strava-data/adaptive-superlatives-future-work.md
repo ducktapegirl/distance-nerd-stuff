@@ -1,6 +1,6 @@
 # Future work: adaptive Places superlatives (Passport badges + Peaks record book)
 
-**Status:** proposed / not started · **Created:** 2026-07-18 · **Owner:** unassigned
+**Status:** proposed / design decisions resolved · **Created:** 2026-07-18 · **Owner:** unassigned
 
 ## Why
 
@@ -34,91 +34,95 @@ Superlatives aren't pure data — "Home-adjacent giant" and trip captions are cu
 calls (which peak counts as "home-adjacent," what a trip is called, which badge is worth showing).
 Fully auto-computing and auto-publishing prose risks silently replacing good copy with awkward
 generated text. So the design goal is **assisted, not autonomous**: compute the real superlative
-candidates from data, diff them against what's currently pinned in code, and hand a human (or a
-reviewed PR) a small, concrete change — not a live-rendered "always trust the data" system.
+candidates from data, diff them against what's currently pinned, and hand a human a small, concrete
+change to review — never a silent rewrite.
 
-This is why a periodic **Claude skill** fits better than a build-time Python check: it needs
-judgment (does this new peak deserve a badge? what should the caption say?), it runs occasionally
-(after a data refresh or on demand), and its output is a proposed diff to review, not a page that
-silently changes.
+## Design decisions (resolved 2026-07-18)
 
-## Proposed shape: `/strava-superlatives` skill
+These were walked through explicitly rather than left as options — pinning them here so the phases
+below aren't re-litigating settled ground.
 
-A new skill (`.claude/skills/strava-superlatives/` or a `.claude/commands/strava-superlatives.md`
-slash command, TBD — see Open Questions) that:
+- **Config location: extract to a data file.** `_PASSPORT_TRIPS`/`_PEAKS_DEF` move out of
+  `charts_places.py` into a small YAML/JSON editorial config (value + title + activity-id + badge
+  per entry). The detection step diffs a data file, not Python source — lower risk, and a fork gets
+  one obvious file to replace instead of hunting through the builder code.
+- **Automation level: report only for v1.** Nothing auto-edits the data file or opens a PR. Output
+  is a printed/logged diff a human acts on by hand.
+- **Architecture: split CI detection from agent judgment — these cannot be the same thing.**
+  `strava-fetch.yml` is a GitHub Actions workflow (deterministic scripts only); it cannot invoke a
+  Claude agent mid-run. So the design is two pieces, not one:
+  - **CI step (deterministic, in `strava-fetch.yml`):** a plain Python check, same pattern as the
+    existing `_pinned`/`_HOME_PINNED` soft-drift prints in `charts_places.py`, that computes live
+    superlative candidates and prints a NOTE to the workflow log when a candidate beats what's in
+    the editorial config file. Report-only; never blocks the deploy.
+  - **Agent step (`strava-maintenance`, run manually or via a Routine):** reads that signal (the
+    latest drift NOTE, or just re-runs the live computation itself) and is what actually proposes
+    the concrete data-file edit — deciding wording, whether a new category deserves a badge at all,
+    etc. This is the "judgment" layer; it never runs inside CI.
+  - `strava-maintenance`'s current toolset (Read/Grep/Glob/Bash/WebSearch/WebFetch +
+    `check-strava-connection`/`get-athlete-profile`) already includes `Bash`, so it can run the same
+    Python live-computation script CI uses without needing new MCP tools — the extension is scope
+    (a new responsibility: propose superlative-config edits), not new tool access.
+- **"Home-adjacent giant": define by distance threshold, not left permanently manual.** Rule =
+  tallest peak (by `total_elevation_gain_m`) whose start point is within **N miles** of a home box.
+  **N is still an open numeric detail** — pick it during the Analyze phase by checking what value
+  keeps San Jacinto in and doesn't pull in something unintended, then pin it in the config alongside
+  the boxes.
+- **`sig` matching: move from title-substring to pinned activity ID.** Today's `sig` (e.g.
+  `"Whitney"` matched against the activity title) breaks silently if the activity is ever renamed on
+  Strava. Switching to a pinned Strava activity ID is more robust; the data file can still carry a
+  human-readable label alongside the ID for reviewability (id is the match key, label is just
+  commentary).
+- **No history of superseded records.** When a superlative changes, the old value is simply
+  replaced — no "previously: Whitney, 14,507 ft" footnote. Keeps the Peaks book reading as a current
+  record book, not a change-log; also keeps the data file and display simpler.
 
-1. **Computes live candidates** for each superlative category directly from `strava-data/data/*.csv`
-   + `data/streams/*.csv`: max `total_elevation_gain_m` single-activity peak, max/min latitude
-   (northernmost/southernmost) and longitude (easternmost/westernmost) among away-activity start
-   points, tallest "home-adjacent" peak (needs a definition — see below), longest single climb
-   (max altitude gain within one continuous ascent in a stream), first activity in each home box.
-2. **Diffs against the pinned dicts** — reads `_PASSPORT_TRIPS` badges and `_PEAKS_DEF` values out of
-   `charts_places.py` (source-parse or a small extracted data file, see Open Questions) and compares
-   live candidates to pinned `value`/`sig`.
-3. **Reports, doesn't rewrite silently.** Output is a short list: "current pinned Highest point =
-   14,507 ft (Mt. Whitney); live candidate = 15,200 ft (activity 'Long's Peak', 2026-07-24) — update?"
-   For each drifted entry, propose the literal code edit (new `value`, `title`, `sig`) but let the
-   human/agent confirm caption wording before editing `charts_places.py`.
-4. **Flags fork mismatches as a distinct case**: if a pinned `sig` matches zero activities in the
-   current athlete's data *and* the athlete's total activity count is large enough that this isn't
-   just "haven't gone yet," suggest the entry be cleared or replaced rather than left as dead
-   editorial copy pointing at someone else's trip.
+## Immediate hardening (independent of the above, worth doing regardless)
 
-## Immediate hardening (independent of the skill, worth doing regardless)
-
-These are cheap correctness fixes that reduce the blast radius for forks even before the skill
-exists — call out separately since they don't require the skill to land:
+Cheap correctness fixes that reduce the blast radius for forks even before any of the above lands:
 
 - **Guard `_peaks_data()`** (`:1946`) to skip appending a row when `act is None` (mirroring the
   Passport loop's existing `if sigact is None: continue` at `:1855-1856`), so a fork's Peaks book
   shows fewer rows instead of invented ones.
 - **Guard `_centroid()`** (`:338`) or its callers against empty `pts`, and/or make `_SD_BOX`/
-  `_BOS_BOX` configurable (e.g. `dashboard/config.py`, or a small `homes.json` read at build time)
-  so a fork can set their own home cities in one place instead of hunting through
-  `charts_places.py` — and so the build degrades (skip the home cards / print a warning) instead of
-  crashing when the boxes don't match the data.
+  `_BOS_BOX` configurable (e.g. `dashboard/config.py`, or the same editorial data file) so a fork can
+  set their own home cities in one place — and so the build degrades (skip the home cards / print a
+  warning) instead of crashing when the boxes don't match the data.
 
-## Open questions
+## Remaining open items
 
-- **Where do `_PASSPORT_TRIPS`/`_PEAKS_DEF` live?** Keeping them as Python dicts in
-  `charts_places.py` is simplest today but means the skill has to edit source code. Extracting them
-  to a small YAML/JSON "editorial config" file (superlative value + title + `sig` + badge) would let
-  the skill propose a data-file diff instead of a code diff — lower risk, easier to review, and
-  arguably cleaner for forks to swap out too. Worth deciding before building the skill rather than
-  after.
-- **Definition of "home-adjacent giant."** Right now it's one hardcoded row (San Jacinto). A live
-  version needs a rule — e.g. "tallest peak whose start point is within N miles of a home box" —
-  that a human should sign off on before the skill starts proposing replacements for it.
-- **Cadence / trigger.** Options: (a) manual slash command run whenever the athlete feels like it;
-  (b) chained onto `strava-fetch.yml`'s data refresh as an optional check step (report-only, doesn't
-  block deploy); (c) a periodic Routine (see `mcp__Claude_Code_Remote__create_trigger`) that pings
-  the athlete when a candidate drifts. Start with (a); consider (b)/(c) once the skill is proven out.
-- **Scope of "compute live":** easternmost/northernmost/highest-point are cheap and unambiguous.
-  "Longest single climb" needs a climb-segmentation heuristic (contiguous ascent in a stream) that
-  doesn't exist yet anywhere in the codebase — may need its own small analysis pass, possibly
-  reusing `strava-data-analyst`'s existing methods if any overlap with segment/climb analysis.
-- **Does this want a new agent, or is the existing `strava-maintenance` agent (health-checks the
-  pipeline, read-only + web research) the right home for this instead of a new skill?** Superlative
-  drift-checking is conceptually similar to "is the dashboard still healthy," but maintenance is
-  read-only/no-edits today — this would need either a new capability there or a separate skill that
-  can propose (not necessarily apply) edits.
+Everything structural is decided; these are implementation details to settle during Analyze, not
+before:
 
-## Suggested phases (once open questions are resolved)
+- **Distance threshold N** for "home-adjacent giant" (see above) — pick empirically against today's
+  data, confirm San Jacinto stays in.
+- **"Longest single climb" computation.** Needs a climb-segmentation heuristic (contiguous ascent
+  within one activity's altitude stream) that doesn't exist anywhere in the codebase yet — check
+  whether `strava-data-analyst`'s existing methods have anything reusable, or whether this is a new
+  small analysis pass.
+- **Data file format/schema** (YAML vs. JSON, exact field names) — pick whichever is more pleasant to
+  hand-edit; JSON is already used elsewhere in the build (no new dependency), YAML is more readable
+  for a hand-curated editorial file. Lean YAML unless it'd require adding a new parsing dependency.
 
-1. **Analyze:** pin down the live-computation recipe for each of the 6 Peaks rows + Passport badges,
-   verify against today's known values (Whitney 14,507 ft, Vancouver 49.3°N, Maine 70.2°W, San
-   Jacinto 10,800 ft) the same way `strava-data-analyst` verifies other Places numbers.
-2. **Decide config location** for the pinned dicts (stay in `charts_places.py` vs. extract to a data
-   file) — this shapes everything downstream.
-3. **Build the skill**: read live data + pinned config, diff, print a human-readable report with
-   proposed edits; no auto-apply in v1.
-4. **Harden for forks** independent of the skill (the two guard fixes above), so a fresh clone is
-   safe on day one even before anyone runs the skill.
-5. **QA:** run the skill against the current repo (should report "no drift"), then against a
-   synthetic fork-like dataset (no activities in `_SD_BOX`/`_BOS_BOX`, no title matching any `sig`)
-   to confirm it reports cleanly instead of crashing or inventing claims.
-6. **Optional v2:** wire into a Routine (per Open Questions on cadence) once the manual flow is
-   trusted.
+## Suggested phases
+
+1. **Analyze:** pin the live-computation recipe for each of the 6 Peaks rows + Passport badges
+   (including the home-adjacent-giant threshold and the longest-climb heuristic), verify against
+   today's known values (Whitney 14,507 ft, Vancouver 49.3°N, Maine 70.2°W, San Jacinto 10,800 ft).
+2. **Extract the editorial config** — move `_PASSPORT_TRIPS`/`_PEAKS_DEF` to the new data file, keyed
+   by activity ID instead of title substring; update `charts_places.py` to read from it.
+3. **Harden for forks** (the two guard fixes above) so a fresh clone is safe on day one.
+4. **Build the CI detection step** — deterministic script in `strava-fetch.yml`, same soft-NOTE
+   pattern as existing drift checks, diffing live candidates against the new config file.
+5. **Extend `strava-maintenance`** to read the drift signal (or recompute it) and propose the
+   concrete config-file edit — report only, no auto-apply.
+6. **QA:** confirm the CI step reports "no drift" on the current repo; run both the CI script and the
+   extended `strava-maintenance` pass against a synthetic fork-like dataset (no activities in the
+   home boxes, no activity ID matching any pinned entry) to confirm clean reporting instead of
+   crashing or inventing claims.
+7. **Optional v2:** wire `strava-maintenance`'s superlative check into a Routine
+   (`mcp__Claude_Code_Remote__create_trigger`) once the manual flow is trusted, so a drift gets
+   surfaced without remembering to ask.
 
 ## Related
 
