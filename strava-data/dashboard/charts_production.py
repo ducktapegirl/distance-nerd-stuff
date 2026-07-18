@@ -647,7 +647,7 @@ def chart_run_hr_vs_temp(rows):
 
     # Annotation order is fixed (Run R², TrailRun R², caveat) so the JS can swap
     # by index. Default text = air-temp view; caveat is blank for air.
-    DARK_PILL = "rgba(13,17,23,0.65)"  # themed via --ann-pill-bg by applyChartTheme
+    DARK_PILL = "rgba(13,17,23,0.65)"  # themed in light mode via a CSS rule in template.py
     annotations = [
         dict(x=0.98, y=0.95, xref="paper", yref="paper", text=r2txt(r2_air["Run"]),
              showarrow=False, xanchor="right", yanchor="top", bgcolor="rgba(0,0,0,0)",
