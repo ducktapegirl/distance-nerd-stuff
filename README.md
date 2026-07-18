@@ -85,3 +85,11 @@ Ideas that are written up but not built yet, pulled from the `Plans/` folder:
   though the honest expectation is it'll explain only a few more percent of pace
   variance than the proxy already does.
   See [`Plans/strava-data/wbgt-future-work.md`](Plans/strava-data/wbgt-future-work.md).
+- **Clickable Strava activity links** — the Activity Details panel (desktop side
+  panel and mobile bottom sheet) shows an activity's name as plain text. The plan
+  turns the name into a link out to the real activity on Strava so a logged-in
+  viewer can click through. It's a very small change: the Strava activity id is
+  already in the data and already embedded in the page (just as the `ACT_DATA`
+  key), and one `renderActivity()` function covers both form factors — so it's
+  ~2 lines plus a little link CSS, no data-pipeline work.
+  See [`Plans/strava-data/activity-links-future-work.md`](Plans/strava-data/activity-links-future-work.md).
