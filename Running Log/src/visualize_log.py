@@ -6,7 +6,7 @@ Usage:  python src/visualize_log.py  (from the Running Log/ directory)
 Input:  running_log.csv  (Running Log/, one level up)
 Output: index.html      (Running Log/, one level up)
 
-Design follows Claude Design/design_handoff_running_log/README.md:
+Design follows Specs/running-log/design_handoff_running_log/readme.md:
 dark glass UI, top-tab nav, 6 sections (Overview, Volume, Workout Mix,
 Performance, Races, Patterns), Geist + Geist Mono typography. Charts use
 Plotly (themed dark); layout, cards, race rows, search, and heatmap are

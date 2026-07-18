@@ -6,7 +6,7 @@ pre-rendered PNG + regen script / faint). All three feedback items delivered:
 - **#2 Glow vector basemap** — `91ea5fd` (`assets/basemap.json` + `tools/gen_basemap.py`).
 - **#1 Terrain shaded relief** — this commit (`assets/hillshade.png` + `tools/gen_hillshade.py`).
 
-Build contract lives in `dashboard-spec.md` (“Places — Basemap” / “Places — Terrain”).
+Build contract lives in `Specs/strava-data/dashboard-spec.md` (“Places — Basemap” / “Places — Terrain”).
 Original plan retained below for reference.
 
 ---
@@ -111,7 +111,7 @@ QA=Sonnet; Review gate=Opus). One pass, since it's a single subsystem:
    coastline/border GeoJSON (and hillshade render recipe) **in the hero's
    equirectangular frame**; verify byte budget + registration against 3–4 known
    points (coastlines at SD, Boston, Vancouver; a Sierra ridge).
-2. **Design → `dashboard-spec.md`:** a "Places — Basemap" spec extension:
+2. **Design → `Specs/strava-data/dashboard-spec.md`:** a "Places — Basemap" spec extension:
    layer draw order (basemap → graticule → glow → labels), per-mode + per-theme
    styling, opacity, the `Glow · Terrain` toggle wiring (already exists), and how
    the layer reads the existing `cur {s,fx,fy}` camera. Retire the concentric-ring
@@ -125,7 +125,7 @@ QA=Sonnet; Review gate=Opus). One pass, since it's a single subsystem:
    Playwright geometry harness from Pass C.
 
 **Critical files:** `dashboard/charts_places.py` (hero template + a small
-basemap loader), `dashboard-spec.md` (spec extension), plus the new asset(s)
+basemap loader), `Specs/strava-data/dashboard-spec.md` (spec extension), plus the new asset(s)
 under `strava-data/data/` or inlined. `page.py` unchanged (hero already wired).
 
 ## Out of scope

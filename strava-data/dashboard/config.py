@@ -19,6 +19,22 @@ PLOTLY_CDN = (
     '<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>'
 )
 
+# MapLibre GL JS — powers the Places hero's real tiled basemap (Street / Terrain).
+# CSS + JS, both render-blocking in <head> like PLOTLY_CDN. The page guards every
+# `window.maplibregl` call, so a blocked CDN degrades the hero to its tile-free
+# "Glow" look rather than breaking.
+MAPLIBRE_CDN = (
+    '<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">'
+    '<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>'
+)
+
+# MapTiler API key for the Street/Terrain basemap tiles, read from the build
+# environment (a GitHub Actions secret in deploy.yml). Empty -> the hero runs
+# Glow-only and the Street/Terrain buttons disable themselves. The key ends up in
+# the published static HTML, so it MUST be domain-restricted to ducktapegirl.github.io
+# in the MapTiler dashboard.
+MAPTILER_KEY = os.environ.get("MAPTILER_KEY", "")
+
 KM_TO_MI = 0.621371
 M_TO_FT  = 3.28084
 
