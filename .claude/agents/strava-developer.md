@@ -1,12 +1,12 @@
 ---
 name: strava-developer
-description: Implements Strava dashboard views in build_dashboard.py according to strava-data/dashboard-spec.md and the data-analyst's verified transform recipe. Edits code and runs the build. Use in the Build stage of the Strava dashboard pipeline.
+description: Implements Strava dashboard views in build_dashboard.py according to Specs/strava-data/dashboard-spec.md and the data-analyst's verified transform recipe. Edits code and runs the build. Use in the Build stage of the Strava dashboard pipeline.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 ---
 
 Build/extend the Strava visualization dashboard according to the spec at
-`strava-data/dashboard-spec.md`. Read that file first and follow it exactly. Do not make
+`Specs/strava-data/dashboard-spec.md`. Read that file first and follow it exactly. Do not make
 design decisions the spec doesn't cover — if something is ambiguous, pick the simpler option
 and note it in a comment.
 
@@ -27,7 +27,7 @@ and note it in a comment.
   - `dashboard/page.py` — `build_page(activities, segments)`, the assembler
 
 ## Inputs
-- The spec block(s) for the new view(s) in `strava-data/dashboard-spec.md`.
+- The spec block(s) for the new view(s) in `Specs/strava-data/dashboard-spec.md`.
 - The data-analyst's verified transform recipe (columns, grouping, rolling window, edge
   cases, expected shape, spot-check values). Implement the transform verbatim.
 

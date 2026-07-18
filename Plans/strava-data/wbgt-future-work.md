@@ -48,7 +48,7 @@ the same Open-Meteo endpoint we already use.
 
 ## Data acquisition (Open-Meteo)
 
-Weather is fetched by [`strava-data/weather.py`](weather.py) from the Open-Meteo
+Weather is fetched by [`strava-data/weather.py`](../../strava-data/weather.py) from the Open-Meteo
 **Historical Forecast API** (chosen because the ERA5 archive endpoint returns no
 `uv_index`; see the module docstring). The forecast archive **also carries
 humidity, wind, and radiation**, so no new API or key is needed — only more
@@ -165,7 +165,7 @@ globe-temp/solar-position plumbing and validating it against known values.
 ## Dashboard / analysis changes
 
 Once `wbgt_c` is a column, the chart work is small and local to
-[`strava-data/dashboard/charts_exploratory.py`](dashboard/charts_exploratory.py):
+[`strava-data/dashboard/charts_exploratory.py`](../../strava-data/dashboard/charts_exploratory.py):
 
 - **`_heatsun_prep`** — read `wbgt_c` (convert to °F for display: `wbgt_c*9/5+32`).
   Add a WBGT partial-R² alongside the existing temp/UV/combined ones:
@@ -176,13 +176,13 @@ Once `wbgt_c` is a column, the chart work is small and local to
   an **estimated shade/outdoor WBGT** and name the method (Stull / Liljegren).
 - **V9 `chart_x_heatsun`** — optionally add a third toggle view (**Temp / UV /
   WBGT**). This means going from 2 views to 3: extend the trace-index layout, the
-  `toggleHeatSun` JS in [`dashboard/template.py`](dashboard/template.py) (visibility
+  `toggleHeatSun` JS in [`strava-data/dashboard/template.py`](../../strava-data/dashboard/template.py) (visibility
   arrays + x-axis title + annotation swap), and the seg-filter buttons in
-  [`dashboard/page.py`](dashboard/page.py). Mirror the V1/V4 three-state patterns.
+  [`strava-data/dashboard/page.py`](../../strava-data/dashboard/page.py). Mirror the V1/V4 three-state patterns.
 - **Captions / attribution** in `page.py` — retire the "WBGT-lite" language; note
   the WBGT is *estimated* (globe temp modelled, not measured) and observational.
 - **Spec** — add a dated addendum to
-  [`strava-data/dashboard-spec.md`](dashboard-spec.md) documenting the new column,
+  [`Specs/strava-data/dashboard-spec.md`](../../Specs/strava-data/dashboard-spec.md) documenting the new column,
   the WBGT method + weighting used, and a `Verify vs recipe:` line pinning the new
   partial-R² values.
 

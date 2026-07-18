@@ -20,7 +20,7 @@ from .charts_production import (
     chart_mtb_seg_pace_vs_grade, chart_mtb_seg_pace_vs_tortuosity,
     chart_segment_prs, chart_volume,
 )
-from .config import KM_TO_MI, MTB_EMOJI, M_TO_FT, PLOTLY_CDN, RUN_EMOJI
+from .config import KM_TO_MI, MAPLIBRE_CDN, MTB_EMOJI, M_TO_FT, PLOTLY_CDN, RUN_EMOJI
 from .data import (
     activity_dict, fmt_pace, fmt_time, load_segment_efforts, mf,
     sport_category,
@@ -332,6 +332,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   {THEME_INIT_JS}
   {hash_init_js(VIEW_NAMES)}
   {PLOTLY_CDN}
+  {MAPLIBRE_CDN}
   <style>{CSS}</style>
   <style>{view_paint_css(VIEW_NAMES)}</style>
   <script data-goatcounter="https://ducktapegirl.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>

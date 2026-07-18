@@ -532,8 +532,88 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 
 ## Places — Build-Ready Spec
 
-Pass A (Foundation + Hero) of the approved Places plan (`places-plan.md`, `places-prespec.md`).
-Design source: `strava-data/mocks/places-hero-mock.html` — **port its structure/CSS/JS; this spec
+> **UPDATE (2026-07 · open-source tiled basemap).** The hero's **basemap** is now a
+> real tiled map rendered by **MapLibre GL JS** (loaded from CDN; `config.MAPLIBRE_CDN`),
+> with a three-way **Glow / Street / Terrain** toggle. **Street/Terrain use MapTiler
+> tiles** (`config.MAPTILER_KEY`, from the `MAPTILER_KEY` build env / Actions secret,
+> domain-restricted to `ducktapegirl.github.io`); **Glow** is a tile-free transparent
+> style over the hero's radial-gradient ground and is also the graceful fallback when
+> MapLibre or the key is unavailable. The **route glow is unchanged in spirit** — the
+> same additive (`lighter`) / `multiply` per-sport polyline overlay — but it now renders
+> on a **2D `<canvas>` overlay above the MapLibre canvas**, projecting each point through
+> **`map.project()`** (Web Mercator) instead of the old equirectangular `projX/projY`.
+> Consequently the bespoke camera (`COSLAT` frame, `cur{s,fx,fy}`, `tweenTo`, custom
+> pan/zoom/pinch/marquee) is **retired** in favor of MapLibre's native camera + gestures
+> (`cooperativeGestures`), and the injected `PD` frame constants (`lng0/lngspan/lat1/
+> latspan`) now serve only to reconstruct geographic **bounds** (`allBounds`, `viewBounds`)
+> and **label lng/lat**. `window.placesFlyTo()` keeps its exact contract (named View or
+> `{lat0,lat1,lng0,lng1}` box → `map.fitBounds`) so the Homes/Passport/Peaks deep-links are
+> untouched. The sections below on the equirectangular frame, the inlined vector
+> `basemap.json`, and the `hillshade.png` terrain describe the **superseded** canvas basemap
+> and are retained for history; `_load_basemap`/`_load_hillshade` and those assets are no
+> longer used by the hero.
+>
+> **FOLLOW-UP (2026-07 · Backdrop ground + full dark mode).** **Glow** now renders a real
+> MapTiler **Backdrop** basemap (`backdrop-v4`) rather than the transparent style — a neutral
+> greyscale ground purpose-built for data overlays. The transparent style (`tilelessStyle()`,
+> formerly `glowStyle()`) is now **only** the no-tiles/no-key fallback. All three modes track
+> the page theme via one `styleForMode()` table (`{glow:'backdrop-v4', street:'streets-v2',
+> terrain:'outdoor-v2'}` + a `-dark` suffix in dark theme), so **Terrain now has a dark variant
+> (`outdoor-v2-dark`)** — it is no longer light-only. The glow composite consequently
+> simplifies to `additive = !TH.light` (the `mode!=='terrain'` special case is gone), and the
+> theme toggle now restyles every mode (gated on `TILES_OK`, not `mode!=='glow'`).
+>
+> **FOLLOW-UP (2026-07 · light-theme label contrast).** Manual review of the new Backdrop
+> ground found the non-home ("trip") label coord/sub lines (e.g. Vancouver, Sierra) hard to
+> read in light theme. Measured cause: `drawLabel()`'s `alpha*0.85`/`alpha*0.9` fade on those
+> lines computed as low as **3.56:1** against the real light basemaps' near-white backgrounds
+> (`backdrop-v4` `hsl(0,0%,100%)`, `streets-v2` `hsl(42,49%,93%)`, `outdoor-v2`
+> `hsl(120,4%,95%)`) — below WCAG AA's 4.5:1 for normal text. Fix: in light theme those
+> multipliers are now `1.0` (no fade — matches the name line's alpha, which already cleared AA
+> at 4.75–5.14:1 unfaded); dark theme keeps the original 0.85/0.9 fade since its dark grounds
+> give 4.75:1+ headroom regardless. Home labels (full alpha, `--text-primary`) were never
+> affected.
+>
+> **FOLLOW-UP (2026-07 · lighter Glow ground + route standoff).** Two changes, one pass. (1)
+> **Lighter Glow in light theme** — the raw Backdrop ground read heavier than the pre-MapTiler
+> canvas hero. Rather than a CSS wash over Backdrop, Glow's light-theme ground is now a **custom
+> MapTiler style** ("BackgroundGhost", style id `019f7141-13e8-7ca3-bd1d-c8bc1184f396`) purpose-
+> built for the near-white/faint-line look, selected in `styleForMode()` via
+> `if(m==='glow' && isLight()) return mtStyle(GLOW_LIGHT_STYLE_ID)`. Dark-theme Glow is
+> unchanged (`backdrop-v4-dark` — no custom dark counterpart yet); Street/Terrain are unchanged
+> in both themes. Uses the same `MAPTILER_KEY` as every other style (one account, one
+> domain-restricted key). An earlier version of this fix used a CSS `filter` wash on the stock
+> Backdrop ground instead — superseded once a custom style became available, since layering a
+> generic wash on a style already tuned to look right risks over- or under-lightening it. (2)
+> **Route standoff** — `drawGlow()` now draws each route in **two passes**: a contrasting
+> casing (white@.9 light / near-ground-dark@.85 dark, width `lw+2`, `source-over` so it isn't a
+> no-op under the colored pass's `multiply`/`lighter` composite — and all casings first so none
+> nicks a neighbour's colour), then the per-sport colour on top (its existing composite). Line
+> weight bumped to `max(1.4, min(3.0, 0.7+z*0.18))`. Paths are projected once into a `Path2D`
+> per track and stroked twice (cheaper than re-projecting on pan). Closes
+> `Plans/strava-data/places-basemap-contrast-future-work.md`.
+>
+> **FOLLOW-UP (2026-07 · shareable activity deep-links + hash-sync fix).** The hash contract
+> (`#places?v=<frame>&b=<base>`, built by `syncHashState()`/`applyHashState()`) gains a third,
+> mutually-exclusive param: **`a=<activityId>`** (the Strava activity id behind a Passport
+> stamp/brief chip/Peaks row), which supersedes `v=` when present — `b=` still composes
+> independently. The Pass C click handlers (below) call `window.placesLinkActivity(id)` right
+> after `placesFlyTo`, writing `#places?a=<id>`; on load, `applyHashState()` stashes it in
+> `pendingActivity` (parallel to the existing `pendingFrame`) so the fly-to fires on
+> `map.on('load')`, resolved against `window.placesFlyTargets` — a `{activityId: {lat0,lat1,
+> lng0,lng1}}` map the Passport/Peaks scripts publish from their own `PC` payload (`PC[slot].id`
+> alongside the existing `.fly`). An unresolvable/removed id falls back to the default (All)
+> frame — no console error.
+>
+> Bundled in the same pass: the page-level tab router (`template.py`'s `activateView`) previously
+> wrote a bare `#<section>` on every switch, which silently dropped Places' `v=`/`b=`/`a=`
+> sub-state on a return visit even though the hero still showed it — the URL and the page
+> disagreed. Fix: `activateView` now calls **`window.placesSyncHash()`** (`= syncHashState`)
+> instead of writing the hash itself when the target section is `places`, so returning to Places
+> re-asserts whatever sub-state is current; every other section is unaffected.
+
+Pass A (Foundation + Hero) of the approved Places plan (`Plans/strava-data/places-plan.md`, `places-prespec.md`).
+Design source: `mocks/places-hero-mock.html` — **port its structure/CSS/JS; this spec
 enumerates every delta needed for real data.** Architecture is locked Option A: the hero is a
 **bespoke `<canvas>` renderer — NOT Plotly, NOT tiles.** `chart_places_hero(rows)` (new module
 `dashboard/charts_places.py`) returns one **raw HTML/`<canvas>`/JS string with real data injected
@@ -662,7 +742,16 @@ labels rise to 0.9 (mock parity). All/SD/Boston clear the lens.
 `{lat0, lat1, lng0, lng1}` (south, north, west, east — converted to u/v, fit with the 0.94 inset,
 tweened; lens cleared; all `[data-frame]` buttons deactivate unless the name matches).
 
-#### Map control (Glow · Terrain) + theme contract
+#### Map control (Glow · Street · Terrain) + theme contract
+> Per the 2026-07 update banner: the toggle is now **Glow / Street / Terrain** (MapLibre).
+> The **route/glow/theme rows below still apply** to the canvas overlay — same additive
+> (`lighter`) vs `multiply` composite, alphas, per-sport colors, and label ink. The change:
+> `additive = !light && mode!=='terrain'` — additive only on dark grounds (Glow / dark
+> Street), `multiply` on bright grounds (any light theme, and the light Terrain relief).
+> The **Glow-ground gradient stays** (the tile-free `#places-hero` background). The
+> **Graticule / Terrain contour rings / Terrain-ground / concentric-ellipse placeholder**
+> rows are **retired** (MapLibre draws the real basemap now).
+
 Basemap treatment only; routes/glow logic unchanged. The hero ground is driven by **hero-scoped
 CSS custom properties** with `:root.light` overrides — the mock's dark commit becomes the dark
 half of a theme pair:
@@ -960,11 +1049,19 @@ A stripped static draw (no pan/zoom/labels/controls) -- port only the hero's pro
 
 ## Places — Passport (Pass C · Module 3) + Peaks (Pass C · Module 4)
 
+> **FOLLOW-UP (2026-07 · shareable links).** Every stamp/chip/peak's `fly()` handler now also
+> calls `window.placesLinkActivity(id)` immediately after `placesFlyTo(fly)`, writing
+> `#places?a=<activityId>` (full contract under "Places — Build-Ready Spec" above). Each `PC`
+> entry gains an `id` field — the same Strava activity id already fetched for `_load_trip_geo`
+> — alongside its existing `fly` box; the passport and peaks scripts each merge their entries
+> into one shared `window.placesFlyTargets` lookup so a link resolves regardless of which
+> script published it.
+
 Pass C of the Places plan. **Design = Opus spec-extension** (the single Fable dispatch was
 spent on the Pass A hero). Two builders — `chart_places_passport(rows)` (filmstrip of trip
 stamps) and `chart_places_peaks(rows)` (a restrained record book) — sit BELOW the two-homes
 cards inside `#view-places`, in normal `.card` flow, both theme-aware. Design source:
-`strava-data/mocks/places-passport-mock.html` — **port its structure/CSS/JS; this spec enumerates
+`mocks/places-passport-mock.html` — **port its structure/CSS/JS; this spec enumerates
 the deltas for real data.** Both return one self-contained raw HTML string (the `chart_calendar()`
 precedent). All numbers below come from the Pass-C Analyze recipe — implement, do not re-derive.
 
@@ -1087,6 +1184,8 @@ Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches
 - Peaks: 6 rows, values `14,507 ft / 49.3°N / 10,800 ft / 70.2°W / Apr 2025 / 6,752 ft`; San
   Jacinto present (Wrinkle B); `FIRST IN SAN DIEGO` title is live (`Time zone shakeout`).
 - Click a stamp/peak/chip → hero flies to that box (View buttons deactivate); `placesFlyTo` exists.
+- Click a stamp/peak → URL becomes `#places?a=<activityId>`; reloading that URL restores the same
+  zoomed activity; switching to another tab and back to Places preserves it (no bare `#places`).
 - Geometry JSON carries no display strings (grep the `<script>` for a segment/activity title →
   none); titles are HTML-escaped server-side; emoji renders.
 - Both themes legible; mobile: filmstrip scroll-snaps + drag-scrolls, peaks stack; no h-scroll on body.
@@ -1096,7 +1195,13 @@ Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches
 
 ## Places — Basemap (Glow vector layer)
 
-Follow-on to the shipped Places build (`places-basemap-plan.md`). Adds a faint
+> **SUPERSEDED (2026-07).** Replaced by the MapLibre tiled basemap (see the update banner
+> under "Places — Build-Ready Spec"). The Street/Terrain modes now provide the geographic
+> grounding; Glow mode is a tile-free transparent style over the radial-gradient ground with
+> no vector coastline. `basemap.json` + `_load_basemap()` are no longer used by the hero.
+> The section below is retained for history.
+
+Follow-on to the shipped Places build (`Plans/strava-data/places-basemap-plan.md`). Adds a faint
 geographic layer under the hero's route glow so the section reads as a real map
 (especially in light mode, where the glow alone was near-invisible on white).
 Retires the mock's concentric-ring terrain placeholder.
@@ -1123,6 +1228,10 @@ Retires the mock's concentric-ring terrain placeholder.
 - **No new palette hex** (slate is a token); no new runtime dependency.
 
 ## Places — Terrain (shaded relief)
+
+> **SUPERSEDED (2026-07).** Terrain is now a MapLibre **MapTiler `outdoor-v2`** tiled style
+> (real relief/hillshade at every zoom), selected by the Terrain button. The inlined
+> `hillshade.png` + `_load_hillshade()` are no longer used. Retained below for history.
 
 Terrain-mode shaded relief (pre-spec §6.1 "mountains show through"), layered
 UNDER the vector basemap. Real elevation, not the retired ring placeholder.
@@ -1155,6 +1264,12 @@ UNDER the vector basemap. Real elevation, not the retired ring placeholder.
 ---
 
 ## Places — Hero zoom/pan controls (explicit UI)
+
+> **UPDATED (2026-07).** The `+`/`−`/reset cluster and View buttons remain, but they now
+> drive the **MapLibre camera** (`map.zoomIn/zoomOut`, reset = the "All" View →
+> `map.fitBounds(allBounds)`). Pan/scroll-zoom/pinch/double-click/shift-drag box-zoom are
+> **MapLibre-native** with `cooperativeGestures` (ctrl+scroll / two-finger; the page still
+> scrolls). The bespoke gesture + marquee code below is **retired**.
 
 Follow-on to the shipped Places build. The hero previously relied entirely on implicit
 gestures (drag, Ctrl/Cmd+scroll, pinch, dblclick) with no visible affordance — adds an
@@ -1202,6 +1317,10 @@ mobile chrome rework).
 ---
 
 ## Places — Hero selection zoom (desktop, Shift+drag)
+
+> **SUPERSEDED (2026-07).** Shift+drag box-zoom is now provided by **MapLibre's built-in
+> `BoxZoom` handler** (same gesture), so the bespoke marquee implementation below and the
+> `#places-selrect` element are **removed**. Retained for history.
 
 Follow-on to the zoom-controls pass. A "box zoom" affordance for desktop: hold Shift and
 drag a rectangle on the hero; releasing fits the camera to it. Standard mapping-tool

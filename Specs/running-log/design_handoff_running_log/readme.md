@@ -393,8 +393,8 @@ The heatmap is derived by bucketing `runs` into year → week → day. Weekly vo
 
 | File | Description |
 |---|---|
-| `Running Log Dashboard.html` | Full hi-fi prototype — single HTML file with all components and sample data. Open in any browser to see the design. |
-| `README.md` | This document |
+| `running-log-dashboard.html` | Full hi-fi prototype — single HTML file with all components and sample data. Open in any browser to see the design. |
+| `readme.md` | This document |
 
 ---
 
