@@ -4,8 +4,8 @@ import json
 
 from .config import (
     ACCENT, ACCENT_DIM, ACCENT_GLOW, BG_BASE, BG_ELEVATED, BG_GLASS, BG_SURFACE,
-    BORDER, BORDER_SUBTLE, ELEVATION_COLOR, FASTER, GRID, SLOWER, TEXT_PRIMARY,
-    TEXT_SECONDARY, TEXT_TERTIARY,
+    BORDER, BORDER_SUBTLE, ELEVATION_COLOR, FASTER, GRID, MAPTILER_KEY, SLOWER,
+    TEXT_PRIMARY, TEXT_SECONDARY, TEXT_TERTIARY,
 )
 
 # ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -490,14 +490,21 @@ main {{
   white-space: pre-wrap;
 }}
 .d-sep {{ height: 1px; background: var(--border-subtle); margin: 20px 0; }}
-/* Detail-panel mini-map: route sketch + violet elevation profile (tile-free). */
+/* Detail-panel mini-map: route over a MapLibre Glow basemap (with a tile-free
+   SVG fallback), plus a violet elevation profile. */
 .mm-wrap {{ margin-top: 16px; }}
 .mm-map {{
-  display: block; width: 100%; aspect-ratio: 3 / 2;
+  position: relative; overflow: hidden;
+  width: 100%; aspect-ratio: 3 / 2;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
 }}
+/* MapLibre canvas + the SVG fallback both fill the rounded box. */
+.mm-map .maplibregl-map {{ position: absolute; inset: 0; }}
+.mm-fallback {{ position: absolute; inset: 0; width: 100%; height: 100%; }}
+/* Compact, quiet attribution (required by MapTiler/OSM ToS — keep it). */
+.mm-map .maplibregl-ctrl-attrib {{ font-size: 10px; }}
 .mm-cas, .mm-route {{
   fill: none; vector-effect: non-scaling-stroke;
   stroke-linejoin: round; stroke-linecap: round;
@@ -706,6 +713,10 @@ def build_js(act_json, geo_json, sync_ids, click_ids, heat_air_text, heat_app_te
     return f"""
 var ACT_DATA  = {act_json};
 var GEO_DATA  = {geo_json};
+// MapTiler key for the detail mini-map basemap (Glow only). Empty -> the mini-map
+// keeps its tile-free SVG fallback, exactly like the Places hero degrades.
+var MM_KEY     = "{MAPTILER_KEY}";
+var MM_TILES_OK = !!window.maplibregl && MM_KEY.length > 0;
 var SYNC_IDS  = {json.dumps(sync_ids)};
 var CLICK_IDS = {json.dumps(click_ids)};
 var syncing   = false;
@@ -721,6 +732,7 @@ Object.keys(ACT_DATA).forEach(function(id) {{
 function closeDetail() {{
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('detail-backdrop').classList.remove('open');
+  destroyMiniMaps();   // free WebGL contexts from any open mini-maps
 }}
 function renderActivity(a) {{
   var esc = function(s) {{ return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }};
@@ -738,9 +750,10 @@ function renderActivity(a) {{
   if (a.desc)    html += '<div class="d-desc">' + esc(a.desc) + '</div>';
   return html;
 }}
-// Inline SVG route sketch + violet elevation profile for GPS activities. Lives
-// entirely in the innerHTML string (no post-injection draw hook) and themes for
-// free via CSS custom properties. Returns '' for indoor/no-GPS (absent from
+// Route mini-map + violet elevation profile for GPS activities. The `.mm-map`
+// container holds a tile-free SVG route as the always-safe fallback; when a
+// MapTiler key + MapLibre are present, initMiniMaps() lazily layers a real Glow
+// basemap over it (see below). Returns '' for indoor/no-GPS (absent from
 // GEO_DATA), so the panel then shows stats only.
 function miniMap(a) {{
   var g = GEO_DATA[a.id];
@@ -749,12 +762,14 @@ function miniMap(a) {{
   for (var i = 0; i < p.length; i += 2) pts += (i ? ' ' : '') + p[i] + ',' + p[i + 1];
   var cls = (g.sport === 'MountainBikeRide') ? 'mm-mtb' : 'mm-run';
   var svg = '<div class="mm-wrap">';
-  // preserveAspectRatio="xMidYMid meet" renders the aspect-preserved, centered
-  // 0..1 path undistorted in any box shape; non-scaling-stroke keeps px widths.
-  svg += '<svg class="mm-map" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid meet">';
+  svg += '<div class="mm-map" data-mm="' + a.id + '">';
+  // Fallback: aspect-preserved, centered 0..1 path, undistorted; non-scaling-stroke
+  // keeps px widths. Hidden by initMiniMaps() once a MapLibre basemap takes over.
+  svg += '<svg class="mm-fallback" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid meet">';
   svg += '<polyline class="mm-cas" points="' + pts + '"/>';
   svg += '<polyline class="mm-route ' + cls + '" points="' + pts + '"/>';
   svg += '</svg>';
+  svg += '</div>';
   var e = g.elev;
   if (e && e.length >= 2) {{
     var n = e.length, ep = '';
@@ -767,10 +782,86 @@ function miniMap(a) {{
   svg += '</div>';
   return svg;
 }}
+// ── MapLibre basemap layer (glow only, static) ───────────────────────────────
+// Reuses the Places hero's style scheme (charts_places.py): backdrop-v4-dark in
+// dark, the custom Glow-light style in light. Per-panel maps are tracked so they
+// can be torn down on close (browsers cap live WebGL contexts ~16), and lazily
+// initialised so a showDay stack only spins up the maps actually scrolled into view.
+var MM_MAPS = [];
+function mmStyleUrl() {{
+  var slug = document.documentElement.classList.contains('light')
+    ? '019f7141-13e8-7ca3-bd1d-c8bc1184f396' : 'backdrop-v4-dark';
+  return 'https://api.maptiler.com/maps/' + slug + '/style.json?key=' + MM_KEY;
+}}
+function mmColors(sport) {{
+  var cs = getComputedStyle(document.documentElement);
+  var light = document.documentElement.classList.contains('light');
+  var v = cs.getPropertyValue(sport === 'MountainBikeRide' ? '--mtb' : '--running').trim();
+  return {{ route: v || '#2dd4bf', casing: light ? 'rgba(255,255,255,0.9)' : 'rgba(13,17,23,0.85)' }};
+}}
+function mmAddRoute(map) {{
+  var coords = map.__mmCoords, line = [];
+  for (var i = 0; i < coords.length; i += 2) line.push([coords[i], coords[i + 1]]);
+  var col = mmColors(map.__mmSport);
+  if (map.getLayer('mm-cas')) map.removeLayer('mm-cas');
+  if (map.getLayer('mm-rt'))  map.removeLayer('mm-rt');
+  if (map.getSource('mm-src')) map.removeSource('mm-src');
+  map.addSource('mm-src', {{ type: 'geojson',
+    data: {{ type: 'Feature', geometry: {{ type: 'LineString', coordinates: line }} }} }});
+  map.addLayer({{ id: 'mm-cas', type: 'line', source: 'mm-src',
+    paint: {{ 'line-color': col.casing, 'line-width': 6 }},
+    layout: {{ 'line-join': 'round', 'line-cap': 'round' }} }});
+  map.addLayer({{ id: 'mm-rt', type: 'line', source: 'mm-src',
+    paint: {{ 'line-color': col.route, 'line-width': 3 }},
+    layout: {{ 'line-join': 'round', 'line-cap': 'round' }} }});
+}}
+function mmInit(el) {{
+  var g = GEO_DATA[el.getAttribute('data-mm')];
+  if (!g || !g.coords || g.coords.length < 4) return;
+  el.__mmInited = true;
+  var map = new maplibregl.Map({{
+    container: el, style: mmStyleUrl(), interactive: false,
+    attributionControl: {{ compact: true }}, dragRotate: false,
+    renderWorldCopies: false, fadeDuration: 0
+  }});
+  map.__mmCoords = g.coords; map.__mmSport = g.sport; map.__mmBbox = g.bbox;
+  MM_MAPS.push(map);
+  map.on('load', function() {{
+    mmAddRoute(map);
+    map.fitBounds(g.bbox, {{ padding: 24, animate: false }});
+    var fb = el.querySelector('.mm-fallback'); if (fb) fb.style.display = 'none';
+  }});
+  // Theme toggle swaps the style, which drops all layers -> re-add on reload.
+  map.on('style.load', function() {{ if (map.isStyleLoaded()) mmAddRoute(map); }});
+}}
+function initMiniMaps() {{
+  if (!MM_TILES_OK) return;   // no key / no MapLibre -> keep the SVG fallback
+  var els = document.querySelectorAll('#detail-body .mm-map[data-mm]');
+  if (!('IntersectionObserver' in window)) {{
+    els.forEach(function(el) {{ if (!el.__mmInited) mmInit(el); }});
+    return;
+  }}
+  var io = new IntersectionObserver(function(entries) {{
+    entries.forEach(function(en) {{
+      if (en.isIntersecting && !en.target.__mmInited) {{ mmInit(en.target); io.unobserve(en.target); }}
+    }});
+  }}, {{ root: document.getElementById('detail-body'), rootMargin: '80px' }});
+  els.forEach(function(el) {{ if (!el.__mmInited) io.observe(el); }});
+}}
+function destroyMiniMaps() {{
+  MM_MAPS.forEach(function(m) {{ try {{ m.remove(); }} catch (e) {{}} }});
+  MM_MAPS = [];
+}}
+// Re-style open mini-maps on theme toggle (called from applyChartTheme).
+window.__miniMapRestyle = function() {{
+  MM_MAPS.forEach(function(m) {{ try {{ m.setStyle(mmStyleUrl()); }} catch (e) {{}} }});
+}};
 function openPanel(html) {{
+  destroyMiniMaps();   // tear down maps from a previously-open panel before replacing DOM
   document.getElementById('detail-body').innerHTML = html;
   document.getElementById('detail-panel').classList.add('open');
   document.getElementById('detail-backdrop').classList.add('open');
+  initMiniMaps();
 }}
 function showDetail(actId) {{
   var a = ACT_DATA[String(actId)];
@@ -1055,6 +1146,9 @@ function syncRange(sourceId, ed) {{
     // Places hero is a bespoke canvas (not Plotly) -- retint it here too so the
     // theme toggle and tab activation both re-ink it (Places build delta 2).
     if (window.__placesHeroRedraw) window.__placesHeroRedraw();
+    // Swap the basemap style on any open detail mini-maps (route/elevation theme
+    // via CSS vars; only the MapLibre basemap needs an explicit restyle).
+    if (window.__miniMapRestyle) window.__miniMapRestyle();
   }}
   // Reachable from the separate tab-routing IIFE so hidden-tab charts get
   // retinted (not just resized) when their tab is first shown.

@@ -81,9 +81,10 @@ def _activity_geo_json(rows):
     """Per-activity route + elevation geometry for the detail-panel mini-map,
     keyed by activity ID. Reuses _load_trip_geo (the same decimated thumbnail
     geometry the Places passport/peaks use): a normalized 0..1 `path` fit to the
-    route's own bbox with aspect preserved, plus `elev` normalized 0..1. Only
-    GPS activities appear here — indoor/no-GPS streams yield None and are omitted,
-    so renderActivity naturally skips the map block for them."""
+    route's own bbox with aspect preserved (drives the tile-free fallback), the raw
+    `coords` [lng,lat,...] + `bbox` (drive the MapLibre basemap), and `elev`
+    normalized 0..1. Only GPS activities appear here — indoor/no-GPS streams yield
+    None and are omitted, so renderActivity naturally skips the map block for them."""
     geo_by_id = {}
     for r in rows:
         if not (r.get("start_latlng") or "").strip():
@@ -91,10 +92,13 @@ def _activity_geo_json(rows):
         geo = _load_trip_geo(str(r["id"]), cap=64)
         if not geo:
             continue
+        la0, la1, ln0, ln1 = geo["bbox"]
         geo_by_id[str(r["id"])] = {
-            "path":  geo["path"],
-            "elev":  geo["elev"],
-            "sport": r["sport_type"],
+            "path":   geo["path"],
+            "coords": geo["coords"],
+            "bbox":   [ln0, la0, ln1, la1],  # [minLng, minLat, maxLng, maxLat] for fitBounds
+            "elev":   geo["elev"],
+            "sport":  r["sport_type"],
         }
     return json.dumps(geo_by_id, ensure_ascii=False)
 

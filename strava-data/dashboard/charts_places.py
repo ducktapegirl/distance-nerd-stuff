@@ -1752,7 +1752,13 @@ def _load_trip_geo(aid, cap=120):
     asp = (amax - amin) or 1.0
     elev = [round((a - amin) / asp, 3) for a in alts]
     grade = [round(max(-1.0, min(1.0, g / 12.0)), 3) for g in grs]
-    return {"path": path, "grade": grade, "elev": elev,
+    # Raw decimated lng/lat (flat, 5dp) for callers that project themselves — e.g.
+    # the detail mini-map's MapLibre basemap. Existing callers ignore this key.
+    coords = []
+    for ln, la in zip(lngs, lats):
+        coords.append(round(ln, 5))
+        coords.append(round(la, 5))
+    return {"path": path, "grade": grade, "elev": elev, "coords": coords,
             "bbox": (la0, la1, ln0, ln1)}
 
 
