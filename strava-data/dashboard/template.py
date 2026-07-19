@@ -490,6 +490,29 @@ main {{
   white-space: pre-wrap;
 }}
 .d-sep {{ height: 1px; background: var(--border-subtle); margin: 20px 0; }}
+/* Detail-panel mini-map: route sketch + violet elevation profile (tile-free). */
+.mm-wrap {{ margin-top: 16px; }}
+.mm-map {{
+  display: block; width: 100%; aspect-ratio: 3 / 2;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}}
+.mm-cas, .mm-route {{
+  fill: none; vector-effect: non-scaling-stroke;
+  stroke-linejoin: round; stroke-linecap: round;
+}}
+.mm-cas {{ stroke: rgba(13, 17, 23, 0.85); stroke-width: 4; }}
+:root.light .mm-cas {{ stroke: rgba(255, 255, 255, 0.9); }}
+.mm-route {{ stroke-width: 2.2; }}
+.mm-run {{ stroke: var(--running); }}
+.mm-mtb {{ stroke: var(--mtb); }}
+.mm-elev {{ display: block; width: 100%; height: 40px; margin-top: 8px; }}
+.mm-elev-fill {{ fill: var(--elevation); fill-opacity: 0.16; stroke: none; }}
+.mm-elev-line {{
+  fill: none; stroke: var(--elevation); stroke-width: 1.4; stroke-opacity: 0.7;
+  vector-effect: non-scaling-stroke; stroke-linejoin: round;
+}}
 .d-stat {{
   flex: 1 1 100px;
   background: var(--bg-elevated);
@@ -668,7 +691,7 @@ def view_paint_css(view_names):
 
 # ─── JS ───────────────────────────────────────────────────────────────────────
 
-def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text,
+def build_js(act_json, geo_json, sync_ids, click_ids, heat_air_text, heat_app_text,
              mirage_air_text, mirage_app_text, hr_temp_meta,
              heatsun_temp_text, heatsun_uv_text):
     # json.dumps produces safely-escaped JS string literals (handles quotes,
@@ -682,6 +705,7 @@ def build_js(act_json, sync_ids, click_ids, heat_air_text, heat_app_text,
     heatsun_uv_js = json.dumps(heatsun_uv_text)
     return f"""
 var ACT_DATA  = {act_json};
+var GEO_DATA  = {geo_json};
 var SYNC_IDS  = {json.dumps(sync_ids)};
 var CLICK_IDS = {json.dumps(click_ids)};
 var syncing   = false;
@@ -710,8 +734,38 @@ function renderActivity(a) {{
   html += '<div class="d-stat"><div class="d-stat-val">' + a.elapsed + '</div><div class="d-stat-lbl">time</div></div>';
   if (a.pace)    html += '<div class="d-stat"><div class="d-stat-val">' + esc(a.pace) + '</div><div class="d-stat-lbl">pace/speed</div></div>';
   html += '</div>';
+  html += miniMap(a);
   if (a.desc)    html += '<div class="d-desc">' + esc(a.desc) + '</div>';
   return html;
+}}
+// Inline SVG route sketch + violet elevation profile for GPS activities. Lives
+// entirely in the innerHTML string (no post-injection draw hook) and themes for
+// free via CSS custom properties. Returns '' for indoor/no-GPS (absent from
+// GEO_DATA), so the panel then shows stats only.
+function miniMap(a) {{
+  var g = GEO_DATA[a.id];
+  if (!g || !g.path || g.path.length < 4) return '';
+  var p = g.path, pts = '';
+  for (var i = 0; i < p.length; i += 2) pts += (i ? ' ' : '') + p[i] + ',' + p[i + 1];
+  var cls = (g.sport === 'MountainBikeRide') ? 'mm-mtb' : 'mm-run';
+  var svg = '<div class="mm-wrap">';
+  // preserveAspectRatio="xMidYMid meet" renders the aspect-preserved, centered
+  // 0..1 path undistorted in any box shape; non-scaling-stroke keeps px widths.
+  svg += '<svg class="mm-map" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid meet">';
+  svg += '<polyline class="mm-cas" points="' + pts + '"/>';
+  svg += '<polyline class="mm-route ' + cls + '" points="' + pts + '"/>';
+  svg += '</svg>';
+  var e = g.elev;
+  if (e && e.length >= 2) {{
+    var n = e.length, ep = '';
+    for (var j = 0; j < n; j++) ep += (j ? ' ' : '') + (j / (n - 1)).toFixed(4) + ',' + (1 - e[j]).toFixed(3);
+    svg += '<svg class="mm-elev" viewBox="0 0 1 1" preserveAspectRatio="none">';
+    svg += '<polygon class="mm-elev-fill" points="0,1 ' + ep + ' 1,1"/>';
+    svg += '<polyline class="mm-elev-line" points="' + ep + '"/>';
+    svg += '</svg>';
+  }}
+  svg += '</div>';
+  return svg;
 }}
 function openPanel(html) {{
   document.getElementById('detail-body').innerHTML = html;

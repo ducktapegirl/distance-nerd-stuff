@@ -93,13 +93,15 @@ Ideas that are written up but not built yet, pulled from the `Plans/` folder:
   key), and one `renderActivity()` function covers both form factors — so it's
   ~2 lines plus a little link CSS, no data-pipeline work.
   See [`Plans/strava-data/activity-links-future-work.md`](Plans/strava-data/activity-links-future-work.md).
-- **Per-activity mini-map + elevation profile** — the Activity Details panel
-  (desktop side panel and mobile bottom sheet) shows only name/date/stats today.
-  The plan adds a small map with the GPS track over a lightweight static **Glow**
-  basemap (MapTiler `backdrop-v4`, `-dark` in dark mode), a solid sport-colored
-  route with a contrast casing, and a violet elevation profile beneath it —
-  rendered as inline SVG so it themes for free and repeats cleanly when a day has
-  more than one activity. Reuses the Places section's `_load_trip_geo` geometry
-  and the hero's MapTiler style wiring, with a tile-free fallback when no key is
-  set.
+- **Per-activity mini-map — a basemap behind the route** ⭐ — the Activity Details
+  panel now shows a tile-free **route sketch + violet elevation profile** for every
+  GPS activity (shipped: inline SVG, sport-colored route with a contrast casing,
+  themes for free, stacks for multi-activity days). The follow-up puts a real **map
+  basemap** behind that route. A spike settled the open questions: the originally
+  planned MapTiler **Static Maps API is blocked on the current plan** (returns a 403
+  "Invalid key" placeholder — it's a paid feature), while tiles work fine — so the
+  basemap comes from tiles. Two free-tier approaches were mocked and compared
+  (raster-tile mosaic vs a per-panel **MapLibre GL** map), with screenshots; the
+  **current preference is MapLibre GL**, the only option that matches the Places
+  hero in both light and dark.
   See [`Plans/strava-data/detail-minimap-future-work.md`](Plans/strava-data/detail-minimap-future-work.md).

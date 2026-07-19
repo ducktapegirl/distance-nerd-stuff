@@ -3,6 +3,17 @@
 import os
 
 _HERE    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Load a gitignored strava-data/.env into the environment (if present) so a local
+# MAPTILER_KEY doesn't have to be exported by hand. CI passes the key as a real env
+# var, so load_dotenv is a no-op there. Best-effort: never fail the build if the
+# file or the dependency is absent.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(_HERE, ".env"))
+except ImportError:
+    pass
+
 DATA_DIR = os.path.join(_HERE, "data")
 ACT_CSV      = os.path.join(DATA_DIR, "activities.csv")
 SEG_CSV      = os.path.join(DATA_DIR, "segments_summary.csv")

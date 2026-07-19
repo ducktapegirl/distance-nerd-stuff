@@ -9,7 +9,7 @@ from .charts_exploratory import (
     chart_x_mirage, chart_x_seasonal,
 )
 from .charts_places import (
-    chart_places_hero, chart_places_homes,
+    _load_trip_geo, chart_places_hero, chart_places_homes,
     chart_places_passport, chart_places_peaks,
 )
 from .charts_production import (
@@ -63,6 +63,7 @@ def _activity_detail_json(rows):
         if speed and speed > 0:
             pace_str = (fmt_pace(60.0 / (speed * KM_TO_MI)) + " /mi") if cat == "Running" else f"{speed * KM_TO_MI:.1f} mph"
         act_by_id[str(r["id"])] = {
+            "id":      str(r["id"]),  # so renderActivity can look up GEO_DATA
             "name":    r["name"],
             "date":    r["start_date_local"][:10],
             "sport":   r["sport_type"],
@@ -74,6 +75,28 @@ def _activity_detail_json(rows):
             "desc":    (r.get("description") or "").strip(),
         }
     return json.dumps(act_by_id, ensure_ascii=False)
+
+
+def _activity_geo_json(rows):
+    """Per-activity route + elevation geometry for the detail-panel mini-map,
+    keyed by activity ID. Reuses _load_trip_geo (the same decimated thumbnail
+    geometry the Places passport/peaks use): a normalized 0..1 `path` fit to the
+    route's own bbox with aspect preserved, plus `elev` normalized 0..1. Only
+    GPS activities appear here — indoor/no-GPS streams yield None and are omitted,
+    so renderActivity naturally skips the map block for them."""
+    geo_by_id = {}
+    for r in rows:
+        if not (r.get("start_latlng") or "").strip():
+            continue  # no GPS -> no mini-map
+        geo = _load_trip_geo(str(r["id"]), cap=64)
+        if not geo:
+            continue
+        geo_by_id[str(r["id"])] = {
+            "path":  geo["path"],
+            "elev":  geo["elev"],
+            "sport": r["sport_type"],
+        }
+    return json.dumps(geo_by_id, ensure_ascii=False)
 
 
 def _build_main_charts(rows, segs):
@@ -565,6 +588,8 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
 def build_page(rows, segs):
     stats = compute_stats(rows)
     act_json = _activity_detail_json(rows)
+    print("  activity geo (mini-map)...")
+    geo_json = _activity_geo_json(rows)
 
     cal, vol, hr_c, pac, elev_c, segs_c = _build_main_charts(rows, segs)
     print("  places hero...")
@@ -593,7 +618,7 @@ def build_page(rows, segs):
 
     SYNC_IDS  = ["chart-volume", "chart-hr", "chart-pace", "chart-elev"]
     CLICK_IDS = ["chart-hr", "chart-pace"]
-    js = build_js(act_json, SYNC_IDS, CLICK_IDS, heat_air_text, heat_app_text,
+    js = build_js(act_json, geo_json, SYNC_IDS, CLICK_IDS, heat_air_text, heat_app_text,
                   mirage_air_text, mirage_app_text, run_hr_temp_meta,
                   heatsun_temp_text, heatsun_uv_text)
 
