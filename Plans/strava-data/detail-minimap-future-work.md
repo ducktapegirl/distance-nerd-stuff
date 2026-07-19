@@ -1,16 +1,17 @@
-# Future work: a basemap behind the Activity-Details mini-map
+# Activity-Details mini-map — DONE (route + elevation + MapLibre basemap)
 
-**Status:** Phase 1 shipped ✅ · Phase 2 proposed (basemap) · **Current preference: MapLibre GL**
-**Created:** 2026-07-18 · **Updated:** 2026-07-18 (spike results folded in) · **Owner:** unassigned
+**Status:** ✅ **Shipped — Phase 1 + Phase 2 complete.** Kept as the design/rationale record.
+**Created:** 2026-07-18 · **Updated:** 2026-07-19 (Phase 2 shipped) · **Owner:** —
 
 ## TL;DR
 
-The Activity Details panel now shows a **tile-free route sketch + violet elevation
-profile** for every GPS activity (Phase 1, shipped). This doc covers the remaining
-work: putting a **map basemap behind the route**. A spike settled the two big
-unknowns — the originally-planned MapTiler **Static Maps API is blocked on the
-current plan**, and of the two free-tier alternatives, **MapLibre GL is the
-preferred approach**. Details, evidence, and the build sketch below.
+**Both phases are done.** The Activity Details panel shows, for every GPS activity, a
+**route over a MapLibre Glow basemap** (both themes) with a **violet elevation profile**
+beneath it — and degrades to a **tile-free SVG** when no key / no WebGL. This doc is now a
+record of how we got there: Phase 1 (tile-free route + elevation), then the spike that ruled
+out the MapTiler Static Maps API and chose **MapLibre GL**, then Phase 2 (the basemap).
+Implementation lives in `Specs/strava-data/dashboard-spec.md`
+("Activity Details mini-map — route + elevation", incl. the Phase 2 subsection).
 
 ---
 
@@ -35,12 +36,20 @@ Phase 1 is self-sufficient and looks good on its own. Everything below is additi
 
 ---
 
-## Phase 2 — the basemap (proposed)
+## Phase 2 — the basemap (shipped ✅)
 
-**Goal:** render a lightweight **static** (no pan/zoom) basemap behind the route,
+**Goal (met):** render a lightweight **static** (no pan/zoom) basemap behind the route,
 matching the Places hero's **Glow** styling in both themes, so the track reads
 against real streets/coastline instead of empty space. The elevation profile and
-the tile-free fallback from Phase 1 stay exactly as they are.
+the tile-free fallback from Phase 1 stayed exactly as they were.
+
+**As built:** a per-panel `maplibregl.Map({interactive:false})` per GPS activity — style
+`backdrop-v4-dark` (dark) / the custom Glow-light id (light), route drawn as casing +
+sport-colored line layers, `fitBounds` to the track. `GEO_DATA` gained raw `coords` + `bbox`;
+maps lazy-init via `IntersectionObserver` and are torn down on panel close so `showDay`
+stacks never leak WebGL contexts. Empty key / no MapLibre → the Phase 1 tile-free SVG stays.
+See the spec's Phase 2 subsection for the exact wiring. The findings below are the rationale
+that led here.
 
 ### Spike finding #1 — the original approach is blocked (pricing, not code)
 
