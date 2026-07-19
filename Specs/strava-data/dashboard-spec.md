@@ -390,8 +390,8 @@ figure.
 
 Adds a compact **route sketch + violet elevation profile** to each GPS activity's block in
 the shared detail panel (right drawer on desktop, bottom sheet on mobile), directly below the
-stat tiles in `renderActivity(a)`. **Phase 1 is tile-free** (no basemap); the MapTiler static
-basemap behind the route is **deferred to a follow-up** (see `Plans/strava-data/detail-minimap-future-work.md`).
+stat tiles in `renderActivity(a)`. **Phase 1** shipped the tile-free version; **Phase 2** (below)
+layers a real MapLibre basemap behind the route.
 
 - **Data:** per-activity geometry from `data/streams/{id}.csv` via `_load_trip_geo(aid, cap=64)`
   (reused as-is — the same decimated `path`/`elev` the Places passport/peaks use). New
@@ -417,7 +417,32 @@ basemap behind the route is **deferred to a follow-up** (see `Plans/strava-data/
   elevation all resolve their colors from CSS custom properties on the live `.light` class.
 - **`.env`:** `config.py` now `load_dotenv(strava-data/.env)` (best-effort) so a local
   `MAPTILER_KEY` need not be exported by hand; `strava-data/.env.example` documents it (gitignored).
-  Not used by Phase 1 (tile-free); readies the deferred basemap.
+
+### Phase 2 — MapLibre Glow basemap behind the route (2026-07-19)
+
+A spike ruled out the MapTiler **Static Maps API** (403 on the current plan — a paid feature);
+tiles work, so the basemap renders via a small **per-panel MapLibre GL map**, the only free-tier
+option that matches the Places hero in both themes. Full rationale + comparison:
+`Plans/strava-data/detail-minimap-future-work.md`.
+
+- **Data:** `_load_trip_geo` now also returns raw `coords` (flat `[lng,lat]`, 5dp); `_activity_geo_json`
+  adds `coords` + `bbox` (`[minLng,minLat,maxLng,maxLat]`) to each `GEO_DATA` entry, keeping `path`
+  (tile-free fallback) + `elev` + `sport`. Payload ≈ 395KB → ~600KB inline.
+- **Basemap:** `template.py` emits `MM_KEY` (from `MAPTILER_KEY`) + `MM_TILES_OK`. `miniMap(a)` now
+  emits `.mm-map` as a **container div** (with `data-mm=id`) holding the Phase 1 route as
+  `.mm-fallback` SVG. `initMiniMaps()` (called from `openPanel`) lazily — via `IntersectionObserver`
+  on `#detail-body` — builds one `maplibregl.Map({interactive:false})` per container: style =
+  `mmStyleUrl()` (glow only: `backdrop-v4-dark` / custom Glow-light id, mirroring the hero
+  `charts_places.py:1138–1152`), route drawn as **casing + sport-colored line layers** (colors from
+  the live `--running`/`--mtb` CSS vars), then `fitBounds(bbox, {padding:24})` and the fallback SVG
+  is hidden. Route/elevation still theme via CSS vars; `window.__miniMapRestyle` (called from
+  `applyChartTheme`) `setStyle`s open maps on theme toggle and re-adds layers on `style.load`.
+- **`showDay` / lifecycle:** maps are tracked in `MM_MAPS` and torn down (`map.remove()`) by
+  `closeDetail` **and** at the top of `openPanel`, so stacking never leaks WebGL contexts (cap ~16);
+  lazy-init means only scrolled-into-view blocks spin up a map.
+- **Graceful degradation:** empty `MAPTILER_KEY` or missing `window.maplibregl` → `MM_TILES_OK` is
+  false, `initMiniMaps` is a no-op, and the Phase 1 tile-free SVG stays — identical to how the hero
+  degrades. Compact MapTiler/OSM attribution is kept (ToS).
 
 ## Heat & Sun — UV/temp partial-R² charts (2026-07-11)
 
