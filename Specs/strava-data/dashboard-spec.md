@@ -386,6 +386,39 @@ figure.
   `renderActivity`, joined by a `.d-sep` divider, and opens the panel through the same
   `openPanel()` both paths share. Click listeners attach to `.hm-cell[data-date]`.
 
+## Activity Details mini-map — route + elevation (2026-07-18)
+
+Adds a compact **route sketch + violet elevation profile** to each GPS activity's block in
+the shared detail panel (right drawer on desktop, bottom sheet on mobile), directly below the
+stat tiles in `renderActivity(a)`. **Phase 1 is tile-free** (no basemap); the MapTiler static
+basemap behind the route is **deferred to a follow-up** (see `Plans/strava-data/detail-minimap-future-work.md`).
+
+- **Data:** per-activity geometry from `data/streams/{id}.csv` via `_load_trip_geo(aid, cap=64)`
+  (reused as-is — the same decimated `path`/`elev` the Places passport/peaks use). New
+  `_activity_geo_json(rows)` (`page.py`) builds `GEO_DATA = { id: {path, elev, sport} }`, keyed by
+  activity id, **only for rows with GPS** (`start_latlng` non-empty and a stream that yields ≥2
+  points). Emitted as `var GEO_DATA` alongside `ACT_DATA` (`template.py`) and threaded through
+  `build_js(act_json, geo_json, …)`. `_activity_detail_json` also gains an `"id"` field so
+  `renderActivity` can look up `GEO_DATA[a.id]`.
+- **Render (inline SVG, no draw hook):** `miniMap(a)` returns an HTML string appended in
+  `renderActivity`; it lives entirely in the `innerHTML` write and themes for free via CSS vars.
+  Route: `<svg viewBox="0 0 1 1" preserveAspectRatio="xMidYMid meet">` with two stacked
+  `<polyline>`s (a neutral **casing** under the sport-colored **route**), both
+  `vector-effect: non-scaling-stroke`. Route color = `var(--running)` teal (Running/TrailRun) or
+  `var(--mtb)` amber (MountainBikeRide). Elevation: a separate short `<svg preserveAspectRatio="none">`
+  strip — a `var(--elevation)` violet fill (`fill-opacity: 0.16`) + stroke, mirroring the Peaks
+  `drawSpark` `x=j/(n-1), y=1-elev[j]` mapping.
+- **CSS** (`template.py`, in the `.d-*` block): `.mm-wrap`/`.mm-map` (aspect-ratio 3/2 box on
+  `--bg-elevated` with a `--border-subtle` frame), `.mm-cas` (dark casing; white in `:root.light`,
+  mirroring the hero's `drawGlow` pass-1), `.mm-route`/`.mm-run`/`.mm-mtb`, `.mm-elev*`.
+- **Edge cases:** indoor/no-GPS activities are absent from `GEO_DATA`, so `miniMap` returns `''`
+  and the panel shows stats only. `showDay` stacks N activities → N independent self-contained SVGs
+  across the `.d-sep` divider (no shared state). Theme toggle needs no JS — the route/casing/
+  elevation all resolve their colors from CSS custom properties on the live `.light` class.
+- **`.env`:** `config.py` now `load_dotenv(strava-data/.env)` (best-effort) so a local
+  `MAPTILER_KEY` need not be exported by hand; `strava-data/.env.example` documents it (gitignored).
+  Not used by Phase 1 (tile-free); readies the deferred basemap.
+
 ## Heat & Sun — UV/temp partial-R² charts (2026-07-11)
 
 Net-new **Exploratory** subsection ("Heat & Sun · Does Weather Predict Pace?")
