@@ -819,16 +819,20 @@ function mmInit(el) {{
   var g = GEO_DATA[el.getAttribute('data-mm')];
   if (!g || !g.coords || g.coords.length < 4) return;
   el.__mmInited = true;
+  // Set the camera to the track's bounds AT CONSTRUCTION (like the Places hero),
+  // so the first paint is already in the right place -- otherwise MapLibre renders
+  // its default world view (center [0,0], "over Africa") and then visibly jumps
+  // when fitBounds runs on load.
   var map = new maplibregl.Map({{
     container: el, style: mmStyleUrl(), interactive: false,
     attributionControl: {{ compact: true }}, dragRotate: false,
-    renderWorldCopies: false, fadeDuration: 0
+    renderWorldCopies: false, fadeDuration: 0,
+    bounds: g.bbox, fitBoundsOptions: {{ padding: 24, animate: false }}
   }});
   map.__mmCoords = g.coords; map.__mmSport = g.sport; map.__mmBbox = g.bbox;
   MM_MAPS.push(map);
   map.on('load', function() {{
     mmAddRoute(map);
-    map.fitBounds(g.bbox, {{ padding: 24, animate: false }});
     var fb = el.querySelector('.mm-fallback'); if (fb) fb.style.display = 'none';
   }});
   // Theme toggle swaps the style, which drops all layers -> re-add on reload.
