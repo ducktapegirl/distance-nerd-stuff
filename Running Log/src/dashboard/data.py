@@ -2,19 +2,14 @@
 
 import csv
 
+from nerd_common.format import fmt_pace, maybe_float
+
 from dashboard.config import CSV_PATH, WORKOUT_TYPE_MAP
 
 
 def load_rows():
     with open(CSV_PATH, encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
-
-
-def maybe_float(s):
-    try:
-        return float(s)
-    except (TypeError, ValueError):
-        return None
 
 
 def parse_time_seconds(s):
@@ -32,11 +27,6 @@ def parse_time_seconds(s):
     except ValueError:
         return None
     return None
-
-
-def fmt_pace(pace_min):
-    total_s = round(pace_min * 60)
-    return f"{total_s // 60}:{total_s % 60:02d}"
 
 
 def fmt_time(secs):

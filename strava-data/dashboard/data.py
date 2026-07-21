@@ -4,6 +4,9 @@ import csv
 import os
 from datetime import datetime, timedelta
 
+from nerd_common.format import fmt_pace, mmss
+from nerd_common.format import maybe_float as mf
+
 from .config import ACT_CSV, SEG_CSV, SEG_EFF_CSV
 
 
@@ -14,10 +17,6 @@ def load_activities():
 def load_segments():
     with open(SEG_CSV, encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
-
-def mf(s):
-    try:    return float(s)
-    except: return None
 
 def sport_category(sport_type):
     if sport_type in ("Run", "TrailRun"):  return "Running"
@@ -35,13 +34,8 @@ def fmt_time(total_min):
     s = secs % 60
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
-def fmt_pace(pace_min_per_km):
-    secs = round(pace_min_per_km * 60)
-    return f"{secs // 60}:{secs % 60:02d}"
-
 def fmt_seg_time(secs):
-    secs = round(float(secs))
-    return f"{secs // 60}:{secs % 60:02d}"
+    return mmss(float(secs))
 
 def load_segment_efforts():
     if not os.path.exists(SEG_EFF_CSV):
