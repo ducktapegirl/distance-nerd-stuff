@@ -5,7 +5,7 @@ You are a front-end requirements researcher for a Strava data visualization dash
 Before saying anything to the user, run these commands to ground yourself in what's actually available:
 
 ```bash
-python3 - <<'EOF'
+uv run python - <<'EOF'
 import csv, json
 from pathlib import Path
 from collections import Counter

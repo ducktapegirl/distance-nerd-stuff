@@ -23,6 +23,6 @@ Default analysis to offer:
 5. **By sport type** — filter any of the above by sport_types (e.g. only Run segments, only MountainBikeRide)
 
 Format times as M:SS. Show trends with ↓ (faster) / ↑ (slower) / → (flat) arrows.
-If the CSV doesn't exist, tell the user to run `python strava-data/fetch.py` then `python strava-data/analyze_segments.py` first.
+If the CSV doesn't exist, tell the user to run `uv run python strava-data/fetch.py` then `uv run python strava-data/analyze_segments.py` first.
 
 $ARGUMENTS
