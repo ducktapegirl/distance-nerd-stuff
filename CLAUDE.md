@@ -14,9 +14,8 @@ Human-facing documents (not agent-facing config) are grouped by category, each w
 ## Layout
 
 ```
-strava-data/        fetch.py → analyze_segments.py → build_dashboard.py → strava.html
-strava-export/      older one-off Strava CSV export tool (has its own .env/tokens)
-Running Log/        index.html, running_log.csv, src/ (parse/visualize), strava.html copy
+strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../Running Log/strava.html
+Running Log/        index.html, running_log.csv, src/ (parse/visualize), strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
 Plans/              proposed/future work: strava-data/, running-log/ + cross-cutting
 Specs/              build specs + design handoffs: strava-data/ (dashboard-spec.md, mocks/), running-log/ (design_handoff_running_log/)
 Handoffs/           session handoffs + historical notes: strava-data/, running-log/, migration.md
@@ -60,10 +59,12 @@ uv run python "Running Log/src/visualize_log.py"
 
 ## Preview
 
-`.claude/launch.json` defines preview servers (`strava-dashboard` on :8765, `running-log` on :8766), or run manually:
+A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
+define preview servers (`strava-dashboard` on :8765, `running-log` on :8766). Otherwise run
+manually — both dashboards' HTML lives under `Running Log/`:
 
 ```bash
-uv run python -m http.server 8765 --directory strava-data     # open strava.html
+uv run python -m http.server 8765 --directory "Running Log"   # open strava.html
 uv run python -m http.server 8766 --directory "Running Log"   # open index.html
 ```
 

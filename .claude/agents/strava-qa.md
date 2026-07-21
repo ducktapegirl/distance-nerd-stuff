@@ -10,20 +10,19 @@ return a structured report. Be specific — cite line numbers or column names. Y
 code; you report PASS / FAIL / WARN and suggest fixes.
 
 ## 1. Build integrity
-Run `python strava-data/build_dashboard.py` and confirm it exits cleanly and regenerates
-`strava-data/strava.html`. If it errors, report the full traceback and stop.
-(If imports fail unexpectedly, fall back to `"/c/Users/Alisha/anaconda3/python.exe"`.)
+Run `uv run python strava-data/build_dashboard.py` and confirm it exits cleanly and regenerates
+`Running Log/strava.html`. If it errors, report the full traceback and stop.
 
 ## 2. Spec compliance
 Read `Specs/strava-data/dashboard-spec.md`. For each spec section:
-- [ ] Does the chart exist in `strava-data/strava.html`?
+- [ ] Does the chart exist in `Running Log/strava.html`?
 - [ ] Right data (right file, right columns, right transform)?
 - [ ] Sport-type / date filters respected?
 - [ ] Axis labels and units correct?
 
 ## 2.5 Display-units policy
 User-facing units are imperial everywhere: running pace **min/mi**, MTB/cycling speed **mph**,
-temperature **°F**. Grep the generated `strava-data/strava.html` for metric display strings:
+temperature **°F**. Grep the generated `Running Log/strava.html` for metric display strings:
 - `min/km`, `km/h`, `kph`, `°C` (and `(C)` temperature labels) → **0 hits expected** in any
   axis title, tick label, hovertemplate, or annotation. Each hit is a FAIL with the string and
   surrounding context.
@@ -58,7 +57,7 @@ Confirm the dashboard handles these without crashing or blank panels:
 - [ ] File size reasonable (< 20 MB).
 
 ## 6. Visual smoke test (Preview MCP) — desktop AND mobile (mandatory)
-Open `strava-data/strava.html` with the Preview tools, screenshot it, and check
+Open `Running Log/strava.html` with the Preview tools, screenshot it, and check
 `preview_console_logs` for errors. Confirm new views actually render — not just that the
 source contains them. Stop the preview only after sections 6.5 and 6.6 are done.
 
