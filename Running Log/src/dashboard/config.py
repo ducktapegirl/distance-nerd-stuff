@@ -9,31 +9,23 @@ OUT_PATH = os.path.join(BASE_DIR, "index.html")
 
 
 # ─── Design tokens (from Specs/running-log/design_handoff_running_log/readme.md) ──
+# The dark-theme tokens below (ACCENT*/BG_*/BORDER*/TEXT_*/fonts/PLOTLY_CDN) are
+# shared verbatim with the Strava dashboard and live in nerd_common.tokens.
+from nerd_common.tokens import (  # noqa: E402
+    ACCENT, ACCENT_DIM, ACCENT_GLOW,
+    BG_BASE, BG_ELEVATED, BG_GLASS, BG_SURFACE,
+    BORDER, BORDER_SUBTLE,
+    PLOT_FONT_FAMILY, PLOTLY_CDN,
+    TEXT_PRIMARY, TEXT_SECONDARY, TEXT_TERTIARY,
+    TITLE_FONT_FAMILY,
+)
 
-ACCENT          = "#58a6ff"
-ACCENT_DIM      = "rgba(88, 166, 255, 0.08)"
-ACCENT_GLOW     = "rgba(88, 166, 255, 0.15)"
-
+# Running-log-specific workout-type palette (kept local — domain-specific).
 EASY_COLOR      = "#2dd4bf"   # teal — easy run
 TEMPO_COLOR     = "#f59e0b"   # amber — tempo
 LONG_COLOR      = "#a78bfa"   # violet — long run
 RACE_COLOR      = "#f87171"   # coral — race
 WORKOUT_COLOR   = "#60a5fa"   # blue — workout (intervals/fartlek/etc.)
-
-BG_BASE         = "#0d1117"
-BG_SURFACE      = "#161b22"
-BG_ELEVATED     = "#1c2230"
-BG_GLASS        = "rgba(22, 27, 34, 0.7)"
-BORDER          = "rgba(48, 54, 61, 0.8)"
-BORDER_SUBTLE   = "rgba(48, 54, 61, 0.4)"
-TEXT_PRIMARY    = "#e6edf3"
-TEXT_SECONDARY  = "#8b949e"
-TEXT_TERTIARY   = "#8b949e"
-
-PLOTLY_CDN = (
-    '<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" '
-    'charset="utf-8"></script>'
-)
 
 # CSV workout_type → 5 design types
 WORKOUT_TYPE_MAP = {
@@ -103,5 +95,3 @@ WORKOUT_MIX_COLORS = {
     "swim":         "#7dd3fc",   # pale sky
     "other":        "#475569",   # dark slate
 }
-
-PLOT_FONT_FAMILY = "'Geist Mono', 'Fira Code', monospace"
