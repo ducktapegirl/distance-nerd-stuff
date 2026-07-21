@@ -9,6 +9,7 @@ dependencies = [
     "python-dotenv",
     "tqdm",
     "beautifulsoup4",
+    "lxml",  # parser backend for parse_log.py's BeautifulSoup(html, "lxml")
 ]
 
 [dependency-groups]
