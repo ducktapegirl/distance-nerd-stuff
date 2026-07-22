@@ -2,8 +2,8 @@
 """
 parse_log.py — Parse Alisha's running log HTML files into a CSV.
 
-Usage:   python src/parse_log.py  (from the running-log/ directory)
-Output:  running_log.csv  (written to running-log/, one level up from this script)
+Usage:   uv run python running-log/parse_log.py  (from repo root)
+Output:  running_log.csv  (written to running-log/, alongside this script)
 Source:  source/  (HTML log files read from running-log/source/)
 
 Requires: pip install beautifulsoup4 lxml
@@ -18,8 +18,7 @@ from bs4 import BeautifulSoup, NavigableString
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-SRC_DIR    = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR   = os.path.dirname(SRC_DIR)   # running-log/
+BASE_DIR   = os.path.dirname(os.path.abspath(__file__))   # running-log/
 SOURCE_DIR = os.path.join(BASE_DIR, "source")
 
 # Files in chronological order: (season, year-suffix-string)

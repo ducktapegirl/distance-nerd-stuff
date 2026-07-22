@@ -1,6 +1,6 @@
 """
 Running Log — QA script
-Run: uv run python running-log/src/qa.py  (from repo root)
+Run: uv run python running-log/qa.py  (from repo root)
 Exit 0 = all pass, 1 = any fail
 """
 import csv
@@ -13,10 +13,9 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-_HERE = Path(__file__).parent   # running-log/src/
-_ROOT = _HERE.parent            # running-log/
-CSV_PATH  = _ROOT / "running_log.csv"
-HTML_PATH = _ROOT / "index.html"
+_HERE = Path(__file__).parent   # running-log/
+CSV_PATH  = _HERE / "running_log.csv"
+HTML_PATH = _HERE / "index.html"
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -233,19 +232,15 @@ def check_detail_panel_no_hex(rows, html):
 
 def check_easy_pace_no_fill(rows, html):
     """chart-easy-pace Plotly trace should have no "fill":"tozeroy"."""
-    # Find the Plotly.newPlot call that references chart-easy-pace
-    newplot_positions = [m.start() for m in re.finditer(r'Plotly\.newPlot', html)]
-    section = None
-    for i, pos in enumerate(newplot_positions):
-        if 'chart-easy-pace' in html[pos : pos + 80]:
-            next_pos = newplot_positions[i + 1] if i + 1 < len(newplot_positions) else pos + 200_000
-            section = html[pos : next_pos]
-            break
+    # Charts render lazily (see nerd_common.theme.fig_html): the figure spec
+    # lives in a <script type="application/json" data-plotly-spec="..."> block,
+    # not an inline Plotly.newPlot call.
+    m = re.search(r'data-plotly-spec="chart-easy-pace">(.*?)</script>', html, re.DOTALL)
 
-    if section is None:
-        return False, 'Could not locate chart-easy-pace Plotly.newPlot call'
+    if m is None:
+        return False, 'Could not locate chart-easy-pace Plotly spec'
 
-    if re.search(r'"fill"\s*:\s*"tozeroy"', section):
+    if re.search(r'"fill"\s*:\s*"tozeroy"', m.group(1)):
         return False, 'chart-easy-pace has "fill":"tozeroy" (creates unwanted shading)'
     return True, 'chart-easy-pace: no fill:tozeroy'
 
