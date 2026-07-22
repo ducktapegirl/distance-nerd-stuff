@@ -20,7 +20,7 @@ Examples:
     uv run python tools/mobile_preview.py \
         --click '.tab[data-view="exploratory"]' \
         --measure chart-x-seasonal --resize-probe \
-        --screenshot out/seasonal-mobile.png
+        --screenshot tools/preview-output/seasonal-mobile.png
 
     # Verify against production instead of the local build:
     uv run python tools/mobile_preview.py \

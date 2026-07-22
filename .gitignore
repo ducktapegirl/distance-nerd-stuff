@@ -23,7 +23,7 @@ __pycache__/
 *.pyc
 
 # tools/mobile_preview.py screenshot output
-out/
+tools/preview-output/
 
 # Netlify local link (deploy handled by GitHub Action)
 .netlify
