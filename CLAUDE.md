@@ -60,13 +60,14 @@ uv run python "Running Log/src/visualize_log.py"
 ## Preview
 
 A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
-define preview servers (`strava-dashboard` on :8765, `running-log` on :8766). Otherwise run
+define preview servers. Otherwise run
 manually — both dashboards' HTML lives under `Running Log/`:
 
 ```bash
-uv run python -m http.server 8765 --directory "Running Log"   # open strava.html
-uv run python -m http.server 8766 --directory "Running Log"   # open index.html
+uv run python -m http.server 8765 --directory "Running Log" # open index.html or strava.html
 ```
+
+When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy Maplify API restrictions.
 
 **Mobile / visual checks:** the Claude Preview MCP cannot reach a local server on this machine (its Chromium lands on `chrome-error://`). Use `tools/mobile_preview.py` instead — an in-process `127.0.0.1` server plus a mobile-emulated Playwright Chromium in one host process. **Run it un-sandboxed** (the page loads `plotly.js` from the CDN). It prints chart fill/range measurements and saves screenshots; pass `--url` to check the live site. Setup once: `uv add --dev playwright` + `uv run playwright install chromium`. The deployed site is **`https://ducktapegirl.github.io/distance-nerd-stuff/`** (project page — repo subpath; the bare `ducktapegirl.github.io/strava.html` 404s).
 
