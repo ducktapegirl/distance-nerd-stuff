@@ -99,7 +99,9 @@ Because the HTML is never in git, a `git pull` of fresh remote data can't confli
 
 ## Data refresh
 
-Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manual `workflow_dispatch`), which commits new files under `strava-data/data/` only — **it does not build or commit HTML**. That push triggers `deploy.yml`, which rebuilds and publishes. It needs repo secrets — see `Handoffs/migration.md`. Running locally is possible with a `strava-data/.env` + `.strava_tokens.json` (gitignored).
+Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manual `workflow_dispatch`), which commits new files under `strava-data/data/` only — **it does not build or commit HTML**. That push triggers `deploy.yml`, which rebuilds and publishes. It needs repo secrets — see `Handoffs/migration.md`. Running locally is possible with a `strava-data/.env` + `.strava_tokens.json` (gitignored). First-time local auth: `uv run python strava-data/authorize.py`.
+
+**What `fetch.py` writes under `strava-data/data/`:** `athlete.json`, `gear.json`, `activities.csv`, `segment_efforts.csv`, `segments_summary.csv` (via `analyze_segments.py`), `streams/{id}.csv` (per-activity GPS/HR/pace time-series — used by the Places views), and `laps/{id}.csv` (per-activity lap splits). **`laps/` is fetched but not yet consumed by any build — retained intentionally for future lap-level / interval views. Do not flag it as dead data or prune it.**
 
 ## Logging
 
