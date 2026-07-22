@@ -11,7 +11,10 @@ on:
       - "strava-data/data/**"
       - "strava-data/build_dashboard.py"
       - "strava-data/dashboard/**"
-      - "running-log/src/**"
+      - "running-log/dashboard/**"
+      - "running-log/parse_log.py"
+      - "running-log/visualize_log.py"
+      - "running-log/qa.py"
       - "running-log/running_log.csv"
       - "running-log/running_log_story.html"
       - "pyproject.toml"
@@ -51,7 +54,7 @@ jobs:
           MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
 
       - name: Build Running Log dashboard
-        run: uv run python running-log/src/visualize_log.py
+        run: uv run python running-log/visualize_log.py
 
       - uses: actions/configure-pages@v4
 

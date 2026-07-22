@@ -54,13 +54,13 @@ real content.
 
 ## Verification (once implemented)
 
-1. `uv run python running-log/src/parse_log.py` — confirm summer03log.html now
+1. `uv run python running-log/parse_log.py` — confirm summer03log.html now
    reports parsed entries (not "missing") and the new rows appear in
    `running_log.csv` with `source_file = summer03log.html`.
-2. `uv run python running-log/src/visualize_log.py` — rebuild `index.html`;
+2. `uv run python running-log/visualize_log.py` — rebuild `index.html`;
    spot-check that summer 2003 volume shows up in the Volume tab without
    breaking season/year ordering elsewhere.
-3. `uv run python running-log/src/qa.py` — confirm no regressions.
+3. `uv run python running-log/qa.py` — confirm no regressions.
 
 ## Out of scope
 

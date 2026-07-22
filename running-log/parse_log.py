@@ -2,8 +2,8 @@
 """
 parse_log.py — Parse Alisha's running log HTML files into a CSV.
 
-Usage:   python src/parse_log.py  (from the running-log/ directory)
-Output:  running_log.csv  (written to running-log/, one level up from this script)
+Usage:   uv run python running-log/parse_log.py  (from repo root)
+Output:  running_log.csv  (written to running-log/, alongside this script)
 Source:  source/  (HTML log files read from running-log/source/)
 
 Requires: pip install beautifulsoup4 lxml
@@ -18,8 +18,7 @@ from bs4 import BeautifulSoup, NavigableString
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-SRC_DIR    = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR   = os.path.dirname(SRC_DIR)   # running-log/
+BASE_DIR   = os.path.dirname(os.path.abspath(__file__))   # running-log/
 SOURCE_DIR = os.path.join(BASE_DIR, "source")
 
 # Files in chronological order: (season, year-suffix-string)
@@ -440,8 +439,10 @@ def main():
 
     out_path = os.path.join(BASE_DIR, "running_log.csv")  # running-log/running_log.csv
     with open(out_path, "w", newline="", encoding="utf-8-sig") as f:
-        # utf-8-sig writes a BOM so Excel auto-detects UTF-8
-        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
+        # utf-8-sig writes a BOM so Excel auto-detects UTF-8. lineterminator="\n"
+        # overrides the csv module's default \r\n (its "excel" dialect) so the
+        # file matches the repo's LF policy (.gitattributes) on every OS.
+        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(all_entries)
 
