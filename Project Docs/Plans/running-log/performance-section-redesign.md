@@ -1,8 +1,8 @@
 # Performance Section Redesign — Running Log Dashboard
 
-**Status:** Planned  
-**Scope:** Visual improvements to race-performance storytelling  
-**Effort:** ~2–3 hours implementation + iteration + QA  
+**Status:** Planned
+**Scope:** Visual improvements to race-performance storytelling
+**Effort:** ~2–3 hours implementation + iteration + QA
 **Branch:** `feature/performance-section-redesign`
 
 ## Problem Statement
@@ -18,6 +18,23 @@ Research basis (small-multiples best practices):
 - Multi-line charts degrade past ~4–5 series ([Domo](https://www.domo.com/learn/charts/multi-line-chart))
 - Truncated y-axes are acceptable for race times *if* the scaling rule is consistent and visible
 - Prefer direct labels over long legends
+
+## Definition of Done
+
+The Performance section is done when all of the following hold simultaneously:
+
+- Combined pace chart shows exactly 3 event-group colors, no dotted trend lines, direct labels (no legend).
+- All 5 per-distance PR-progression charts share the rounded-range/~5-tick policy, the 5k Track + 5k XC pair share an identical y-range/step, and all 5 share the Jul 2003–Jul 2007 x-window.
+- Two new charts (`chart_season_best_slope`, `chart_pr_timeline`) are built, correctly exclude relay races, and gap (not interpolate or drop) any (distance bucket, season) pair with zero qualifying races.
+- `section_performance` renders charts in the order: PR cards → combined pace chart → season-best slope → PR timeline strip → 5 per-distance PR charts.
+- `uv run python "running-log/qa.py"` passes with expectations updated to match the new chart set.
+- `tools/mobile_preview.py` runs successfully (no hard-coded Linux path) and visual checks pass on desktop + mobile, light + dark.
+- No gitignored HTML output is committed — only source changes (`dashboard/*.py`, `visualize_log.py`, `qa.py`, `tools/mobile_preview.py`) are on the branch.
+
+## Resolved ambiguities
+
+- **Relay exclusion**: Relays are excluded from PR determination everywhere in this section — both `chart_season_best_slope`'s "fastest non-relay race time per bucket+season" and `chart_pr_timeline`'s cumulative-PR rows exclude relay races.
+- **Empty season/bucket pairs**: If a (distance bucket, season) pair has no qualifying races, gap the line for that bucket at that season (skip the point; do not interpolate or carry the prior value forward).
 
 ## Approved Changes
 
@@ -52,7 +69,7 @@ Research basis (small-multiples best practices):
 
 #### `chart_season_best_slope` — "Did I get faster each year?"
 Removes race-to-race noise, shows seasonal improvement without clutter.
-- One point per (distance bucket, season): fastest non-relay race time for that bucket+season.
+- One point per (distance bucket, season): fastest non-relay race time for that bucket+season. If a bucket has no qualifying race in a given season, gap the line at that point (no interpolation).
 - Seasons on x-axis (categorical: Fall 2003, Winter 2003, Spring 2004, … Spring 2007); y = **% behind eventual PR** (0% = PR, axis reversed so faster is up).
 - One line+markers per bucket, colored by 3 event groups; direct-labeled lines at right edge.
 - Height ~300px.
@@ -62,7 +79,7 @@ Removes race-to-race noise, shows seasonal improvement without clutter.
 #### `chart_pr_timeline` — "When did breakthroughs happen?"
 A horizontal strip showing when each PR fell.
 - x = same 2003-07→2007-07 date range; y = one categorical row per PR-card distance (800m, Mile, 1500m, 3k Steeple, 5k Track, 5k XC, 6k XC).
-- A star marker at each cumulative-PR date (every race that beat the prior best), with hover = date, time, race name.
+- A star marker at each cumulative-PR date (every non-relay race that beat the prior best), with hover = date, time, race name.
 - Row color = event group.
 - Height ~240px.
 
@@ -77,17 +94,52 @@ New order:
 4. **NEW:** PR timeline strip
 5. Five per-distance PR-progression charts (with improved axes)
 
-## Implementation notes
+## Implementation Milestones
 
-### Code structure
-- **charts.py**: Main refactor of `chart_pace_timeline` and `chart_pr_progression`; add `chart_season_best_slope` and `chart_pr_timeline`.
-- **sections.py**: `section_performance` inserts new charts in order.
-- **config.py**: 3-color event-group mapping (reuse existing tokens `EASY`, `LONG`, `RACE`).
-- **stats.py**: Add helpers if needed (e.g. fastest-per-season-per-bucket extraction).
-- **qa.py**: Update chart-id/trace-count expectations.
-- **tools/mobile_preview.py**: Bug fix — remove hard-coded Linux chromium path (`/opt/pw-browsers/chromium`); use Playwright default or fallback.
+Ordered by dependency. Each milestone ends with its own test point — don't proceed to the next until the current one's test point passes. This catches drift early instead of only at the final verification pass.
 
-### Design conventions to respect
+**M0 — Fix `tools/mobile_preview.py` (prerequisite)**
+- Remove hard-coded Linux chromium path (`/opt/pw-browsers/chromium`); use Playwright default or fallback.
+- *Test point:* `uv run python tools/mobile_preview.py` runs against the current (pre-redesign) build without crashing on browser launch.
+- *Why first:* every later visual-check test point depends on this working.
+
+**M1 — Add 3-color event-group tokens to `config.py`**
+- Add/confirm mapping: Middle distance → `EASY`, 3k/steeple → `LONG`, 5k/6k → `RACE`.
+- *Test point:* tokens importable from `charts.py`; no build needed yet.
+
+**M2 — Rewrite `chart_pace_timeline` (charts.py:351-409)**
+- Depends on M1.
+- *Test point:* `uv run python "running-log/visualize_log.py"` builds cleanly; visually confirm 3 colors, no trend lines, direct labels (via M0's mobile_preview).
+
+**M3 — Rewrite `chart_pr_progression` axis logic (charts.py:219-285)**
+- Independent of M2; can be done in either order relative to it.
+- *Test point:* build cleanly; confirm each of the 5 charts shows 4–6 ticks at round M:SS values, 5k Track/XC share identical range/step, all 5 share the Jul 2003–Jul 2007 x-window.
+
+**M4 — Add `chart_season_best_slope`**
+- Depends on M1 (color tokens). Independent of M2/M3.
+- Apply resolved ambiguities: exclude relays, gap empty season/bucket points.
+- *Test point:* build cleanly; spot-check at least one known-empty (bucket, season) pair renders as a gap, not an interpolated point.
+
+**M5 — Add `chart_pr_timeline`**
+- Depends on M1. Independent of M2/M3/M4.
+- Apply resolved ambiguity: exclude relays from cumulative-PR rows.
+- *Test point:* build cleanly; hover on a star marker shows date/time/race name; row colors match event groups.
+
+**M6 — Reorder `section_performance` (sections.py:127-154)**
+- Depends on M2, M3, M4, M5 all existing.
+- *Test point:* build cleanly; confirm chart order matches Definition of Done.
+
+**M7 — Update `qa.py` expectations**
+- Depends on M2–M6 (needs final chart-id/trace-count shape).
+- Update chart-id/trace-count assertions to match the new chart set (2 removed trend-line traces, 2 new charts added, updated tick/range assertions for PR-progression charts).
+- *Test point:* `uv run python "running-log/qa.py"` passes.
+
+**M8 — Full verification pass**
+- Run the Verification checklist below in full (build, qa.py, visual checks on desktop/mobile/light/dark).
+- *Test point:* every item in the Verification checklist is checked off.
+
+## Design conventions to respect
+
 - Call `tidy_dark(fig)` first; per-chart axis overrides **after**.
 - Use only stdlib + plotly + numpy; no pandas.
 - Colors only from existing `config.py` tokens (so light/dark theme JS keeps working).
@@ -96,7 +148,7 @@ New order:
 ## Verification checklist
 
 1. **Build cleanly**: `uv run python "running-log/visualize_log.py"` → `running-log/index.html` builds, race counts unchanged (XC=31, Indoor=29, Outdoor=39).
-2. **Regression suite**: `uv run python "running-log/qa.py"` passes (update expectations if needed).
+2. **Regression suite**: `uv run python "running-log/qa.py"` passes (expectations updated per M7).
 3. **Visual checks** (via the (fixed) `tools/mobile_preview.py`, run un-sandboxed):
    - No season-best dotted lines on combined chart ✓
    - ≤3 colors + direct labels on combined chart ✓
@@ -104,6 +156,8 @@ New order:
    - 5k Track and 5k XC show **identical** y-ranges/steps ✓
    - All five share Jul 2003–Jul 2007 x-window ✓
    - New charts render with no label overlap ✓
+   - Empty (bucket, season) pairs render as gaps, not interpolated points ✓
+   - Relay races excluded from both new charts' PR determination ✓
    - Light theme toggle works; all new colors are theme-aware ✓
 4. **No gitignored output committed**: Only source changes on the branch.
 
