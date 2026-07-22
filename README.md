@@ -44,7 +44,7 @@ numpy, no pandas).
 
 ```bash
 uv sync                                          # install dependencies
-uv run python running-log/src/visualize_log.py   # build running-log/index.html
+uv run python running-log/visualize_log.py       # build running-log/index.html
 uv run python strava-data/build_dashboard.py     # build running-log/strava.html
 uv run python -m http.server 8765 --directory running-log      # preview at 127.0.0.1:8765
 ```

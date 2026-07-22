@@ -36,7 +36,7 @@ Skip noise.
 
 ## 3. Dependency & code health
 - Read `pyproject.toml` (and `uv.lock`); flag outdated or known-insecure pins.
-- Run any existing QA helper (e.g. `running-log/src/qa.py`) if present.
+- Run any existing QA helper (e.g. `running-log/qa.py`) if present.
 - Note dead code or drift between docs/prompts and reality — e.g. agent prompts that still
   reference `dashboard.html` or `visualize_log.py` when the real output is `strava.html`
   from `build_dashboard.py`.
