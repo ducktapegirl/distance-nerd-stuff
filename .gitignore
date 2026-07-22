@@ -3,6 +3,9 @@
 .claude/settings.local.json
 .claude/launch.json
 
+# Obsidian
+.obsidian
+
 # Strava secrets & generated/runtime artifacts
 strava-data/.env
 strava-data/.strava_tokens.json
