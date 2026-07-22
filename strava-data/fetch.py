@@ -20,10 +20,11 @@ Usage:
   python fetch.py --since 2025-01-01  # only activities on/after that date
 
 Auth:
-  Reuses ../strava-export/.strava_tokens.json (same credentials).
-  If not found, falls back to .strava_tokens.json in this directory.
-  Set STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET in ../strava-export/.env
-  or a local .env file.
+  Reads .strava_tokens.json from this directory (created by authorize.py).
+  For backward compatibility it also checks ../strava-export/.strava_tokens.json
+  first if that older location still exists.
+  Set STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET in a local .env (see .env.example).
+  Run 'uv run python strava-data/authorize.py' once to create the token file.
 """
 
 import argparse
@@ -141,7 +142,8 @@ def get_access_token():
     tokens = load_tokens()
     if not tokens:
         raise SystemExit(
-            "No token file found. Run strava-export/export.py first to authorise."
+            "No token file found. Run 'uv run python strava-data/authorize.py' "
+            "first to authorise."
         )
     if tokens.get("expires_at", 0) <= time.time() + 60:
         print("Refreshing Strava access token...")
@@ -391,7 +393,7 @@ def csv_append(path, rows, fieldnames):
     write_header = not path.exists()
     if not write_header:
         # Guard against schema drift: appending rows under a stale header
-        # silently corrupts the file (see Handoffs/strava-data/known-issues.md, 2026-06-10).
+        # silently corrupts the file (see Project Docs/Handoffs/strava-data/known-issues.md, 2026-06-10).
         with open(path, newline="", encoding="utf-8") as f:
             existing = next(csv.reader(f), [])
         if existing != fieldnames:

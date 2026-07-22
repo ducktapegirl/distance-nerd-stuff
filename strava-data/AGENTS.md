@@ -6,7 +6,7 @@ How this project is built and maintained agentically. This is the map; the agent
 ## The pipeline it serves
 ```
 fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  strava-data/strava.html
-(Strava API)  (segment rollups)      (Plotly charts)        └→ Running Log/strava.html → deploy (.github/workflows/deploy.yml)
+(Strava API)  (segment rollups)      (Plotly charts)        └→ running-log/strava.html → deploy (.github/workflows/deploy.yml)
 ```
 
 ## Roles → Claude Code primitives

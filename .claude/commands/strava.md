@@ -20,14 +20,15 @@ Walk these stages, pausing for approval after each:
    Present the ranked idea menu and ask the user to pick the 1–3 views to build.
 4. **Design** — dispatch `strava-data-analyst` (Job B, verification) for the chosen view(s),
    then `strava-viz-design`. Viz-design is read-only and returns spec markdown — YOU write it
-   into `Specs/strava-data/dashboard-spec.md`. Show the user the spec for approval.
+   into `Project Docs/Specs/strava-data/dashboard-spec.md`. Show the user the spec for approval.
 5. **Build** — dispatch `strava-developer` to implement against the spec + transform recipe.
 6. **QA** — dispatch `strava-qa`. On FAIL/WARN, loop back to Build with the findings.
 7. **Review gate** — run `/code-review` and `/security-review` on the diff (goal 4: quality &
    safety). On material findings, loop back to Build.
-8. **Ship** — on user approval, ensure the build ran and `strava-data/strava.html` +
-   `Running Log/strava.html` are regenerated. The existing Netlify Stop-hook deploys on
-   session end. Offer to run `/reflect` to log the session.
+8. **Ship** — on user approval, ensure the build ran and `running-log/strava.html` is
+   regenerated. Pushing the change to `main` triggers `.github/workflows/deploy.yml`, which
+   rebuilds both dashboards and publishes to GitHub Pages. Offer to run `/reflect` to log the
+   session.
 
 ## Operating rules
 - One stage at a time. Summarize each agent's output in a few lines; don't dump raw transcripts.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build Strava activity dashboard → Running Log/strava.html
+"""Build Strava activity dashboard → running-log/strava.html
 
 Styled to match the College Running Log dashboard (dark-glass + CSS-variable
 theming, light/dark/system toggle, frosted cards). All chart-card UI is

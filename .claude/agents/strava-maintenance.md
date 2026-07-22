@@ -10,17 +10,17 @@ report — you do **not** edit code or fix things yourself. The user drives all 
 
 The pipeline you watch:
 ```
-fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  strava-data/strava.html
-                                                            └→ Running Log/strava.html → Netlify
+fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  running-log/strava.html  →  GitHub Pages
 ```
+(Deploy is GitHub Pages via `.github/workflows/deploy.yml`, triggered by pushes to `main` — not Netlify.)
 
 Run all three checks below, then return ONE structured report. Be concrete: cite filenames,
 line numbers, dates, version numbers.
 
 ## 1. Breakage watch
-- Smoke-run the build: `python strava-data/build_dashboard.py`. Confirm it exits 0 and that
-  `strava-data/strava.html` was (re)written. If it errors, capture the full traceback.
-- Optionally smoke a tiny fetch: `python strava-data/fetch.py --limit 1` (only if tokens are
+- Smoke-run the build: `uv run python strava-data/build_dashboard.py`. Confirm it exits 0 and that
+  `running-log/strava.html` was (re)written. If it errors, capture the full traceback.
+- Optionally smoke a tiny fetch: `uv run python strava-data/fetch.py --limit 1` (only if tokens are
   present; skip and note if not).
 - Check Strava connectivity with `mcp__strava__check-strava-connection`.
 - Flag data staleness: compare the newest `start_date_local` in
@@ -35,8 +35,8 @@ Summarize ONLY what's actually worth adopting, each with a one-line "why it matt
 Skip noise.
 
 ## 3. Dependency & code health
-- Read `strava-data/requirements.txt`; flag outdated or known-insecure pins.
-- Run any existing QA helper (e.g. `Running Log/src/qa.py`) if present.
+- Read `pyproject.toml` (and `uv.lock`); flag outdated or known-insecure pins.
+- Run any existing QA helper (e.g. `running-log/src/qa.py`) if present.
 - Note dead code or drift between docs/prompts and reality — e.g. agent prompts that still
   reference `dashboard.html` or `visualize_log.py` when the real output is `strava.html`
   from `build_dashboard.py`.

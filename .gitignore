@@ -3,6 +3,9 @@
 .claude/settings.local.json
 .claude/launch.json
 
+# Obsidian
+.obsidian
+
 # Strava secrets & generated/runtime artifacts
 strava-data/.env
 strava-data/.strava_tokens.json
@@ -12,15 +15,15 @@ strava-export/.strava_tokens.json
 
 # Generated dashboards — built from data + Python in the deploy workflow,
 # never committed (avoids data-vs-feature merge conflicts on pull).
-Running Log/index.html
-Running Log/strava.html
+running-log/index.html
+running-log/strava.html
 
 # Python
 __pycache__/
 *.pyc
 
 # tools/mobile_preview.py screenshot output
-out/
+tools/preview-output/
 
 # Netlify local link (deploy handled by GitHub Action)
 .netlify
