@@ -1,6 +1,6 @@
 """
 Running Log — QA script
-Run: python "Running Log/src/qa.py"  (from repo root)
+Run: uv run python running-log/src/qa.py  (from repo root)
 Exit 0 = all pass, 1 = any fail
 """
 import csv
@@ -13,8 +13,8 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-_HERE = Path(__file__).parent   # Running Log/src/
-_ROOT = _HERE.parent            # Running Log/
+_HERE = Path(__file__).parent   # running-log/src/
+_ROOT = _HERE.parent            # running-log/
 CSV_PATH  = _ROOT / "running_log.csv"
 HTML_PATH = _ROOT / "index.html"
 
