@@ -11,3 +11,8 @@
 *.ico binary
 *.pdf binary
 *.zip binary
+*.webm binary
+*.wmv binary
+*.xls binary
+*.doc binary
+*.exe binary
