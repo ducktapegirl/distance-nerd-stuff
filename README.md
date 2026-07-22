@@ -45,7 +45,7 @@ numpy, no pandas).
 ```bash
 uv sync                                          # install dependencies
 uv run python strava-data/build_dashboard.py     # build running-log/strava.html
-uv run python -m http.server 8765 --directory running-log      # preview at localhost:8765
+uv run python -m http.server 8765 --directory running-log      # preview at 127.0.0.1:8765
 ```
 
 See [`CLAUDE.md`](CLAUDE.md) for the full build pipeline (fetch → analyze →
