@@ -15,7 +15,7 @@ Human-facing documents (not agent-facing config) live under **`Project Docs/`**,
 
 ```
 strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
-running-log/        index.html, running_log.csv, src/ (parse/visualize), strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
+running-log/        index.html, running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
 Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
   Plans/              proposed/future work + cross-cutting
   Specs/              build specs + design handoffs: strava-data/ (dashboard-spec.md, mocks/), running-log/ (design_handoff_running_log/)
@@ -52,10 +52,10 @@ uv run python strava-data/build_dashboard.py                         # build HTM
 
 ```bash
 # Regenerate CSV from source HTML logs (only needed if parse_log.py changed):
-uv run python "running-log/src/parse_log.py"
+uv run python "running-log/parse_log.py"
 
 # Regenerate index.html:
-uv run python "running-log/src/visualize_log.py"
+uv run python "running-log/visualize_log.py"
 ```
 
 ## Preview
@@ -74,7 +74,7 @@ When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to sat
 
 ## Running Log dashboard architecture
 
-`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `running-log/src/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself.
+`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `running-log/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself.
 
 ## Strava dashboard architecture
 

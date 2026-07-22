@@ -2,7 +2,7 @@
 
 import os
 
-_HERE    = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_HERE    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = _HERE
 CSV_PATH = os.path.join(BASE_DIR, "running_log.csv")
 OUT_PATH = os.path.join(BASE_DIR, "index.html")
