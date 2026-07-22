@@ -11,9 +11,9 @@ on:
       - "strava-data/data/**"
       - "strava-data/build_dashboard.py"
       - "strava-data/dashboard/**"
-      - "Running Log/src/**"
-      - "Running Log/running_log.csv"
-      - "Running Log/running_log_story.html"
+      - "running-log/src/**"
+      - "running-log/running_log.csv"
+      - "running-log/running_log_story.html"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/deploy.yml"
@@ -51,13 +51,13 @@ jobs:
           MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
 
       - name: Build Running Log dashboard
-        run: uv run python "Running Log/src/visualize_log.py"
+        run: uv run python running-log/src/visualize_log.py
 
       - uses: actions/configure-pages@v4
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: "Running Log"
+          path: running-log
 
       - uses: actions/deploy-pages@v4
         id: deployment

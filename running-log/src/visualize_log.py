@@ -2,9 +2,9 @@
 """
 visualize_log.py — Build the redesigned running log dashboard from running_log.csv.
 
-Usage:  python src/visualize_log.py  (from the Running Log/ directory)
-Input:  running_log.csv  (Running Log/, one level up)
-Output: index.html      (Running Log/, one level up)
+Usage:  python src/visualize_log.py  (from the running-log/ directory)
+Input:  running_log.csv  (running-log/, one level up)
+Output: index.html      (running-log/, one level up)
 
 Design follows Specs/running-log/design_handoff_running_log/readme.md:
 dark glass UI, top-tab nav, 6 sections (Overview, Volume, Workout Mix,
