@@ -7,19 +7,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Two endurance-data dashboards extracted from the old `Experiments` repo:
 
 - **`strava-data/`** — the Strava dashboard, built and maintained agentically via the `/strava` multi-agent workflow. See [`strava-data/AGENTS.md`](strava-data/AGENTS.md) for the full pipeline and agent roles. Key rule: a subagent cannot spawn another subagent, so the orchestrator stages (Intake → Analyze → Ideate → Design → Build → QA → Review gate → Ship) must run as a top-level skill, not an agent.
-- **`Running Log/`** — the running-log dashboard (parsed from old HTML logs into an interactive page). See [`Handoffs/running-log/session-handoff.md`](Handoffs/running-log/session-handoff.md).
+- **`running-log/`** — the running-log dashboard (parsed from old HTML logs into an interactive page). See [`Project Docs/Handoffs/running-log/session-handoff.md`](Project%20Docs/Handoffs/running-log/session-handoff.md).
 
-Human-facing documents (not agent-facing config) are grouped by category, each with per-dashboard subfolders (`strava-data/`, `running-log/`) plus cross-cutting docs at the category root: **`Plans/`** (proposed/future work), **`Specs/`** (build specs and design handoffs), **`Handoffs/`** (session handoffs and historical notes).
+Human-facing documents (not agent-facing config) live under **`Project Docs/`**, grouped by category — each with per-dashboard subfolders (`strava-data/`, `running-log/`) plus cross-cutting docs at the category root: **`Plans/`** (proposed/future work), **`Specs/`** (build specs and design handoffs), **`Handoffs/`** (session handoffs and historical notes).
 
 ## Layout
 
 ```
-strava-data/        fetch.py → analyze_segments.py → build_dashboard.py → strava.html
-strava-export/      older one-off Strava CSV export tool (has its own .env/tokens)
-Running Log/        index.html, running_log.csv, src/ (parse/visualize), strava.html copy
-Plans/              proposed/future work: strava-data/, running-log/ + cross-cutting
-Specs/              build specs + design handoffs: strava-data/ (dashboard-spec.md, mocks/), running-log/ (design_handoff_running_log/)
-Handoffs/           session handoffs + historical notes: strava-data/, running-log/, migration.md
+strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
+running-log/        index.html, running_log.csv, src/ (parse/visualize), strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
+Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
+  Plans/              proposed/future work + cross-cutting
+  Specs/              build specs + design handoffs: strava-data/ (dashboard-spec.md, mocks/), running-log/ (design_handoff_running_log/)
+  Handoffs/           session handoffs + historical notes + migration.md
 .claude/agents/     strava-* specialist agents (creativity, data-analyst, developer, maintenance, qa, viz-design) + running-log-qa (visual QA for the Running Log dashboard)
 .claude/commands/   strava, strava-segments, requirements
 .github/workflows/  strava-fetch.yml (Strava API → data/), deploy.yml (build + publish to Pages)
@@ -36,10 +36,10 @@ uv sync   # install/update all deps
 ## Build the Strava dashboard
 
 ```bash
-uv run python strava-data/build_dashboard.py   # regenerates Running Log/strava.html
+uv run python strava-data/build_dashboard.py   # regenerates running-log/strava.html
 ```
 
-`build_dashboard.py` reads CSVs in `strava-data/data/` and writes `Running Log/strava.html` (the Pages publish root). **Imports are restricted to stdlib + plotly + numpy — no pandas.** All data wrangling uses plain dicts/lists.
+`build_dashboard.py` reads CSVs in `strava-data/data/` and writes `running-log/strava.html` (the Pages publish root). **Imports are restricted to stdlib + plotly + numpy — no pandas.** All data wrangling uses plain dicts/lists.
 
 Full data pipeline (run in order if refreshing from scratch):
 ```bash
@@ -52,33 +52,36 @@ uv run python strava-data/build_dashboard.py                         # build HTM
 
 ```bash
 # Regenerate CSV from source HTML logs (only needed if parse_log.py changed):
-uv run python "Running Log/src/parse_log.py"
+uv run python "running-log/src/parse_log.py"
 
 # Regenerate index.html:
-uv run python "Running Log/src/visualize_log.py"
+uv run python "running-log/src/visualize_log.py"
 ```
 
 ## Preview
 
-`.claude/launch.json` defines preview servers (`strava-dashboard` on :8765, `running-log` on :8766), or run manually:
+A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
+define preview servers. Otherwise run
+manually — both dashboards' HTML lives under `running-log/`:
 
 ```bash
-uv run python -m http.server 8765 --directory strava-data     # open strava.html
-uv run python -m http.server 8766 --directory "Running Log"   # open index.html
+uv run python -m http.server 8765 --directory "running-log" # open index.html or strava.html
 ```
+
+When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy Maplify API restrictions.
 
 **Mobile / visual checks:** the Claude Preview MCP cannot reach a local server on this machine (its Chromium lands on `chrome-error://`). Use `tools/mobile_preview.py` instead — an in-process `127.0.0.1` server plus a mobile-emulated Playwright Chromium in one host process. **Run it un-sandboxed** (the page loads `plotly.js` from the CDN). It prints chart fill/range measurements and saves screenshots; pass `--url` to check the live site. Setup once: `uv add --dev playwright` + `uv run playwright install chromium`. The deployed site is **`https://ducktapegirl.github.io/distance-nerd-stuff/`** (project page — repo subpath; the bare `ducktapegirl.github.io/strava.html` 404s).
 
 ## Running Log dashboard architecture
 
-`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `Running Log/src/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself.
+`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `running-log/src/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself.
 
 ## Strava dashboard architecture
 
 `build_dashboard.py` is a thin entrypoint; the actual chart builders, data helpers, and page assembly live in the `strava-data/dashboard/` package (`config.py`, `data.py`, `geometry_stats.py`, `theme.py`, `charts_production.py`, `charts_exploratory.py`, `rollups_cards.py`, `template.py`, `page.py`) — add new `chart_*` functions there, not in `build_dashboard.py` itself. It renders all charts with Plotly in dark-theme defaults. At runtime, page JS (`applyChartTheme()`) re-styles charts via CSS custom properties for the light/dark/system toggle. Key conventions:
 - Every figure must use `tidy_dark(fig)` then per-chart overrides, wrapped with `fig_html(fig, H, div_id=...)`.
 - Any color introduced in a chart must be covered by `applyChartTheme()` so both themes work.
-- `Specs/strava-data/dashboard-spec.md` is the source of truth for what views exist and their build recipes.
+- `Project Docs/Specs/strava-data/dashboard-spec.md` is the source of truth for what views exist and their build recipes.
 
 **Display units policy** (never deviate without updating the spec):
 - Running pace: **min/mi** (`M:SS` format), axes reversed (faster = up/right). Never min/km.
@@ -90,7 +93,7 @@ Sport types in data: `Running`, `TrailRun` (both teal `#2dd4bf`), `MountainBikeR
 
 ## Source-of-truth split (avoid merge conflicts)
 
-The generated dashboards (`Running Log/index.html`, `Running Log/strava.html`) are **gitignored** — never committed. This keeps two sources of truth cleanly separated:
+The generated dashboards (`running-log/index.html`, `running-log/strava.html`) are **gitignored** — never committed. This keeps two sources of truth cleanly separated:
 - **Data** is owned by the fetch workflow → commits only `strava-data/data/`.
 - **Features** (page structure/styling) are owned by the Python build scripts, committed locally.
 
@@ -98,7 +101,9 @@ Because the HTML is never in git, a `git pull` of fresh remote data can't confli
 
 ## Data refresh
 
-Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manual `workflow_dispatch`), which commits new files under `strava-data/data/` only — **it does not build or commit HTML**. That push triggers `deploy.yml`, which rebuilds and publishes. It needs repo secrets — see `Handoffs/migration.md`. Running locally is possible with a `strava-data/.env` + `.strava_tokens.json` (gitignored).
+Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manual `workflow_dispatch`), which commits new files under `strava-data/data/` only — **it does not build or commit HTML**. That push triggers `deploy.yml`, which rebuilds and publishes. It needs repo secrets — see `Project Docs/Handoffs/migration.md`. Running locally is possible with a `strava-data/.env` + `.strava_tokens.json` (gitignored). First-time local auth: `uv run python strava-data/authorize.py`.
+
+**What `fetch.py` writes under `strava-data/data/`:** `athlete.json`, `gear.json`, `activities.csv`, `segment_efforts.csv`, `segments_summary.csv` (via `analyze_segments.py`), `streams/{id}.csv` (per-activity GPS/HR/pace time-series — used by the Places views), and `laps/{id}.csv` (per-activity lap splits). **`laps/` is fetched but not yet consumed by any build — retained intentionally for future lap-level / interval views. Do not flag it as dead data or prune it.**
 
 ## Logging
 
@@ -106,4 +111,4 @@ Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manua
 
 ## Deploy
 
-`.github/workflows/deploy.yml` **builds both dashboards from source** (`uv sync` → `build_dashboard.py` + `visualize_log.py`) and publishes the `Running Log/` dir to **GitHub Pages**. It triggers on pushes to `main` that touch the data, build scripts, running-log source, or the Python env (`pyproject.toml`/`uv.lock`) — including the data-only commits from `strava-fetch.yml` — plus `workflow_dispatch` for manual deploys.
+`.github/workflows/deploy.yml` **builds both dashboards from source** (`uv sync` → `build_dashboard.py` + `visualize_log.py`) and publishes the `running-log/` dir to **GitHub Pages**. It triggers on pushes to `main` that touch the data, build scripts, running-log source, or the Python env (`pyproject.toml`/`uv.lock`) — including the data-only commits from `strava-fetch.yml` — plus `workflow_dispatch` for manual deploys.

@@ -85,7 +85,7 @@ def load_existing_efforts():
         header = reader.fieldnames or []
         rows = list(reader)
     # Same drift guard as fetch.py's csv_append: appending/merging under a stale
-    # header silently corrupts the file (see Handoffs/strava-data/known-issues.md, 2026-06-10).
+    # header silently corrupts the file (see Project Docs/Handoffs/strava-data/known-issues.md, 2026-06-10).
     if header != SEGMENT_EFFORTS_FIELDS:
         sys.exit(
             f"{EFFORTS_CSV.name}: header has {len(header)} cols but the schema "

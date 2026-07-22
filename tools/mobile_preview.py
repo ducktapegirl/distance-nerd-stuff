@@ -20,7 +20,7 @@ Examples:
     uv run python tools/mobile_preview.py \
         --click '.tab[data-view="exploratory"]' \
         --measure chart-x-seasonal --resize-probe \
-        --screenshot out/seasonal-mobile.png
+        --screenshot tools/preview-output/seasonal-mobile.png
 
     # Verify against production instead of the local build:
     uv run python tools/mobile_preview.py \
@@ -43,7 +43,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_DIR = os.path.join(REPO_ROOT, "Running Log")
+DEFAULT_DIR = os.path.join(REPO_ROOT, "running-log")
 
 # Builtin measurement: everything needed to tell whether a Plotly chart fills
 # its card and has sane axis ranges. Returned as a JSON-able dict.
@@ -107,7 +107,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dir", default=DEFAULT_DIR,
-                    help="directory to serve (default: 'Running Log')")
+                    help="directory to serve (default: 'running-log')")
     ap.add_argument("--page", default="/strava.html",
                     help="path under the served dir (default: /strava.html)")
     ap.add_argument("--hash", default="",
