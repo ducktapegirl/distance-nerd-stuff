@@ -83,7 +83,7 @@ Hero stays dark-committed; passport is already theme-aware. Preserve `prefers-re
 ## Execution phases (hero-first MVP)
 
 Run through `/strava`, pausing at each gate. Each pass ends with build + QA + review + a rebuilt
-`Running Log/strava.html`.
+`running-log/strava.html`.
 
 ### Pass A — Foundation + Hero (Module 1)
 1. **Analyze (Opus):** stream loader for `data/streams/*.csv` (stdlib + numpy, **no pandas**) with
@@ -156,7 +156,7 @@ Modules 3–4 share the trip/superlative precompute, so they land together.
 
 ## Verification (per pass)
 
-1. **Build:** `uv run python strava-data/build_dashboard.py` regenerates `Running Log/strava.html`;
+1. **Build:** `uv run python strava-data/build_dashboard.py` regenerates `running-log/strava.html`;
    check console for the new Places build lines.
 2. **QA agent (Sonnet):** static checks + Preview-MCP visual pass (desktop + mobile, light + dark):
    render, label-overlap, edge-clipping, contrast, units policy (min/mi, mph, °F). Preview-MCP CDN

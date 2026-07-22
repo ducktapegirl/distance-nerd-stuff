@@ -155,14 +155,14 @@ What *did* pass, via `window.maplibregl` being undefined → `HAS_ML=false` → 
 ```cmd
 set MAPTILER_KEY=your_key
 uv run python strava-data\build_dashboard.py
-uv run python -m http.server 8766 --directory "Running Log"
+uv run python -m http.server 8766 --directory "running-log"
 ```
 
 **PowerShell:**
 ```powershell
 $env:MAPTILER_KEY="your_key"
 uv run python strava-data/build_dashboard.py
-uv run python -m http.server 8766 --directory "Running Log"
+uv run python -m http.server 8766 --directory "running-log"
 ```
 
 Then open `http://localhost:8766/strava.html#places` in a normal (non-sandboxed) browser and

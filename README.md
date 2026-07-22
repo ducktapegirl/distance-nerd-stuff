@@ -44,24 +44,24 @@ numpy, no pandas).
 
 ```bash
 uv sync                                          # install dependencies
-uv run python strava-data/build_dashboard.py     # build Running Log/strava.html
-uv run python -m http.server 8765 --directory "Running Log"   # preview at localhost:8765
+uv run python strava-data/build_dashboard.py     # build running-log/strava.html
+uv run python -m http.server 8765 --directory running-log      # preview at localhost:8765
 ```
 
 See [`CLAUDE.md`](CLAUDE.md) for the full build pipeline (fetch → analyze →
-build → deploy) and [`Handoffs/migration.md`](Handoffs/migration.md) for
+build → deploy) and [`Project Docs/Handoffs/migration.md`](Project%20Docs/Handoffs/migration.md) for
 one-time repo setup notes (GitHub Actions secrets, etc.).
 
 ## Future work
 
-Ideas that are written up but not built yet, pulled from the `Plans/` folder:
+Ideas that are written up but not built yet, pulled from the `Project Docs/Plans/` folder:
 
 - **Places hero mobile crowding** — on narrow phones (≤360px) the Places hero's
   bottom controls (fullscreen toggle + filters) can collide with the data-driven
   home-location labels drawn on the map canvas; there's just not enough vertical
   room at that width. A few fix options are on the table, from carving the
   fullscreen toggle out into its own element to a bigger mobile-chrome rework.
-  See [`Plans/strava-data/places-future-work.md`](Plans/strava-data/places-future-work.md).
+  See [`Project Docs/Plans/strava-data/places-future-work.md`](Project%20Docs/Plans/strava-data/places-future-work.md).
 - **Adaptive Places superlatives** — the Passport badges and Peaks record book
   ("Highest point · 14,507 ft," "Northernmost · 49.3°N," …) are hardcoded
   editorial copy today, so a bigger hike next week never supersedes an old
@@ -69,7 +69,7 @@ Ideas that are written up but not built yet, pulled from the `Plans/` folder:
   claims instead of blank ones. The plan splits the pinned copy into an
   editorial config file, adds a CI step that detects when live data beats it,
   and extends the `strava-maintenance` agent to propose the actual edit.
-  See [`Plans/strava-data/adaptive-superlatives-future-work.md`](Plans/strava-data/adaptive-superlatives-future-work.md).
+  See [`Project Docs/Plans/strava-data/adaptive-superlatives-future-work.md`](Project%20Docs/Plans/strava-data/adaptive-superlatives-future-work.md).
 - **Bring your own data (forkable strava-data/)** — right now this repo really
   is mine-only: home cities, superlatives, and even the analytics snippet are
   hardcoded to me, and a fork would crash or quietly render someone else's
@@ -77,14 +77,14 @@ Ideas that are written up but not built yet, pulled from the `Plans/` folder:
   fork shouldn't ship, and add a `FORKING.md` + from-zero setup walkthrough so
   the entry point (`strava-data/`, not the Running Log) is obvious. Depends on
   the adaptive-superlatives work above; honestly not sure it's worth it yet.
-  See [`Plans/strava-data/byod-forkable-future-work.md`](Plans/strava-data/byod-forkable-future-work.md).
+  See [`Project Docs/Plans/strava-data/byod-forkable-future-work.md`](Project%20Docs/Plans/strava-data/byod-forkable-future-work.md).
 - **A real WBGT heat-stress index** — the Exploratory tab's heat-vs-pace charts
   run on a "WBGT-lite" proxy (temperature + UV) today because the data has no
   humidity or solar readings. The plan is to pull those fields from the weather
   API already in use and compute an actual WBGT (wet-bulb globe temperature) —
   though the honest expectation is it'll explain only a few more percent of pace
   variance than the proxy already does.
-  See [`Plans/strava-data/wbgt-future-work.md`](Plans/strava-data/wbgt-future-work.md).
+  See [`Project Docs/Plans/strava-data/wbgt-future-work.md`](Project%20Docs/Plans/strava-data/wbgt-future-work.md).
 - **Clickable Strava activity links** — the Activity Details panel (desktop side
   panel and mobile bottom sheet) shows an activity's name as plain text. The plan
   turns the name into a link out to the real activity on Strava so a logged-in
@@ -92,4 +92,4 @@ Ideas that are written up but not built yet, pulled from the `Plans/` folder:
   already in the data and already embedded in the page (just as the `ACT_DATA`
   key), and one `renderActivity()` function covers both form factors — so it's
   ~2 lines plus a little link CSS, no data-pipeline work.
-  See [`Plans/strava-data/activity-links-future-work.md`](Plans/strava-data/activity-links-future-work.md).
+  See [`Project Docs/Plans/strava-data/activity-links-future-work.md`](Project%20Docs/Plans/strava-data/activity-links-future-work.md).

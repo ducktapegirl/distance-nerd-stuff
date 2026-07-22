@@ -11,18 +11,18 @@ code; you report PASS / FAIL / WARN and suggest fixes.
 
 ## 1. Build integrity
 Run `uv run python strava-data/build_dashboard.py` and confirm it exits cleanly and regenerates
-`Running Log/strava.html`. If it errors, report the full traceback and stop.
+`running-log/strava.html`. If it errors, report the full traceback and stop.
 
 ## 2. Spec compliance
-Read `Specs/strava-data/dashboard-spec.md`. For each spec section:
-- [ ] Does the chart exist in `Running Log/strava.html`?
+Read `Project Docs/Specs/strava-data/dashboard-spec.md`. For each spec section:
+- [ ] Does the chart exist in `running-log/strava.html`?
 - [ ] Right data (right file, right columns, right transform)?
 - [ ] Sport-type / date filters respected?
 - [ ] Axis labels and units correct?
 
 ## 2.5 Display-units policy
 User-facing units are imperial everywhere: running pace **min/mi**, MTB/cycling speed **mph**,
-temperature **°F**. Grep the generated `Running Log/strava.html` for metric display strings:
+temperature **°F**. Grep the generated `running-log/strava.html` for metric display strings:
 - `min/km`, `km/h`, `kph`, `°C` (and `(C)` temperature labels) → **0 hits expected** in any
   axis title, tick label, hovertemplate, or annotation. Each hit is a FAIL with the string and
   surrounding context.
@@ -57,7 +57,7 @@ Confirm the dashboard handles these without crashing or blank panels:
 - [ ] File size reasonable (< 20 MB).
 
 ## 6. Visual smoke test (Preview MCP) — desktop AND mobile (mandatory)
-Open `Running Log/strava.html` with the Preview tools, screenshot it, and check
+Open `running-log/strava.html` with the Preview tools, screenshot it, and check
 `preview_console_logs` for errors. Confirm new views actually render — not just that the
 source contains them. Stop the preview only after sections 6.5 and 6.6 are done.
 
@@ -82,7 +82,7 @@ The tabs are: **overview, volume, trends, segments, map, exploratory** — switc
 always filter to visible charts (`el.offsetParent !== null`) in any `preview_eval` audit.
 
 ### 6.0 Mobile layout checklist (390px pass only)
-At 390px, confirm the intentional mobile experience (see `Plans/mobile-redesign-plan.md`):
+At 390px, confirm the intentional mobile experience (see `Project Docs/Plans/mobile-redesign-plan.md`):
 - [ ] The tab strip scrolls horizontally without wrapping; tap targets are reachable.
 - [ ] Charts visibly resize to the narrow viewport — no horizontal overflow, no fixed-px
       chart spilling past the card edge.

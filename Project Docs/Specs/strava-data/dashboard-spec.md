@@ -305,7 +305,7 @@ regenerate `strava.html`. Must read correctly in BOTH light and dark themes.
 
 **R1 — Activity calendar → SVG (match College Running Log exactly).** Replace the Plotly
 heatmap `chart_calendar()` with a function returning a raw SVG/HTML string mirroring
-`Running Log/index.html` (CSS 433-498, HTML 1006-1164) and `Running Log/src/visualize_log.py`
+`running-log/index.html` (CSS 433-498, HTML 1006-1164) and `running-log/src/visualize_log.py`
 (1039-1165). Cells 11×11px `rx=2`, gap 2 (week stride 13), `label_w=28`; rest days
 `fill="var(--text-tertiary)" fill-opacity="0.10"`. Day labels single-letter `S M T W T F S`
 `<text class="hm-dow">` at x=0. Year labels in a 36px left column (`.hm-year-row` flex →

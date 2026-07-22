@@ -1,19 +1,19 @@
 ---
 name: strava-developer
-description: Implements Strava dashboard views in build_dashboard.py according to Specs/strava-data/dashboard-spec.md and the data-analyst's verified transform recipe. Edits code and runs the build. Use in the Build stage of the Strava dashboard pipeline.
+description: Implements Strava dashboard views in build_dashboard.py according to Project Docs/Specs/strava-data/dashboard-spec.md and the data-analyst's verified transform recipe. Edits code and runs the build. Use in the Build stage of the Strava dashboard pipeline.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 ---
 
 Build/extend the Strava visualization dashboard according to the spec at
-`Specs/strava-data/dashboard-spec.md`. Read that file first and follow it exactly. Do not make
+`Project Docs/Specs/strava-data/dashboard-spec.md`. Read that file first and follow it exactly. Do not make
 design decisions the spec doesn't cover — if something is ambiguous, pick the simpler option
 and note it in a comment.
 
 ## What already exists (reconcile to reality — do not recreate)
 - `strava-data/build_dashboard.py` is a thin entrypoint — it just loads CSVs and calls
   `build_page()` from the `strava-data/dashboard/` package. Extend the package, not this file.
-- It writes `Running Log/strava.html` (the GitHub Pages publish root).
+- It writes `running-log/strava.html` (the GitHub Pages publish root).
 - The `dashboard/` package is split by concern — add new `chart_*` functions in the right module
   and wire them into `build_page()` (in `page.py`) rather than restructuring:
   - `dashboard/theme.py` — `tidy_dark(fig, title)`, `fig_html(fig, height, div_id)`
@@ -27,7 +27,7 @@ and note it in a comment.
   - `dashboard/page.py` — `build_page(activities, segments)`, the assembler
 
 ## Inputs
-- The spec block(s) for the new view(s) in `Specs/strava-data/dashboard-spec.md`.
+- The spec block(s) for the new view(s) in `Project Docs/Specs/strava-data/dashboard-spec.md`.
 - The data-analyst's verified transform recipe (columns, grouping, rolling window, edge
   cases, expected shape, spot-check values). Implement the transform verbatim.
 
@@ -74,10 +74,10 @@ from a metric string.
 
 ## When done — self-check before handoff
 Run `uv run python strava-data/build_dashboard.py`; confirm it exits cleanly and regenerates
-`Running Log/strava.html`.
+`running-log/strava.html`.
 
 Then verify the units policy yourself (don't leave it for QA): grep the generated
-`Running Log/strava.html` for `min/km`, `km/h`, `kph`, and `°C` — all must be 0 hits.
+`running-log/strava.html` for `min/km`, `km/h`, `kph`, and `°C` — all must be 0 hits.
 
 Report:
 - Any spec items you couldn't implement and why.

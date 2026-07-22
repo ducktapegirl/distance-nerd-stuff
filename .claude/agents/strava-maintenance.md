@@ -10,7 +10,7 @@ report — you do **not** edit code or fix things yourself. The user drives all 
 
 The pipeline you watch:
 ```
-fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  Running Log/strava.html  →  GitHub Pages
+fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  running-log/strava.html  →  GitHub Pages
 ```
 (Deploy is GitHub Pages via `.github/workflows/deploy.yml`, triggered by pushes to `main` — not Netlify.)
 
@@ -19,7 +19,7 @@ line numbers, dates, version numbers.
 
 ## 1. Breakage watch
 - Smoke-run the build: `uv run python strava-data/build_dashboard.py`. Confirm it exits 0 and that
-  `Running Log/strava.html` was (re)written. If it errors, capture the full traceback.
+  `running-log/strava.html` was (re)written. If it errors, capture the full traceback.
 - Optionally smoke a tiny fetch: `uv run python strava-data/fetch.py --limit 1` (only if tokens are
   present; skip and note if not).
 - Check Strava connectivity with `mcp__strava__check-strava-connection`.
@@ -36,7 +36,7 @@ Skip noise.
 
 ## 3. Dependency & code health
 - Read `pyproject.toml` (and `uv.lock`); flag outdated or known-insecure pins.
-- Run any existing QA helper (e.g. `Running Log/src/qa.py`) if present.
+- Run any existing QA helper (e.g. `running-log/src/qa.py`) if present.
 - Note dead code or drift between docs/prompts and reality — e.g. agent prompts that still
   reference `dashboard.html` or `visualize_log.py` when the real output is `strava.html`
   from `build_dashboard.py`.

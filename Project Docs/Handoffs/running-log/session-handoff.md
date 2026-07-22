@@ -20,7 +20,7 @@ running_log.csv  →  src/visualize_log.py  →  index.html
 
 Regenerate dashboard:
 ```bash
-cd "Running Log"
+cd "running-log"
 C:\Users\Alisha\Anaconda3\python.exe src/visualize_log.py
 start "" index.html
 ```
@@ -34,7 +34,7 @@ C:\Users\Alisha\Anaconda3\python.exe src/parse_log.py
 
 ## QA
 Two layers: **static** is `src/qa.py` (data quality + HTML/CSS structure, run
-`uv run python "Running Log/src/qa.py"`); **visual** is the `running-log-qa` agent (Preview
+`uv run python "running-log/src/qa.py"`); **visual** is the `running-log-qa` agent (Preview
 MCP) — it renders `index.html` across desktop + mobile viewports and light + dark themes
 (overlap, edge-clipping, contrast, and the mobile bottom-sheet).
 
