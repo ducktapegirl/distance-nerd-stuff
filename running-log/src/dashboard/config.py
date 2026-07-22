@@ -8,7 +8,7 @@ CSV_PATH = os.path.join(BASE_DIR, "running_log.csv")
 OUT_PATH = os.path.join(BASE_DIR, "index.html")
 
 
-# ─── Design tokens (from Specs/running-log/design_handoff_running_log/readme.md) ──
+# ─── Design tokens (from Project Docs/Specs/running-log/design_handoff_running_log/readme.md) ──
 # The dark-theme tokens below (ACCENT*/BG_*/BORDER*/TEXT_*/fonts/PLOTLY_CDN) are
 # shared verbatim with the Strava dashboard and live in nerd_common.tokens.
 from nerd_common.tokens import (  # noqa: E402

@@ -55,7 +55,7 @@ chosen and fully specified, so **Intake and Ideate can be skipped**. Stages to r
 - **QA** — dispatch `strava-qa` (build integrity, units policy, theme audit, toggle works
   in Preview MCP, label/clip checks). Loop back to Build on failures.
 - **Review gate** — `/code-review` + `/security-review` over the diff.
-- **Ship** — rebuild both `strava-data/strava.html` and `Running Log/strava.html`.
+- **Ship** — rebuild both `strava-data/strava.html` and `running-log/strava.html`.
 
 The orchestrator pauses for user approval between stages (as designed).
 
@@ -113,7 +113,7 @@ numbers already present; add apparent-temp numbers once the analyst verifies the
 
 ## Verification (end-to-end)
 1. `uv run python strava-data/build_dashboard.py` → clean exit.
-2. `grep -nE '°C|min/km|km/h' "Running Log/strava.html"` over the new chart region → 0 hits
+2. `grep -nE '°C|min/km|km/h' "running-log/strava.html"` over the new chart region → 0 hits
    (units policy).
 3. Preview MCP (strava-qa): open `chart-x-heat`, click both toggle buttons, screenshot each
    state, check console for errors, verify the pace axis is identical between states and

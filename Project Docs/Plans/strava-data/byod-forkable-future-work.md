@@ -11,13 +11,13 @@ your own data."* This doc plans the work to reverse that for `strava-data/` — 
 repo, plugs in their own Strava API credentials, and gets a working dashboard of **their** data —
 while making the repo's structure legible enough that a forker clearly knows the entry point.
 
-**Explicit scope boundary, stated up front: `Running Log/` is NOT part of this.** It's the
+**Explicit scope boundary, stated up front: `running-log/` is NOT part of this.** It's the
 athlete's personal pre-Strava archive (2003–2007 hand-kept HTML logs), parsed into a page that is
 inherently one person's history. A forker should ignore it entirely — and the docs this plan
 produces must say so prominently, because the repo layout actively obscures this today: the Strava
-dashboard's build output (`strava.html`) lands *inside* the `Running Log/` folder, since that
+dashboard's build output (`strava.html`) lands *inside* the `running-log/` folder, since that
 folder doubles as the GitHub Pages publish root (`deploy.yml` `upload-pages-artifact
-path: "Running Log"`; `dashboard/config.py:16` `OUT_HTML`).
+path: "running-log"`; `dashboard/config.py:16` `OUT_HTML`).
 
 Honest framing: this is real work with a real maintenance cost, and the athlete is genuinely
 unsure it's worth doing. The audience is general open-source polish — no specific person is
@@ -39,8 +39,8 @@ assumptions) — pinned here so the phases below aren't re-litigating settled gr
 
 - **One root-level `FORKING.md` is the entry point.** Not per-folder READMEs, not just expanding
   the README's "Poking at the code" section. One place that says: what's forkable
-  (`strava-data/`), what to ignore (`Running Log/`), the change-checklist, and why `strava.html`
-  publishes inside a folder named "Running Log" (intentional Pages-root plumbing, not a mistake).
+  (`strava-data/`), what to ignore (`running-log/`), the change-checklist, and why `strava.html`
+  publishes inside a folder named "running-log" (intentional Pages-root plumbing, not a mistake).
 - **Formally depends on the adaptive-superlatives plan.** That plan's Phase 3 already covers the
   home-box crash (`_SD_BOX`/`_BOS_BOX` at `charts_places.py:33-34`; `_centroid()` divide-by-zero
   at `:338`) and the Peaks false-claims bug (`_peaks_data()` appends rows unconditionally,
@@ -122,8 +122,8 @@ Path TBD (likely `Docs/` doesn't exist — sensible home is next to `FORKING.md`
 
 ## `FORKING.md` (outline)
 
-- **Lead with the split:** fork `strava-data/`; ignore `Running Log/` (personal archive).
-- Why the Strava dashboard's HTML publishes into `Running Log/` (Pages-root plumbing — expected,
+- **Lead with the split:** fork `strava-data/`; ignore `running-log/` (personal archive).
+- Why the Strava dashboard's HTML publishes into `running-log/` (Pages-root plumbing — expected,
   don't "fix" it).
 - The change-checklist (condensed from the table above): analytics, MapTiler key, home boxes +
   superlatives config (per the superlatives plan), emoji toggle, the hand-edit list for city

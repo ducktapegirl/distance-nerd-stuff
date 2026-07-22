@@ -2,7 +2,7 @@
 
 ## Context
 
-The Strava dashboard (`strava-data/dashboard/`) and Running Log dashboard (`Running Log/src/dashboard/`) were previously made "responsive" (CSS grid breakpoints, `responsive: true` on Plotly, a viewport meta tag) but that only covers generic reflow, not a real mobile experience. On an actual phone today:
+The Strava dashboard (`strava-data/dashboard/`) and Running Log dashboard (`running-log/src/dashboard/`) were previously made "responsive" (CSS grid breakpoints, `responsive: true` on Plotly, a viewport meta tag) but that only covers generic reflow, not a real mobile experience. On an actual phone today:
 
 - Plotly charts have **fixed px heights** (260–540px) and only re-resize when switching tabs, never on viewport resize/rotation — so charts can render mis-sized after the page loads on a phone.
 - The tab nav is a `flex-wrap` strip that wraps into a messy multi-row block on narrow screens instead of behaving like an app nav.
@@ -39,13 +39,13 @@ Replace the scattered 560/600/700/760/800/900px breakpoints with two tiers, defi
 
 - `strava-data/dashboard/template.py` — CSS consolidation, touch targets, scroll-snap nav, chart-height override, resize listener, chart-simplify JS, bottom-sheet CSS/JS.
 - `strava-data/dashboard/charts_exploratory.py` — `chart_x_archetypes()` returns loading-label annotation index range for mobile hide/show.
-- `Running Log/src/dashboard/template.py` — same categories of changes as Strava's `template.py`, applied independently (including removing its existing narrow detail-panel mobile override at the old 600px breakpoint).
+- `running-log/src/dashboard/template.py` — same categories of changes as Strava's `template.py`, applied independently (including removing its existing narrow detail-panel mobile override at the old 600px breakpoint).
 - No changes needed to `page.py`, `sections.py`, `theme.py`, `rollups_cards.py`, `charts_production.py`, `charts.py`, `components.py`, `config.py`, `data.py`, `stats.py` — chart height/legend/tick adjustments are handled client-side via CSS + `Plotly.relayout`/`restyle`, not by touching Python height/layout args at the source.
 
 ## Verification
 
-1. Rebuild both: `uv run python strava-data/build_dashboard.py` and `uv run python "Running Log/src/visualize_log.py"`.
-2. Open `Running Log/strava.html` and `Running Log/index.html` in a browser with devtools device emulation at 375px (iPhone SE), 390px (iPhone 12/13/14), 414px (Plus/Pro Max), and 768px (tablet, to confirm the 900px tier is untouched).
+1. Rebuild both: `uv run python strava-data/build_dashboard.py` and `uv run python "running-log/src/visualize_log.py"`.
+2. Open `running-log/strava.html` and `running-log/index.html` in a browser with devtools device emulation at 375px (iPhone SE), 390px (iPhone 12/13/14), 414px (Plus/Pro Max), and 768px (tablet, to confirm the 900px tier is untouched).
 3. Check: tab strip scrolls horizontally without wrapping; tap targets feel reachable; charts visibly resize when the emulated viewport is resized/rotated without a tab switch; Volume/Top-Segments/Heat/Archetypes (Strava) and Pace-Timeline/Monthly-by-Year/Workout-Mix (Running Log) show their simplified mobile variants; tapping a detail point opens a bottom sheet (not a full-screen side panel), dismissible via backdrop tap, Escape, and swipe-down.
 4. Toggle light/dark/system theme at each width to confirm `applyChartTheme()` still works untouched.
 5. Verify desktop (>900px) rendering is pixel-unchanged by diffing before/after screenshots at one wide viewport.

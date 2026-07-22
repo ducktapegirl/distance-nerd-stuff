@@ -21,7 +21,7 @@ Fable budget is ONE dispatch total and it was spent on Pass A Design — Pass B/
 | **B** | Two Homes cards | ✅ shipped | spec `c07b7b0`, code `674cbfc` |
 | **C** | Passport + Peaks | ✅ shipped | spec+code this pass (see below) |
 
-All commits pushed. Generated HTML (`Running Log/strava.html`) is **gitignored** —
+All commits pushed. Generated HTML (`running-log/strava.html`) is **gitignored** —
 rebuilt from source by the deploy workflow; never commit it.
 
 ### What's live (Pass C)
@@ -122,11 +122,11 @@ click → `placesFlyTo`). Then QA (Sonnet) + Review gate (Opus) + commit.
 
 ## Tooling notes
 - **Build:** `uv run python strava-data/build_dashboard.py` (use `uv run` — bare `python` is Py2 here).
-  Regenerates `Running Log/strava.html`; watch for `[places]` console lines.
+  Regenerates `running-log/strava.html`; watch for `[places]` console lines.
 - **Screenshot verify (works despite the Preview-MCP/CDN caveat):** the QA agent's Preview MCP and
   `cdn.plot.ly` are blocked in this environment, but the Places canvases are bespoke (no Plotly), so
   Playwright with the **pre-installed Chromium** works. Pattern (see scratchpad `verify_*.py` if this
-  session's scratch survives, else rebuild it): in-process `127.0.0.1` http.server over `Running Log/`
+  session's scratch survives, else rebuild it): in-process `127.0.0.1` http.server over `running-log/`
   + `uv run --with playwright python`, launch
   `chromium.launch(executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome")`, goto
   `strava.html#places`. **Measure element geometry (getBoundingClientRect), don't just eyeball** — the

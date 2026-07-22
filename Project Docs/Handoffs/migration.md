@@ -6,9 +6,9 @@ This repo was split out of a different repo that had a mix of early Claude exper
 
 - `strava-data/` (incl. `data/`, ~40 MB of activity/stream/lap CSVs)
 - `strava-export/` (older one-off export tool)
-- `Running Log/` (minus its `.netlify/` link — see below)
+- `running-log/` (minus its `.netlify/` link — see below)
 - `Claude Design/design_handoff_running_log/`
-- `Running Log/running_log_story_handoff.md` (was in `Create Presentations/`)
+- `running-log/running_log_story_handoff.md` (was in `Create Presentations/`)
 - `Agent Strava Plan.md`, `Claude's Log.md`
 - `.github/workflows/strava-fetch.yml`
 - `.claude/agents/strava-*.md`, `.claude/commands/{strava,strava-segments,requirements}.md`, and local `.claude/{settings.json,settings.local.json,launch.json}` (gitignored)
@@ -17,7 +17,7 @@ Fresh git history — the old history stays in `Experiments`.
 
 ## What deliberately did **not** come over
 
-- **Netlify hook** (`.netlify/`, `Running Log/.netlify/`). Deploy is being replaced by a GitHub Action — see `.github/workflows/deploy.yml`.
+- **Netlify hook** (`.netlify/`, `running-log/.netlify/`). Deploy is being replaced by a GitHub Action — see `.github/workflows/deploy.yml`.
 - `/reflect` + `document_work.py` were **elevated to a global Claude skill** at `~/.claude/skills/reflect/` (shared across all projects on this machine; not stored in this repo). `Claude's Log.md` itself did come over.
 - All MATLAB/Simscape and other unrelated experiments.
 

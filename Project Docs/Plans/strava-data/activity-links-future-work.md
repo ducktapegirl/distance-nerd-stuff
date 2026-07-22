@@ -62,7 +62,7 @@ Three small edits, no data-pipeline work:
 ## Verification
 
 1. Rebuild: `uv run python strava-data/build_dashboard.py` (regenerates
-   `Running Log/strava.html`).
+   `running-log/strava.html`).
 2. Preview via `tools/mobile_preview.py` (or the `strava-qa` flow): open the
    detail panel on **desktop** (side panel) and **mobile** (bottom sheet); confirm
    the name renders as a link, hover styling works in **light and dark**, and the

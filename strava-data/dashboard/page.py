@@ -1,5 +1,5 @@
 """Orchestrates a full dashboard build: build_page() composes data, charts, and
-HTML shell into the final `Running Log/strava.html` string."""
+HTML shell into the final `running-log/strava.html` string."""
 
 import json
 

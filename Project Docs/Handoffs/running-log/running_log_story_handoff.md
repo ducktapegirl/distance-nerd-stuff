@@ -78,7 +78,7 @@ Frame: *"I had 20 years of unfinished data and 10 minutes of Claude Code fixed w
 - The broader pattern: legacy data → modern interactive tool in weeks
 
 ### QA script story beat
-`Running Log/src/qa.py` — include it. Two of its 13 checks guard bugs Claude found on its own (not in the Rewrite Ideas list):
+`running-log/src/qa.py` — include it. Two of its 13 checks guard bugs Claude found on its own (not in the Rewrite Ideas list):
 1. `check_detail_panel_no_hex` — detail panel used hardcoded hex colors baked from Python f-strings; broke in light mode; user hadn't noticed
 2. `check_easy_pace_no_fill` — `fill:"tozeroy"` on reversed y-axis painted fill upward (unwanted blue cap); Claude caught it during rendering
 3. `check_race_count_consistency` — catches CSV race count vs. displayed stat divergence; Claude added after noticing a 99 vs. 100 discrepancy

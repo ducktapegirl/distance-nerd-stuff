@@ -45,7 +45,7 @@ below aren't re-litigating settled ground.
 ### Two files, not one — mirrors the repo's existing data/features split
 
 `CLAUDE.md` already draws a line between data the fetch workflow owns and features the build owns
-(`Running Log/index.html`/`strava.html` are gitignored specifically to keep those separate). The
+(`running-log/index.html`/`strava.html` are gitignored specifically to keep those separate). The
 same split applies here:
 
 - **`strava-data/superlatives.json`** (exact path TBD in Build) — the **hand-curated editorial
