@@ -93,3 +93,10 @@ Ideas that are written up but not built yet, pulled from the `Project Docs/Plans
   key), and one `renderActivity()` function covers both form factors — so it's
   ~2 lines plus a little link CSS, no data-pipeline work.
   See [`Project Docs/Plans/strava-data/activity-links-future-work.md`](Project%20Docs/Plans/strava-data/activity-links-future-work.md).
+- **The orphaned summer03log.html** — `running-log/source/` has a real training
+  log (~495 miles, ~95 entries) that the parser never reads: `parse_log.py`'s
+  file list starts at fall 2003, and the summer log uses a different layout
+  (weekly totals, no per-day date headers) that the existing parser can't key
+  off anyway. It's kept as a live file (not archived) since it's real data, just
+  unwired — parsing it would need a second, layout-specific parse path.
+  See [`Project Docs/Plans/running-log/summer03-log-future-work.md`](Project%20Docs/Plans/running-log/summer03-log-future-work.md).
