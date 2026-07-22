@@ -8,8 +8,9 @@ from dashboard.config import LONG_COLOR, TEMPO_COLOR, TYPE_COLORS, TYPE_LABELS, 
 from dashboard.charts import (
     PR_PROGRESSION_SPECS, chart_cumulative, chart_dow, chart_easy_pace,
     chart_monthly_avg, chart_monthly_mileage_by_year, chart_pace_timeline,
-    chart_pr_progression, chart_seasonal_sparklines, chart_weekly,
-    chart_workout_donut, chart_workout_mix_by_season,
+    chart_pr_progression, chart_pr_timeline, chart_season_best_slope,
+    chart_seasonal_sparklines, chart_weekly, chart_workout_donut,
+    chart_workout_mix_by_season, compute_pr_progression_axis_overrides,
 )
 from dashboard.components import heatmap_html, notes_search_html, pr_card_html, stat_card_html
 from dashboard.data import map_type, maybe_float
@@ -128,13 +129,19 @@ def section_performance(rows, races_by_cat):
     pr_cards = compute_pr_cards(races_by_cat)
     pr_html  = "".join(pr_card_html(c) for c in pr_cards)
 
+    # 5k Track and 5k XC share axis_group="5k" in PR_PROGRESSION_SPECS, so
+    # they get an identical y-range/step here rather than each picking its
+    # own — see compute_pr_progression_axis_overrides().
+    axis_overrides = compute_pr_progression_axis_overrides(races_by_cat)
+
     prog_cards = ""
-    for i, (label, buckets, cats, color) in enumerate(PR_PROGRESSION_SPECS):
+    for i, (label, buckets, cats, color, axis_group) in enumerate(PR_PROGRESSION_SPECS):
         slug = label.lower().replace(" ", "-")
         prog_cards += f"""
         <div class="card">
           <div class="card-title">{label} — PR Progression</div>
-          {fig_html(chart_pr_progression(races_by_cat, label, buckets, cats, color),
+          {fig_html(chart_pr_progression(races_by_cat, label, buckets, cats, color,
+                                          y_override=axis_overrides.get(label)),
                     height=260, div_id=f"chart-pr-{slug}")}
         </div>"""
 
@@ -147,8 +154,16 @@ def section_performance(rows, races_by_cat):
       <div class="pr-grid">{pr_html}</div>
       <div class="card">
         <div class="card-title">Race Pace Over Time</div>
-        <div class="chart-caption">★ all-time PR &nbsp;·&nbsp; ◆ relay split &nbsp;·&nbsp; dotted line = season-best trend</div>
+        <div class="chart-caption">★ all-time PR &nbsp;·&nbsp; ◆ relay split</div>
         {fig_html(chart_pace_timeline(races_by_cat), height=360, div_id="chart-pace-timeline")}
+      </div>
+      <div class="card">
+        <div class="card-title">Season-Best Pace by Event Group</div>
+        {fig_html(chart_season_best_slope(races_by_cat), height=300, div_id="chart-season-best-slope")}
+      </div>
+      <div class="card">
+        <div class="card-title">When PRs Fell</div>
+        {fig_html(chart_pr_timeline(races_by_cat), height=240, div_id="chart-pr-timeline")}
       </div>
       {prog_cards}
     </section>"""
