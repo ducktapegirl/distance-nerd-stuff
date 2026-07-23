@@ -24,6 +24,7 @@ CHART_IDS = [
     "chart-cumulative", "chart-weekly",
     "spark-fall", "spark-winter", "spark-spring", "spark-summer",
     "chart-donut", "chart-easy-pace", "chart-pace-timeline",
+    "chart-pr-timeline",
     "chart-pr-800m", "chart-pr-mile",
     "chart-pr-5k-xc", "chart-pr-5k-track", "chart-pr-3k-steeple",
     "chart-dow", "chart-month",
@@ -188,7 +189,7 @@ def check_date_validity(rows, html):
 # ---------------------------------------------------------------------------
 
 def check_chart_divs(rows, html):
-    """All 16 Plotly chart container divs should be present."""
+    """All 17 Plotly chart container divs should be present."""
     missing = [id_ for id_ in CHART_IDS if f'id="{id_}"' not in html]
     if missing:
         return False, f"Missing chart divs: {', '.join(missing)}"

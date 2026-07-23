@@ -64,6 +64,33 @@ TYPE_LABELS = {
     "race":    "Race",
 }
 
+# ─── Performance-section event-group color scheme (3 colors) ──────────────────
+# Used by the combined pace-over-time chart, the season-best slope chart, and
+# the PR timeline strip so all three "read" as the same story. Reuses the
+# existing EASY/LONG/RACE tokens — no new hex introduced.
+#   Middle distance (800m, Mile, 1500m)   -> EASY_COLOR (teal)
+#   3k / steeple    (3k, 3k steeple)      -> LONG_COLOR (violet)
+#   5k / 6k         (5k, 6k)              -> RACE_COLOR (coral)
+EVENT_GROUPS = [
+    ("800m",         ("800m",),             WORKOUT_COLOR),  # blue — matches 800m PR card
+    ("Mile / 1500m", ("Mile", "1500m"),     EASY_COLOR),     # teal
+    ("3k / Steeple", ("3k", "3k steeple"),  LONG_COLOR),     # violet
+    ("5k / 6k",      ("5k", "6k"),           RACE_COLOR),    # coral
+]
+
+# PR-card label -> event-group color, for chart_pr_timeline's 7 rows (keyed by
+# PR_CARD_SPECS label, which splits "5k Track"/"5k XC"/"6k XC" rather than
+# using a single raw bucket).
+EVENT_GROUP_COLOR_BY_PR_LABEL = {
+    "800m":       EASY_COLOR,
+    "Mile":       EASY_COLOR,
+    "1500m":      EASY_COLOR,
+    "3k Steeple": LONG_COLOR,
+    "5k Track":   RACE_COLOR,
+    "5k XC":      RACE_COLOR,
+    "6k XC":      RACE_COLOR,
+}
+
 DOW_ORDER  = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 DOW_SHORT  = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]

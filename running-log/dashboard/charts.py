@@ -1,4 +1,4 @@
-"""The 13 Plotly chart builders for the running-log dashboard."""
+"""The 14 Plotly chart builders for the running-log dashboard."""
 
 from collections import defaultdict
 from datetime import date, timedelta
@@ -7,11 +7,13 @@ import plotly.graph_objects as go
 
 from dashboard.config import (
     ACCENT, ACCENT_DIM, ACCENT_GLOW, BG_BASE, BG_ELEVATED, BORDER, DOW_ORDER,
-    DOW_SHORT, EASY_COLOR, LONG_COLOR, MONTH_ABBR, PLOT_FONT_FAMILY,
-    RACE_COLOR, SEASON_ORDER, TEMPO_COLOR, TEXT_PRIMARY, TEXT_SECONDARY,
-    TYPE_COLORS, TYPE_LABELS, WORKOUT_COLOR, WORKOUT_MIX_COLORS, YEAR_PALETTE,
+    DOW_SHORT, EASY_COLOR, EVENT_GROUP_COLOR_BY_PR_LABEL,
+    EVENT_GROUPS, LONG_COLOR, MONTH_ABBR, PLOT_FONT_FAMILY, RACE_COLOR,
+    SEASON_ORDER, TEXT_PRIMARY, TEXT_SECONDARY, TYPE_COLORS,
+    TYPE_LABELS, WORKOUT_COLOR, WORKOUT_MIX_COLORS, YEAR_PALETTE,
 )
 from dashboard.data import fmt_pace, fmt_time, map_type, maybe_float
+from dashboard.stats import PR_CARD_SPECS
 from dashboard.theme import fig_html, tidy_dark
 
 
@@ -187,13 +189,92 @@ def chart_easy_pace(rows):
 
 
 PR_PROGRESSION_SPECS = [
-    # (label,        buckets,            categories,                       color)
-    ("800m",         ["800m"],           ("indoorTrack", "outdoorTrack"),  WORKOUT_COLOR),
-    ("Mile",         ["Mile"],           ("indoorTrack", "outdoorTrack"),  EASY_COLOR),
-    ("3k Steeple",   ["3k steeple"],     ("outdoorTrack",),                LONG_COLOR),
-    ("5k Track",     ["5k"],             ("indoorTrack", "outdoorTrack"),  RACE_COLOR),
-    ("5k XC",        ["5k"],             ("crossCountry",),                EASY_COLOR),
+    # (label,        buckets,            categories,                       color,         axis_group)
+    ("800m",         ["800m"],           ("indoorTrack", "outdoorTrack"),  WORKOUT_COLOR, None),
+    ("Mile",         ["Mile"],           ("indoorTrack", "outdoorTrack"),  EASY_COLOR,    None),
+    ("3k Steeple",   ["3k steeple"],     ("outdoorTrack",),                LONG_COLOR,    None),
+    # 5k Track and 5k XC share an axis_group so chart_pr_progression can be
+    # given an identical y-range/step for both — see
+    # compute_pr_progression_axis_overrides().
+    ("5k Track",     ["5k"],             ("indoorTrack", "outdoorTrack"),  RACE_COLOR,    "5k"),
+    ("5k XC",        ["5k"],             ("crossCountry",),                EASY_COLOR,    "5k"),
 ]
+
+# Unified x-window for all 5 per-distance PR-progression charts (small
+# multiples read as a set only if they share the same time axis).
+_PR_X_RANGE = ["2003-07-01", "2007-07-31"]
+
+# Candidate y-axis tick steps (seconds) for chart_pr_progression's
+# rounded-range / ~5-tick policy.
+_PR_AXIS_STEPS = (5, 10, 15, 20, 30, 60)
+
+
+def _filtered_races(races_by_cat, buckets, cats):
+    """Non-relay races with a valid time for the given bucket(s) across the
+    given categories, sorted chronologically. Shared by chart_pr_progression,
+    compute_pr_progression_axis_overrides, and chart_pr_timeline."""
+    items = []
+    for cat in cats:
+        for race in races_by_cat[cat]:
+            if race["bucket"] not in buckets or race["is_relay"] or race["time_seconds"] is None:
+                continue
+            items.append(race)
+    items.sort(key=lambda r: r["date"])
+    return items
+
+
+def _cumulative_pr_items(items):
+    """Items (already chronological) whose time beat every prior time —
+    i.e. the running PR at the moment each race happened."""
+    pr_items = []
+    best = float("inf")
+    for r in items:
+        if r["time_seconds"] < best:
+            best = r["time_seconds"]
+            pr_items.append(r)
+    return pr_items
+
+
+def _pr_axis_range(all_y):
+    """Pick a step from {5,10,15,20,30,60}s that rounds [min(all_y),max(all_y)]
+    outward to step multiples and yields 4-6 ticks (inclusive of both
+    boundaries). Returns (lo, hi, step)."""
+    lo_raw, hi_raw = min(all_y), max(all_y)
+    candidates = []
+    for step in _PR_AXIS_STEPS:
+        lo = (int(lo_raw) // step) * step
+        hi = (int(hi_raw) // step + 1) * step
+        n_ticks = (hi - lo) // step + 1
+        candidates.append((step, lo, hi, n_ticks))
+        if 4 <= n_ticks <= 6:
+            return lo, hi, step
+    # No fixed step landed in [4, 6] ticks (unusually small/large range) —
+    # fall back to whichever candidate's tick count is closest to 5.
+    step, lo, hi, _ = min(candidates, key=lambda c: abs(c[3] - 5))
+    return lo, hi, step
+
+
+def compute_pr_progression_axis_overrides(races_by_cat, specs=PR_PROGRESSION_SPECS):
+    """For specs that share a non-None axis_group (today: "5k Track" +
+    "5k XC"), compute one shared (lo, hi, step) from the union of their race
+    times, so the paired small-multiples render identical y-ranges/ticks.
+    Returns {label: (lo, hi, step)} — only for specs that belong to a group."""
+    groups = defaultdict(list)
+    for label, buckets, cats, color, axis_group in specs:
+        if axis_group is None:
+            continue
+        items = _filtered_races(races_by_cat, buckets, cats)
+        groups[axis_group].append((label, items))
+
+    overrides = {}
+    for axis_group, entries in groups.items():
+        all_y = [r["time_seconds"] for _, items in entries for r in items]
+        if not all_y:
+            continue
+        lo, hi, step = _pr_axis_range(all_y)
+        for label, _ in entries:
+            overrides[label] = (lo, hi, step)
+    return overrides
 
 
 def _regress_pr_line(pr_items):
@@ -216,24 +297,16 @@ def _regress_pr_line(pr_items):
     return pr_items[0]["date"], pr_items[-1]["date"], fit_y[0], fit_y[1]
 
 
-def chart_pr_progression(races_by_cat, label, buckets, cats, color):
+def chart_pr_progression(races_by_cat, label, buckets, cats, color, y_override=None):
     """All race times for the given distance(s) plotted as faded scatter, with
-    cumulative-best (PR) points marked with stars and connected by a step line."""
-    items = []
-    for cat in cats:
-        for race in races_by_cat[cat]:
-            if race["bucket"] not in buckets or race["is_relay"] or race["time_seconds"] is None:
-                continue
-            items.append(race)
-    items.sort(key=lambda r: r["date"])
+    cumulative-best (PR) points marked with stars and connected by a step line.
 
-    # Cumulative-best (PR over time)
-    pr_items = []
-    best = float("inf")
-    for r in items:
-        if r["time_seconds"] < best:
-            best = r["time_seconds"]
-            pr_items.append(r)
+    y_override, if given, is an explicit (lo, hi, step) tuple — used to give
+    paired small-multiples (5k Track / 5k XC) an identical y-range/step; see
+    compute_pr_progression_axis_overrides(). Other callers omit it and get a
+    range/step computed from their own data."""
+    items = _filtered_races(races_by_cat, buckets, cats)
+    pr_items = _cumulative_pr_items(items)
 
     fig = go.Figure()
     if items:
@@ -241,7 +314,7 @@ def chart_pr_progression(races_by_cat, label, buckets, cats, color):
             x=[r["date"] for r in items],
             y=[r["time_seconds"] for r in items],
             mode="markers",
-            marker=dict(color=color, size=8, opacity=0.35, line=dict(width=0)),
+            marker=dict(color=color, size=8, opacity=0.55, line=dict(width=0)),
             hovertext=[f"{r['date']}<br>{r['race']}<br>{r['time']}" for r in items],
             hoverinfo="text", showlegend=False,
         ))
@@ -267,33 +340,28 @@ def chart_pr_progression(races_by_cat, label, buckets, cats, color):
                 hoverinfo="skip", showlegend=False,
             ))
 
+    tidy_dark(fig)
+
     if items:
-        all_y = [r["time_seconds"] for r in items]
-        span = max(all_y) - min(all_y)
-        step = 5 if span <= 60 else (10 if span <= 120 else (30 if span <= 600 else 60))
-        lo = (int(min(all_y)) // step) * step
-        hi = (int(max(all_y)) // step + 1) * step
+        if y_override:
+            lo, hi, step = y_override
+        else:
+            lo, hi, step = _pr_axis_range([r["time_seconds"] for r in items])
+        # Rounded-range / ~5-tick policy: keep ALL ticks including the
+        # boundaries (they're clean M:SS values now, not adaptive-step noise).
         ticks = list(range(lo, hi + step, step))
-        # Drop boundary ticks so axis labels don't sit on the chart edge
-        inner = ticks[1:-1] if len(ticks) > 2 else ticks
         fig.update_yaxes(
-            tickmode="array", tickvals=inner,
-            ticktext=[fmt_time(s) for s in inner],
-            title="Time", autorange="reversed",
+            tickmode="array", tickvals=ticks,
+            ticktext=[fmt_time(s) for s in ticks],
+            title="Time", range=[hi, lo],
         )
-    fig.update_layout(xaxis=dict(tickformat="%b %Y", showgrid=False))
-    return tidy_dark(fig)
+    fig.update_layout(xaxis=dict(
+        tickformat="%b %Y", showgrid=False,
+        range=_PR_X_RANGE, dtick="M6",
+    ))
+    return fig
 
 
-_PACE_BUCKET_COLORS = {
-    "800m":       WORKOUT_COLOR,
-    "Mile":       EASY_COLOR,
-    "1500m":      TEMPO_COLOR,
-    "3k":         "#a78bfa",
-    "3k steeple": LONG_COLOR,
-    "5k":         RACE_COLOR,
-    "6k":         "#f59e0b",
-}
 _PACE_MILES_LOOKUP = {
     "800m":       0.4971,
     "Mile":       1.0,
@@ -308,7 +376,7 @@ _PACE_MILES_LOOKUP = {
 def _group_races_by_bucket(races_by_cat):
     """All races plotted as pace (min/mile) over time, grouped by distance
     bucket, with hover text and PR/relay flags attached."""
-    by_bucket = defaultdict(lambda: {"x":[],"y":[],"text":[],"pr":[],"relay":[],"season":[]})
+    by_bucket = defaultdict(lambda: {"x":[],"y":[],"text":[],"pr":[],"relay":[]})
     for cat, races in races_by_cat.items():
         for race in races:
             b = race["bucket"]
@@ -322,7 +390,6 @@ def _group_races_by_bucket(races_by_cat):
             d["y"].append(pace)
             d["pr"].append(bool(race.get("pr")))
             d["relay"].append(bool(race.get("is_relay")))
-            d["season"].append(race.get("season") or "")
             tags = []
             if race.get("pr"):       tags.append("PR")
             if race.get("is_relay"): tags.append("relay split")
@@ -333,22 +400,27 @@ def _group_races_by_bucket(races_by_cat):
     return by_bucket
 
 
-def _pace_trendlines(d):
-    """Season-best trendline points for one bucket: the fastest non-relay race
-    in each season, sorted chronologically. None if fewer than 2 seasons."""
-    season_best = {}
-    for x, y, sn, rl in zip(d["x"], d["y"], d["season"], d["relay"]):
-        if rl or not sn:
-            continue
-        cur = season_best.get(sn)
-        if cur is None or y < cur[1]:
-            season_best[sn] = (x, y)
-    if len(season_best) < 2:
-        return None
-    return sorted(season_best.values(), key=lambda p: p[0])
+def _spread_right_labels(seeds, min_gap):
+    """De-collide right-edge direct labels: nudge overlapping 'y' data
+    coordinates apart to at least min_gap (data units), preserving order, so
+    labels for lines that end at similar values don't overprint each other.
+    Adjusts upward from the lowest label into whatever vertical space is
+    available. Mutates and returns the seed dicts."""
+    ordered = sorted(seeds, key=lambda s: s["y"])
+    prev = None
+    for s in ordered:
+        if prev is not None and s["y"] - prev < min_gap:
+            s["y"] = prev + min_gap
+        prev = s["y"]
+    return ordered
 
 
 def chart_pace_timeline(races_by_cat):
+    """All race paces over time, grouped into 3 event-group colors (rather
+    than 7 per-bucket colors) with direct labels instead of a legend. Marker
+    shape still distinguishes relay splits (diamond) and all-time PRs (star)
+    from ordinary races (circle); non-PR/relay markers are semi-transparent
+    so the PR "spine" of each event group stands out."""
     fig = go.Figure()
     by_bucket = _group_races_by_bucket(races_by_cat)
 
@@ -360,35 +432,41 @@ def chart_pace_timeline(races_by_cat):
         if is_pr:    return 14
         if is_relay: return 11
         return 9
+    def _opacity(is_pr, is_relay):
+        return 1.0 if (is_pr or is_relay) else 0.55
 
-    for bucket, color in _PACE_BUCKET_COLORS.items():
-        d = by_bucket.get(bucket)
-        if not d or not d["x"]:
+    label_seeds = []
+    for group_name, buckets, color in EVENT_GROUPS:
+        xs, ys, texts, symbols, sizes, opacities = [], [], [], [], [], []
+        for bucket in buckets:
+            d = by_bucket.get(bucket)
+            if not d:
+                continue
+            for x, y, text, pr, relay in zip(d["x"], d["y"], d["text"], d["pr"], d["relay"]):
+                xs.append(x)
+                ys.append(round(y, 3))
+                texts.append(text)
+                symbols.append(_symbol(pr, relay))
+                sizes.append(_size(pr, relay))
+                opacities.append(_opacity(pr, relay))
+        if not xs:
             continue
-        symbols = [_symbol(pr, rl) for pr, rl in zip(d["pr"], d["relay"])]
-        sizes   = [_size(pr, rl)   for pr, rl in zip(d["pr"], d["relay"])]
+
         fig.add_trace(go.Scatter(
-            x=d["x"], y=[round(v,3) for v in d["y"]],
-            mode="markers",
-            name=bucket,
-            marker=dict(color=color, size=sizes, symbol=symbols,
+            x=xs, y=ys, mode="markers", name=group_name,
+            marker=dict(color=color, size=sizes, symbol=symbols, opacity=opacities,
                         line=dict(color=BG_BASE, width=1)),
-            hovertext=d["text"], hoverinfo="text",
+            hovertext=texts, hoverinfo="text", showlegend=False,
         ))
 
-        # Season-best trendline (one dotted line per bucket connecting the
-        # fastest race in each season).
-        pts = _pace_trendlines(d)
-        if pts:
-            fig.add_trace(go.Scatter(
-                x=[p[0] for p in pts],
-                y=[round(p[1], 3) for p in pts],
-                mode="lines",
-                name=f"{bucket} season best",
-                line=dict(color=color, width=1.5, dash="dot"),
-                hoverinfo="skip",
-                showlegend=False,
-            ))
+        # Seed a direct label for this group at its chronologically-last
+        # point; all group labels are pinned to the right edge and de-collided
+        # below (replaces the old 7-item legend).
+        last_i = max(range(len(xs)), key=lambda i: xs[i])
+        label_seeds.append({"text": group_name, "color": color,
+                            "x": xs[last_i], "y": ys[last_i]})
+
+    tidy_dark(fig)
 
     # Pace ticks at every 30s
     if any(by_bucket[b]["y"] for b in by_bucket):
@@ -405,8 +483,58 @@ def chart_pace_timeline(races_by_cat):
             ticktext=[fmt_pace(t) for t in ticks],
             title="Pace (min/mile)",
         )
-    fig.update_layout(xaxis=dict(tickformat="%b %Y", showgrid=False))
-    return tidy_dark(fig)
+    # Pin all group labels to the right edge and de-collide them vertically so
+    # the two mid-pace groups (3k/steeple and 5k/6k) don't overprint.
+    annotations = []
+    if label_seeds:
+        x_right = max(s["x"] for s in label_seeds)
+        for s in _spread_right_labels(label_seeds, min_gap=0.14):
+            annotations.append(dict(
+                x=x_right, y=s["y"], xref="x", yref="y",
+                text=s["text"], showarrow=False,
+                xanchor="left", yanchor="middle", xshift=8,
+                font=dict(color=s["color"], size=11, family=PLOT_FONT_FAMILY),
+            ))
+    fig.update_layout(
+        xaxis=dict(tickformat="%b %Y", showgrid=False),
+        annotations=annotations,
+        margin=dict(r=110),
+    )
+    return fig
+
+
+def chart_pr_timeline(races_by_cat):
+    """One categorical row per PR-card distance (PR_CARD_SPECS order, 7
+    rows); a star marks every race that set a new all-time cumulative PR.
+    Reveals whether breakthroughs clustered in particular seasons or landed
+    steadily throughout."""
+    row_labels = [label for label, _, _, _ in PR_CARD_SPECS]
+
+    fig = go.Figure()
+    for label, buckets, cats, _color in PR_CARD_SPECS:
+        items = _filtered_races(races_by_cat, buckets, cats)
+        pr_items = _cumulative_pr_items(items)
+        if not pr_items:
+            continue
+        color = EVENT_GROUP_COLOR_BY_PR_LABEL.get(label, TEXT_SECONDARY)
+        fig.add_trace(go.Scatter(
+            x=[r["date"] for r in pr_items],
+            y=[label] * len(pr_items),
+            mode="markers", name=label,
+            marker=dict(color=color, size=13, symbol="star",
+                        line=dict(color=BG_BASE, width=1)),
+            hovertext=[f"{r['date']}<br>{r['time']}<br>{r['race']}" for r in pr_items],
+            hoverinfo="text", showlegend=False,
+        ))
+
+    tidy_dark(fig)
+    fig.update_layout(
+        xaxis=dict(tickformat="%b %Y", showgrid=False,
+                   range=_PR_X_RANGE, dtick="M6"),
+        yaxis=dict(type="category", categoryorder="array",
+                   categoryarray=list(reversed(row_labels)), showgrid=True),
+    )
+    return fig
 
 
 def chart_dow(rows):

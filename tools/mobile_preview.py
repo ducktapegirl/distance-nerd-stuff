@@ -146,8 +146,12 @@ def main() -> int:
     report: dict = {"url": url, "viewport": [args.width, args.height]}
     try:
         with sync_playwright() as p:
+            # Default to Playwright's own installed Chromium. The Linux CI path
+            # (/opt/pw-browsers/chromium) doesn't exist on this Windows machine;
+            # PLAYWRIGHT_CHROMIUM_PATH lets a machine override it if needed.
             browser = p.chromium.launch(
-                headless=not args.headed, executable_path="/opt/pw-browsers/chromium"
+                headless=not args.headed,
+                executable_path=os.environ.get("PLAYWRIGHT_CHROMIUM_PATH") or None,
             )
             context = browser.new_context(
                 viewport={"width": args.width, "height": args.height},
