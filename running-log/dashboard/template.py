@@ -1563,8 +1563,8 @@ DATE_CHART_IDS.forEach(id => {
   window.__thinTicks = thinTicks;
   function simplify(mobile) {
     if (!window.Plotly) return;
-    var pt = document.getElementById('chart-pace-timeline');
-    if (pt && pt._fullLayout) Plotly.relayout(pt, {'showlegend': !mobile});
+    // chart-pace-timeline keeps its compact 4-item color legend on mobile
+    // (it replaced the old 7-item legend that used to be hidden here).
     var mby = document.getElementById('chart-monthly-by-year');
     if (mby && mby._fullLayout) Plotly.relayout(mby, {'showlegend': !mobile});
     var mix = document.getElementById('chart-mix-by-season');

@@ -400,24 +400,9 @@ def _group_races_by_bucket(races_by_cat):
     return by_bucket
 
 
-def _spread_right_labels(seeds, min_gap):
-    """De-collide right-edge direct labels: nudge overlapping 'y' data
-    coordinates apart to at least min_gap (data units), preserving order, so
-    labels for lines that end at similar values don't overprint each other.
-    Adjusts upward from the lowest label into whatever vertical space is
-    available. Mutates and returns the seed dicts."""
-    ordered = sorted(seeds, key=lambda s: s["y"])
-    prev = None
-    for s in ordered:
-        if prev is not None and s["y"] - prev < min_gap:
-            s["y"] = prev + min_gap
-        prev = s["y"]
-    return ordered
-
-
 def chart_pace_timeline(races_by_cat):
-    """All race paces over time, grouped into 3 event-group colors (rather
-    than 7 per-bucket colors) with direct labels instead of a legend. Marker
+    """All race paces over time, grouped into 4 event-group colors (rather
+    than 7 per-bucket colors), with a color legend below the plot. Marker
     shape still distinguishes relay splits (diamond) and all-time PRs (star)
     from ordinary races (circle); non-PR/relay markers are semi-transparent
     so the PR "spine" of each event group stands out."""
@@ -435,7 +420,7 @@ def chart_pace_timeline(races_by_cat):
     def _opacity(is_pr, is_relay):
         return 1.0 if (is_pr or is_relay) else 0.55
 
-    label_seeds = []
+    legend_groups = []   # (name, color) for groups with data → drives the legend
     for group_name, buckets, color in EVENT_GROUPS:
         xs, ys, texts, symbols, sizes, opacities = [], [], [], [], [], []
         for bucket in buckets:
@@ -458,13 +443,19 @@ def chart_pace_timeline(races_by_cat):
                         line=dict(color=BG_BASE, width=1)),
             hovertext=texts, hoverinfo="text", showlegend=False,
         ))
+        legend_groups.append((group_name, color))
 
-        # Seed a direct label for this group at its chronologically-last
-        # point; all group labels are pinned to the right edge and de-collided
-        # below (replaces the old 7-item legend).
-        last_i = max(range(len(xs)), key=lambda i: xs[i])
-        label_seeds.append({"text": group_name, "color": color,
-                            "x": xs[last_i], "y": ys[last_i]})
+    # Color-key legend below the plot. The data traces use per-point
+    # star/diamond/circle symbols (messy as legend swatches), so they stay
+    # showlegend=False and these zero-point proxy traces carry clean circle
+    # swatches instead.
+    for name, color in legend_groups:
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], mode="markers", name=name,
+            marker=dict(color=color, size=10, symbol="circle",
+                        line=dict(color=BG_BASE, width=1)),
+            hoverinfo="skip", showlegend=True,
+        ))
 
     tidy_dark(fig)
 
@@ -483,22 +474,15 @@ def chart_pace_timeline(races_by_cat):
             ticktext=[fmt_pace(t) for t in ticks],
             title="Pace (min/mile)",
         )
-    # Pin all group labels to the right edge and de-collide them vertically so
-    # the two mid-pace groups (3k/steeple and 5k/6k) don't overprint.
-    annotations = []
-    if label_seeds:
-        x_right = max(s["x"] for s in label_seeds)
-        for s in _spread_right_labels(label_seeds, min_gap=0.14):
-            annotations.append(dict(
-                x=x_right, y=s["y"], xref="x", yref="y",
-                text=s["text"], showarrow=False,
-                xanchor="left", yanchor="middle", xshift=8,
-                font=dict(color=s["color"], size=11, family=PLOT_FONT_FAMILY),
-            ))
     fig.update_layout(
         xaxis=dict(tickformat="%b %Y", showgrid=False, range=_PR_X_RANGE),
-        annotations=annotations,
-        margin=dict(r=110),
+        # Force the legend on — Plotly auto-hides it on narrow (mobile) plots
+        # unless showlegend is set explicitly.
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="top", y=-0.24, x=0.5,
+                    xanchor="center", bgcolor="rgba(0,0,0,0)",
+                    font=dict(color=TEXT_SECONDARY, size=11, family=PLOT_FONT_FAMILY)),
+        margin=dict(r=24, b=112),
     )
     return fig
 
