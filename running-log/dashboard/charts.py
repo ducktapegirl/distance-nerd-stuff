@@ -496,7 +496,7 @@ def chart_pace_timeline(races_by_cat):
                 font=dict(color=s["color"], size=11, family=PLOT_FONT_FAMILY),
             ))
     fig.update_layout(
-        xaxis=dict(tickformat="%b %Y", showgrid=False),
+        xaxis=dict(tickformat="%b %Y", showgrid=False, range=_PR_X_RANGE),
         annotations=annotations,
         margin=dict(r=110),
     )
