@@ -8,7 +8,7 @@ from dashboard.config import LONG_COLOR, TEMPO_COLOR, TYPE_COLORS, TYPE_LABELS, 
 from dashboard.charts import (
     PR_PROGRESSION_SPECS, chart_cumulative, chart_dow, chart_easy_pace,
     chart_monthly_avg, chart_monthly_mileage_by_year, chart_pace_timeline,
-    chart_pr_progression, chart_pr_timeline, chart_season_best_slope,
+    chart_pr_progression, chart_pr_timeline,
     chart_seasonal_sparklines, chart_weekly, chart_workout_donut,
     chart_workout_mix_by_season, compute_pr_progression_axis_overrides,
 )
@@ -156,10 +156,6 @@ def section_performance(rows, races_by_cat):
         <div class="card-title">Race Pace Over Time</div>
         <div class="chart-caption">★ all-time PR &nbsp;·&nbsp; ◆ relay split</div>
         {fig_html(chart_pace_timeline(races_by_cat), height=360, div_id="chart-pace-timeline")}
-      </div>
-      <div class="card">
-        <div class="card-title">Season-Best Pace by Event Group</div>
-        {fig_html(chart_season_best_slope(races_by_cat), height=300, div_id="chart-season-best-slope")}
       </div>
       <div class="card">
         <div class="card-title">When PRs Fell</div>

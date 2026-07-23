@@ -1,4 +1,4 @@
-"""The 15 Plotly chart builders for the running-log dashboard."""
+"""The 14 Plotly chart builders for the running-log dashboard."""
 
 from collections import defaultdict
 from datetime import date, timedelta
@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 
 from dashboard.config import (
     ACCENT, ACCENT_DIM, ACCENT_GLOW, BG_BASE, BG_ELEVATED, BORDER, DOW_ORDER,
-    DOW_SHORT, EASY_COLOR, EVENT_GROUP_COLOR_BY_PR_LABEL, EVENT_GROUP_COLORS,
+    DOW_SHORT, EASY_COLOR, EVENT_GROUP_COLOR_BY_PR_LABEL,
     EVENT_GROUPS, LONG_COLOR, MONTH_ABBR, PLOT_FONT_FAMILY, RACE_COLOR,
     SEASON_ORDER, TEXT_PRIMARY, TEXT_SECONDARY, TYPE_COLORS,
     TYPE_LABELS, WORKOUT_COLOR, WORKOUT_MIX_COLORS, YEAR_PALETTE,
@@ -499,122 +499,6 @@ def chart_pace_timeline(races_by_cat):
         xaxis=dict(tickformat="%b %Y", showgrid=False),
         annotations=annotations,
         margin=dict(r=110),
-    )
-    return fig
-
-
-def _season_order(races_by_cat):
-    """Season labels present in the data, ordered chronologically by the
-    earliest race date carrying that label. season_label() (dashboard/data.py)
-    only ever produces "Fall Y" (crossCountry), "Indoor Y" (indoorTrack), or
-    "Spring Y" (outdoorTrack) — there is no "Winter" label."""
-    earliest = {}
-    for races in races_by_cat.values():
-        for race in races:
-            sn = race.get("season")
-            if not sn or not race.get("date"):
-                continue
-            if sn not in earliest or race["date"] < earliest[sn]:
-                earliest[sn] = race["date"]
-    return sorted(earliest, key=lambda s: earliest[s])
-
-
-def chart_season_best_slope(races_by_cat):
-    """One line per distance bucket: the fastest non-relay time that season,
-    expressed as % behind that bucket's eventual all-time PR (0% = PR, axis
-    reversed so faster sits at the top). Answers "did I get faster each
-    year?" without the race-to-race noise of the combined pace chart. Seasons
-    with no qualifying race for a bucket are gapped (None), never
-    interpolated and never dropped from the x-axis."""
-    seasons = _season_order(races_by_cat)
-    if not seasons:
-        return tidy_dark(go.Figure())
-
-    # bucket -> season -> fastest non-relay time_seconds that season
-    best_by_bucket_season = defaultdict(dict)
-    # bucket -> all-time PR (min non-relay time across ALL seasons)
-    bucket_pr = {}
-    for races in races_by_cat.values():
-        for race in races:
-            b = race["bucket"]
-            if b not in EVENT_GROUP_COLORS or race["is_relay"] or race["time_seconds"] is None:
-                continue
-            sn = race.get("season")
-            if not sn:
-                continue
-            secs = race["time_seconds"]
-            cur = best_by_bucket_season[b].get(sn)
-            if cur is None or secs < cur:
-                best_by_bucket_season[b][sn] = secs
-            if b not in bucket_pr or secs < bucket_pr[b]:
-                bucket_pr[b] = secs
-
-    fig = go.Figure()
-    max_pct = 0.0
-    for bucket, color in EVENT_GROUP_COLORS.items():
-        season_bests = best_by_bucket_season.get(bucket)
-        pr = bucket_pr.get(bucket)
-        if not season_bests or not pr:
-            continue
-        ys = []
-        for sn in seasons:
-            secs = season_bests.get(sn)
-            if secs is None:
-                ys.append(None)   # gap — no qualifying race this season
-            else:
-                pct = round((secs - pr) / pr * 100, 2)
-                ys.append(pct)
-                max_pct = max(max_pct, pct)
-
-        fig.add_trace(go.Scatter(
-            x=seasons, y=ys, mode="lines+markers", name=bucket,
-            connectgaps=False,
-            line=dict(color=color, width=2),
-            marker=dict(color=color, size=7),
-            hovertext=[
-                f"{bucket} — {sn}<br>" +
-                ("no qualifying race" if y is None else f"{y:.1f}% behind PR")
-                for sn, y in zip(seasons, ys)
-            ],
-            hoverinfo="text", showlegend=False,
-        ))
-
-    tidy_dark(fig)
-
-    # Direct-label each line, pinned to the right edge (rightmost season) and
-    # de-collided vertically so same-color lines (e.g. the three teal middle
-    # distances) stay individually legible.
-    seeds = []
-    for trace in fig.data:
-        pts = [y for y in trace.y if y is not None]
-        if not pts:
-            continue
-        seeds.append({"text": trace.name, "color": trace.marker.color,
-                      "y": pts[-1]})
-    gap = max(0.9, max_pct / 10)
-    annotations = [dict(
-        x=seasons[-1], y=s["y"], xref="x", yref="y",
-        text=s["text"], showarrow=False,
-        xanchor="left", yanchor="middle", xshift=8,
-        font=dict(color=s["color"], size=11, family=PLOT_FONT_FAMILY),
-    ) for s in _spread_right_labels(seeds, gap)]
-
-    # Compact season labels ("Fall '03") matching the Workout-Mix chart's house
-    # style — keeps the 11-category axis legible even on a narrow mobile plot.
-    def _abbrev(s):
-        parts = s.split()
-        return f"{parts[0]} '{parts[1][2:]}" if len(parts) == 2 else s
-
-    fig.update_layout(
-        # Label every other season only — 11 rotated labels overlap badly on a
-        # narrow mobile plot; hover still names the exact season for each point.
-        xaxis=dict(type="category", categoryorder="array", categoryarray=seasons,
-                   showgrid=False, tickangle=-40, tickfont=dict(size=10),
-                   tickmode="array", tickvals=seasons[::2],
-                   ticktext=[_abbrev(s) for s in seasons[::2]]),
-        yaxis=dict(title="% behind PR", range=[max(max_pct * 1.15, 5), 0]),
-        annotations=annotations,
-        margin=dict(r=110, b=80),
     )
     return fig
 

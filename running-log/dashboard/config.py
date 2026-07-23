@@ -72,16 +72,11 @@ TYPE_LABELS = {
 #   3k / steeple    (3k, 3k steeple)      -> LONG_COLOR (violet)
 #   5k / 6k         (5k, 6k)              -> RACE_COLOR (coral)
 EVENT_GROUPS = [
-    ("Middle distance", ("800m", "Mile", "1500m"), EASY_COLOR),
-    ("3k / Steeple",    ("3k", "3k steeple"),       LONG_COLOR),
-    ("5k / 6k",         ("5k", "6k"),                RACE_COLOR),
+    ("800m",         ("800m",),             WORKOUT_COLOR),  # blue — matches 800m PR card
+    ("Mile / 1500m", ("Mile", "1500m"),     EASY_COLOR),     # teal
+    ("3k / Steeple", ("3k", "3k steeple"),  LONG_COLOR),     # violet
+    ("5k / 6k",      ("5k", "6k"),           RACE_COLOR),    # coral
 ]
-
-# Raw distance bucket -> event-group color (derived from EVENT_GROUPS above),
-# for charts keyed by bucket (combined pace chart, season-best slope chart).
-EVENT_GROUP_COLORS = {
-    bucket: color for _, buckets, color in EVENT_GROUPS for bucket in buckets
-}
 
 # PR-card label -> event-group color, for chart_pr_timeline's 7 rows (keyed by
 # PR_CARD_SPECS label, which splits "5k Track"/"5k XC"/"6k XC" rather than
