@@ -475,7 +475,7 @@ def chart_pace_timeline(races_by_cat):
             title="Pace (min/mile)",
         )
     fig.update_layout(
-        xaxis=dict(tickformat="%b %Y", showgrid=False, range=_PR_X_RANGE),
+        xaxis=dict(tickformat="%b %Y", showgrid=False, range=_PR_X_RANGE, dtick="M6"),
         # Force the legend on — Plotly auto-hides it on narrow (mobile) plots
         # unless showlegend is set explicitly.
         showlegend=True,
