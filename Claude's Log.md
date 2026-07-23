@@ -1,4 +1,33 @@
 
+## 22 July 2026
+
+### Performance Section Redesign — Build, Refine, and Three Rounds of Mobile Fixes
+
+Redesigned the Running Log dashboard's Performance section end-to-end: simplified the combined "Race Pace Over Time" chart from 7 colors to 4 event-group colors, standardized the five per-distance PR-progression charts onto a shared rounded-tick axis policy, and added a new "When PRs Fell" timeline. Landed via two merged PRs (#26, #27). Three follow-up rounds then fixed mobile-specific rendering problems the initial build didn't catch: an x-axis that silently expanded to 2010 on narrow screens, a legend eating ~30% of the mobile card width, and polish (2×2 grid, matching tick style) on its replacement.
+
+### Iterations
+
+| # | What happened | Root cause | Fix |
+|---|---|---|---|
+| 1 | Race Pace Over Time's x-axis silently expanded to ~2010 on mobile, squeezing the real 2003–2007 data into the left ~60% of the card | Right-edge direct-label annotations are anchored in data coordinates; Plotly auto-expands the axis range to keep their text on-canvas, and that expansion is proportionally far larger on a narrow mobile plot than on desktop | Pinned an explicit x-axis range matching the sibling PR-progression charts |
+| 2 | Even after the axis fix, the labels still cost ~110px of a 375px screen (~30% of the card) | The direct-label design (chosen for a clean desktop look) put chart chrome in a fixed-width margin that doesn't scale down for mobile | Replaced direct labels with a Plotly legend below the chart, driven by zero-point proxy traces for clean circle swatches |
+| 3 | The new legend didn't render on mobile at all | Two compounding causes: Plotly auto-hides horizontal legends on narrow containers unless `showlegend` is forced, and a leftover JS handler in `template.py` (written for the *old* 7-item legend) was still explicitly hiding this chart's legend on mobile | Forced `showlegend=true`; deleted the stale JS special-case |
+| 4 | Forcing a 2×2 mobile legend grid clipped "Mile / 1500m" mid-word; separately, the x-axis tick style/spacing didn't match the sibling PR charts | `legend.entrywidth` halves each column's width without shrinking font to match; the pace chart never had the `dtick="M6"` the sibling charts use, and was still in `template.py`'s old `DENSE` tick-thinning list from before the redesign | Shrank the mobile-only legend font to 8px; added `dtick="M6"` and removed the chart from `DENSE` |
+
+### Prompting lessons
+
+- **This exact bug class has bitten this repo before.** The Seasonal Handoff chart hit the identical root cause on 22–24 June — an annotation anchored in data coordinates forced Plotly's autorange to stretch past the real data, breaking mobile rendering, and it took three sessions to diagnose. This session made the same mistake in a new chart (direct labels this time, not `add_vrect`) before catching it. Worth a standing rule rather than rediscovering it per-chart: *never anchor chart chrome (labels, annotation pills) in data coordinates on a chart that must render at mobile widths* — use a legend or fixed-position chrome instead.
+- **When redesigning an existing chart, check the JS layer for stale special-casing before calling it done.** `template.py`'s `simplify()`/`DENSE` list contained per-chart-id JS tied to the chart's *old* shape (7-item legend, auto-ranging axis); the redesign changed the Python side three times before all of that old JS was found and reconciled. A single grep for the chart's div id in `template.py` at the start of a redesign would have caught both stale hooks in one pass instead of two separate follow-up rounds.
+- **Screenshot-only mobile QA missed both bugs.** Both the axis blowout and the vanished legend read as "looks a little compressed" or "not rendering" in a screenshot — diagnosing them required reading `_fullLayout.xaxis.range` / `.showlegend` directly via `eval`. Stating the verification method as "read actual DOM/fullLayout values, not just a screenshot" up front would have caught both on the first pass.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| 1-2 hours | — | 2/5 — mostly smooth; friction came from three rounds of mobile-specific bugs that a live-browser measurement would have caught in one |
+
+---
+
 ## 24 June 2026
 
 ### Calendar Heatmap Outlier Fix + Longest-Day Star
