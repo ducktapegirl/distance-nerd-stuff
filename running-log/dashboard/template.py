@@ -1544,9 +1544,11 @@ DATE_CHART_IDS.forEach(id => {
   var mq = window.matchMedia('(max-width:640px)');
   // Dense time/numeric charts: thin ticks to ~1 per 100px (x) / 80px (y).
   // Categorical charts (mix-by-season, monthly-by-year) are excluded — nticks
-  // can drop their category labels.
+  // can drop their category labels. chart-pace-timeline is excluded too: it
+  // now uses a fixed dtick="M6" (matching the PR-progression/timeline charts'
+  // Jan/Jul tick spacing), and a fixed dtick makes nticks a no-op anyway.
   var DENSE = ['chart-cumulative', 'chart-weekly', 'chart-easy-pace',
-               'chart-pace-timeline', 'chart-5k-prog'];
+               'chart-5k-prog'];
   function thinTicks() {
     if (!window.Plotly) return;
     var mobile = mq.matches;
@@ -1563,8 +1565,18 @@ DATE_CHART_IDS.forEach(id => {
   window.__thinTicks = thinTicks;
   function simplify(mobile) {
     if (!window.Plotly) return;
+    // chart-pace-timeline's 4-item color legend: a single row of 4 on
+    // desktop, but forced to a 2x2 grid on mobile (entrywidth=0.5 fraction
+    // caps each item to half the legend width, so exactly 2 fit per row)
+    // instead of the narrower single-column stack Plotly falls back to.
     var pt = document.getElementById('chart-pace-timeline');
-    if (pt && pt._fullLayout) Plotly.relayout(pt, {'showlegend': !mobile});
+    if (pt && pt._fullLayout) {
+      Plotly.relayout(pt, mobile
+        ? {'legend.entrywidth': 0.5, 'legend.entrywidthmode': 'fraction',
+           'legend.font.size': 8}
+        : {'legend.entrywidth': 0, 'legend.entrywidthmode': 'pixels',
+           'legend.font.size': 11});
+    }
     var mby = document.getElementById('chart-monthly-by-year');
     if (mby && mby._fullLayout) Plotly.relayout(mby, {'showlegend': !mobile});
     var mix = document.getElementById('chart-mix-by-season');

@@ -155,7 +155,7 @@ def section_performance(rows, races_by_cat):
       <div class="card">
         <div class="card-title">Race Pace Over Time</div>
         <div class="chart-caption">★ all-time PR &nbsp;·&nbsp; ◆ relay split</div>
-        {fig_html(chart_pace_timeline(races_by_cat), height=360, div_id="chart-pace-timeline")}
+        {fig_html(chart_pace_timeline(races_by_cat), height=410, div_id="chart-pace-timeline")}
       </div>
       <div class="card">
         <div class="card-title">When PRs Fell</div>
