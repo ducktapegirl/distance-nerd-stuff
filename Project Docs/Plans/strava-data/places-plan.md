@@ -25,17 +25,17 @@ reserve Fable for the one stage where its aesthetic/narrative judgment isn't che
 
 All `strava-*` agents pin `model: opus` in their frontmatter **except** `strava-qa` and
 `strava-maintenance` (`sonnet`). Realize the split via the **`model` override** on each `Agent`
-dispatch (e.g. `Agent(subagent_type="strava-viz-design", model="fable", …)`). The `/strava`
+dispatch (e.g. `Agent(subagent_type="dash-viz-design", model="fable", …)`). The `/strava`
 orchestrator runs in the **main session** (a subagent can't spawn subagents) — keep it on
 **Opus** for gate judgment.
 
 | Stage | Agent / skill | Model | Why |
 |---|---|---|---|
 | Orchestration + gates | `/strava` (main session) | **Opus** | Drives the pipeline, writes the spec file, runs the review gate — strongest judgment. |
-| **Analyze** | `strava-data-analyst` | **Opus** | Correctness-critical: trip-clustering (time-gap-away-from-home, Wrinkle A), stream-draw perf across 344 tracks, projection/fit-to-bounds, superlatives incl. home-adjacent giants (Wrinkle B). Everything downstream trusts these numbers. |
-| Ideate (optional) | `strava-creativity` | **Opus** | Modules already specified; heavy ideation not required. Promote to Fable only on a larger budget. |
-| **Design** → spec | `strava-viz-design` | **★ Fable** | The one Fable dispatch. Scope is now *harden the mocks for real data* (label behavior vs. dense tracks, Trips lens over real coast-to-coast geometry, projection edge cases) + control/hover/label contracts. Fable's strength + precedent (it authored the dashboard's creative sections). Read-only; **orchestrator (Opus) writes the returned spec into `Specs/strava-data/dashboard-spec.md`.** |
-| **Build** | `strava-developer` | **Sonnet** (escalate to Opus) | High-volume, well-specified port of the mocks + real-data wiring. Escalate a specific piece to Opus only if it stalls (projection/perf, map fly-to). |
+| **Analyze** | `dash-analyst` | **Opus** | Correctness-critical: trip-clustering (time-gap-away-from-home, Wrinkle A), stream-draw perf across 344 tracks, projection/fit-to-bounds, superlatives incl. home-adjacent giants (Wrinkle B). Everything downstream trusts these numbers. |
+| Ideate (optional) | `dash-creativity` | **Opus** | Modules already specified; heavy ideation not required. Promote to Fable only on a larger budget. |
+| **Design** → spec | `dash-viz-design` | **★ Fable** | The one Fable dispatch. Scope is now *harden the mocks for real data* (label behavior vs. dense tracks, Trips lens over real coast-to-coast geometry, projection edge cases) + control/hover/label contracts. Fable's strength + precedent (it authored the dashboard's creative sections). Read-only; **orchestrator (Opus) writes the returned spec into `Specs/strava-data/dashboard-spec.md`.** |
+| **Build** | `dash-developer` | **Sonnet** (escalate to Opus) | High-volume, well-specified port of the mocks + real-data wiring. Escalate a specific piece to Opus only if it stalls (projection/perf, map fly-to). |
 | **QA** | `strava-qa` | **Sonnet** (default) | Both themes, mobile, label overlap, edge clipping, units policy. No override. |
 | **Review gate** | `/code-review` + `/security-review` | **Opus** (main session) | Correctness/safety on the diff, run at high effort. |
 

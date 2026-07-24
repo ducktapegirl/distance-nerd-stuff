@@ -3,7 +3,7 @@
 **Status:** PRE-SPEC (concept + design direction, brainstormed 2026-07-13). **Not build-ready.**
 This is the input to a future `/strava` pipeline run — the Analyze/Design stages should verify the
 data recipes and turn the module contracts below into a build-ready spec in `dashboard-spec.md`
-before any `strava-developer` work.
+before any `dash-developer` work.
 
 **Interactive design mocks** (illustrative routes; aesthetic + layout reference, not exact GPS):
 - Hero map — https://claude.ai/code/artifact/22a27be0-2cec-4bc0-8346-e6d24f5adcb2
@@ -188,11 +188,11 @@ Everything lives inside the current identity so it reads as *part* of the dashbo
 
 ## 10. Suggested pipeline hand-off
 
-1. **Analyze** (`strava-data-analyst`): verify trip-clustering (time-gap-away-from-home recipe, Wrinkle A),
+1. **Analyze** (`dash-analyst`): verify trip-clustering (time-gap-away-from-home recipe, Wrinkle A),
    stream-drawing feasibility/perf across 344 tracks, and the peaks/superlatives list (Wrinkle B); pin the
    numbers (Whitney 14,507 ft, San Jacinto 10,800 ft, home counts, region count).
-2. **Design** (`strava-viz-design`): promote the module contracts above into `dashboard-spec.md`
+2. **Design** (`dash-viz-design`): promote the module contracts above into `dashboard-spec.md`
    view specs (div ids, control contracts, hover/label rules, terrain-gradient color mapping).
-3. **Build** (`strava-developer`): new builders in `dashboard/charts_production.py` (or a new
+3. **Build** (`dash-developer`): new builders in `dashboard/charts_production.py` (or a new
    `charts_places.py`), retire `chart_map()`, wire the `("places","Places")` nav + section HTML/JS.
 4. **QA** (`strava-qa`): both themes, mobile, label overlap, edge clipping, units policy.

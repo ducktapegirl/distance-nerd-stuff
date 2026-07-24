@@ -24,10 +24,20 @@ fail). Surface every FAIL it prints verbatim. This already covers CSV data quali
 required chart `<div>`s, theme-system presence, and CSS-variable usage — **do not re-derive
 those**; your job below is the visual/rendered layer qa.py cannot reach.
 
-## 3. Visual smoke test (Preview MCP) — desktop AND mobile (mandatory)
+## 3. Visual smoke test — desktop AND mobile (mandatory)
 Open `running-log/index.html` with the Preview tools, screenshot it, and check
 `preview_console_logs` for errors. Confirm charts actually render — not just that the source
 contains them.
+
+> **Environment note (per the repo `CLAUDE.md`):** on this machine the Claude Preview MCP
+> often cannot reach a local server — its Chromium lands on `chrome-error://`. If
+> `preview_start` fails that way, fall back to `tools/mobile_preview.py` (an in-process
+> `127.0.0.1` server + mobile-emulated Playwright Chromium), **run un-sandboxed** (the page
+> pulls `plotly.js` from the CDN). It prints chart fill/range measurements and saves
+> screenshots — use it to satisfy the render check, the mobile-reflow measurements (§3.0,
+> §3.5c-style fill), and the screenshots below. The Preview-MCP `preview_eval` audits in
+> §3.5/§3.5b/§3.6 remain the specification of *what* to check; run the equivalent
+> measurement via whichever tool actually loads the page.
 
 **Run the full visual suite at two viewports (a "viewport sweep"):**
 1. **Desktop — 1440×900.**
