@@ -8,7 +8,8 @@ by design.
 One pipeline serves two dashboards. Parse `$ARGUMENTS`: the first token is the **target**,
 the rest is the mode.
 - `strava-data` (aliases: `strava`) — the live, rich Strava dashboard.
-- `running-log` — the frozen 2003–2007 Running Log dashboard.
+- `running-log` — the Running Log dashboard, built on a fixed 2003–2007 dataset (the
+  dashboard itself is under active development; only the underlying data is frozen).
 
 If no target is given, ask which dashboard to work on before proceeding.
 

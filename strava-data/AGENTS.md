@@ -29,7 +29,8 @@ publishes it. The deployed site, not the local file, is the end of the pipeline.
   policy, and checks differ from Running Log's.
 - `strava-maintenance` — breakage + upstream (Strava API / Plotly / Claude Code) + dep/code
   health. Read-only + web research; proposes, never fixes. Kept as a dedicated agent because
-  the live Strava API genuinely needs an upstream watch (Running Log is frozen).
+  the live Strava API genuinely needs an upstream watch (Running Log's data has no API to
+  drift against — its dashboard code is still actively developed, just without that risk).
 
 The reasoning agents (analyst, creativity, viz-design, developer) are the **shared**
 `dash-*` agents in `.claude/agents/`; they read the Strava **Pipeline profile** block at the

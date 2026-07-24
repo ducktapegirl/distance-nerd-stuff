@@ -6,12 +6,16 @@ pipeline. This is the map; the agents live in `.claude/agents/`, the orchestrato
 
 ## The two dashboards it serves
 ```
-strava-data   (live, rich)   fetch.py → analyze_segments.py → build_dashboard.py → strava.html ┐
-running-log   (frozen)       parse_log.py → running_log.csv → visualize_log.py    → index.html ┤
-                                                                                               │
-   both HTML files are gitignored build artifacts written into running-log/ (the Pages dir)    │
-                            deploy.yml publishes running-log/ → GitHub Pages  ◄─────────────────┘  (the pipeline's end)
+strava-data   fetch.py → analyze_segments.py → build_dashboard.py → strava.html ┐
+running-log   parse_log.py → running_log.csv → visualize_log.py   → index.html ┤
+                                                                                ▼
+                            deploy.yml publishes running-log/ → GitHub Pages (pipeline's end)
 ```
+`strava-data`'s underlying data is **live and growing** (refreshed by `strava-fetch.yml`);
+`running-log`'s underlying data is a **fixed** 2003–2007 CSV — but the running-log
+*dashboard itself* (code, features, views) is under active development just like Strava's,
+this pipeline being the point. "Frozen" below describes the data, never the dashboard.
+
 Each build writes a gitignored HTML file into `running-log/` — Strava's `strava.html` and the
 running log's `index.html`. That directory is the GitHub Pages publish root, so
 `.github/workflows/deploy.yml` rebuilds both from source and publishes the folder. The
@@ -34,7 +38,7 @@ specialists must be top-level.
 | **Viz design** | `dash-viz-design` agent | Build-ready spec text; orchestrator writes the file. Read-only. Both dashboards. |
 | **Developer** | `dash-developer` agent | The only agent that edits build code. Profile-driven, both dashboards. |
 | **QA** | `strava-qa` / `running-log-qa` agents | Target-specific (different build, units, checks). Runs but doesn't edit. |
-| **Maintenance** | `strava-maintenance` agent (Strava only) / inline orchestrator check (Running Log) | Health/upstream watch. Running Log is frozen, so no dedicated agent. |
+| **Maintenance** | `strava-maintenance` agent (Strava only) / inline orchestrator check (Running Log) | Health/upstream watch. Running Log's data is fixed and there's no live API to watch, so it gets no dedicated maintenance agent — the dashboard code itself still evolves. |
 | **Code review** | `/code-review` + `/security-review` skills | Quality & safety gate, run by the orchestrator. |
 
 ## The profile mechanism
