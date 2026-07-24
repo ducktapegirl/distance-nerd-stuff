@@ -28,7 +28,10 @@ Machine-readable facts every shared `dash-*` agent loads first when the orchestr
   series), `laps/{id}.csv` (fetched, not yet consumed — retained intentionally),
   `gear.json`, `athlete.json`.
 - **Build command**: `uv run python strava-data/build_dashboard.py` (run from repo root).
-- **Output HTML**: `running-log/strava.html` (the GitHub Pages publish root; gitignored).
+- **Output HTML**: `running-log/strava.html` — a gitignored build artifact written into the
+  `running-log/` directory (the GitHub Pages publish root shared by both dashboards). It is
+  never committed; `deploy.yml` rebuilds and publishes it. The deployed Pages site, not this
+  file, is the pipeline's end.
 - **Static QA**: none dedicated — the units grep (below) plus the `strava-qa` agent.
 - **QA agent**: `strava-qa` (build integrity, spec compliance, units policy, data
   accuracy, edge cases, HTML sanity, responsive light/dark visual audit).

@@ -6,12 +6,18 @@ pipeline. This is the map; the agents live in `.claude/agents/`, the orchestrato
 
 ## The two dashboards it serves
 ```
-strava-data   (live, rich)   fetch.py → analyze_segments.py → build_dashboard.py → running-log/strava.html
-running-log   (frozen)       parse_log.py → running_log.csv → visualize_log.py    → running-log/index.html
-                                                                                    └→ deploy (.github/workflows/deploy.yml → GitHub Pages)
+strava-data   (live, rich)   fetch.py → analyze_segments.py → build_dashboard.py → strava.html ┐
+running-log   (frozen)       parse_log.py → running_log.csv → visualize_log.py    → index.html ┤
+                                                                                               │
+   both HTML files are gitignored build artifacts written into running-log/ (the Pages dir)    │
+                            deploy.yml publishes running-log/ → GitHub Pages  ◄─────────────────┘  (the pipeline's end)
 ```
-The two share `nerd_common/` (design tokens, theme helpers, formatters). One pipeline drives
-both; the **target** (`strava-data` | `running-log`) is a parameter.
+Each build writes a gitignored HTML file into `running-log/` — Strava's `strava.html` and the
+running log's `index.html`. That directory is the GitHub Pages publish root, so
+`.github/workflows/deploy.yml` rebuilds both from source and publishes the folder. The
+**deployed Pages site is the end of the pipeline**; the local HTML files are transient outputs,
+never committed. The two share `nerd_common/` (design tokens, theme helpers, formatters). One
+pipeline drives both; the **target** (`strava-data` | `running-log`) is a parameter.
 
 ## The key rule
 **A subagent cannot spawn another subagent in Claude Code.** So the orchestrator is a *skill
