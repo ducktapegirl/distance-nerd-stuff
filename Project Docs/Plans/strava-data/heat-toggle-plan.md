@@ -46,12 +46,12 @@ This should be executed through the **`/strava` orchestrator skill**
 (`.claude/commands/strava.md`, `strava-data/AGENTS.md`), not by hand. The view is already
 chosen and fully specified, so **Intake and Ideate can be skipped**. Stages to run:
 
-- **Design** — dispatch `strava-data-analyst` (Job B, verification) to confirm per-band
+- **Design** — dispatch `dash-analyst` (Job B, verification) to confirm per-band
   counts and per-view Welch stats for `apparent_temp_c` under the existing fixed edges
-  (the air-temp numbers are already verified and in the spec); dispatch `strava-viz-design`
+  (the air-temp numbers are already verified and in the spec); dispatch `dash-viz-design`
   to write the updated V4 spec block describing the toggle. Orchestrator writes it to
   `Specs/strava-data/dashboard-spec.md`. **User approves the spec.**
-- **Build** — dispatch `strava-developer` to implement (details below).
+- **Build** — dispatch `dash-developer` to implement (details below).
 - **QA** — dispatch `strava-qa` (build integrity, units policy, theme audit, toggle works
   in Preview MCP, label/clip checks). Loop back to Build on failures.
 - **Review gate** — `/code-review` + `/security-review` over the diff.
@@ -59,7 +59,7 @@ chosen and fully specified, so **Intake and Ideate can be skipped**. Stages to r
 
 The orchestrator pauses for user approval between stages (as designed).
 
-## Build details (for `strava-developer`)
+## Build details (for `dash-developer`)
 
 Target: `chart_x_heat(rows)` in `strava-data/dashboard/charts_exploratory.py:370-459`.
 
@@ -105,7 +105,7 @@ Target: `chart_x_heat(rows)` in `strava-data/dashboard/charts_exploratory.py:370
 - Apparent-temp view will have a smaller n than air-temp view — surface both n's in the
   annotation/spec so this isn't read as 1:1 sample-equivalent, just 1:1 axis-equivalent.
 
-## Spec update (for `strava-viz-design` / orchestrator)
+## Spec update (for `dash-viz-design` / orchestrator)
 Extend the **V4 — She Pays Pace, Not Heart, for Heat** block in
 `Specs/strava-data/dashboard-spec.md:130-144`: document the two precomputed views, the toggle
 control, shared axis limits derived from the union, and per-view Welch/n numbers (air-temp
