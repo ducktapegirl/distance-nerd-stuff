@@ -7,9 +7,15 @@
 
 ## The Strava pipeline the agents serve
 ```
-fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  running-log/strava.html
-(Strava API)  (segment rollups)      (Plotly charts)        └→ deploy (.github/workflows/deploy.yml)
+fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  strava.html  →  deploy.yml  →  GitHub Pages
+(Strava API)  (segment rollups)      (Plotly charts)        (gitignored,     (publishes    (pipeline end)
+                                                             lands in         running-log/)
+                                                             running-log/)
 ```
+`build_dashboard.py` writes `running-log/strava.html` (`OUT_HTML` in `dashboard/config.py`) —
+a gitignored build artifact placed in `running-log/` because that directory is the GitHub
+Pages publish root shared by both dashboards. It is never committed; `deploy.yml` rebuilds and
+publishes it. The deployed site, not the local file, is the end of the pipeline.
 
 ## How to invoke
 - `/dashboard strava-data` — build a new view through the full pipeline.
