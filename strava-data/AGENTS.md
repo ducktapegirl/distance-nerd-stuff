@@ -1,50 +1,44 @@
 # Strava Dashboard — Multi-Agent System
 
-How this project is built and maintained agentically. This is the map; the agents live in
-`.claude/agents/` and the orchestrator in `.claude/commands/strava.md`.
+> **The pipeline is now unified.** Both the Strava dashboard and the Running Log dashboard
+> are built and maintained by **one** multi-agent pipeline, documented at the repo-root
+> [`AGENTS.md`](../AGENTS.md). This file records the Strava-specific pieces; read the root
+> doc for the full role map, the profile mechanism, and the key rule.
 
-## The pipeline it serves
+## The Strava pipeline the agents serve
 ```
-fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  strava-data/strava.html
-(Strava API)  (segment rollups)      (Plotly charts)        └→ running-log/strava.html → deploy (.github/workflows/deploy.yml)
+fetch.py  →  analyze_segments.py  →  build_dashboard.py  →  strava.html  →  deploy.yml  →  GitHub Pages
+(Strava API)  (segment rollups)      (Plotly charts)        (gitignored,     (publishes    (pipeline end)
+                                                             lands in         running-log/)
+                                                             running-log/)
 ```
-
-## Roles → Claude Code primitives
-
-| Role | Realized as | Notes |
-|---|---|---|
-| **Orchestrator** | Skill `/strava` (runs in the main session) | Dispatches the specialists. Must be top-level — see the key rule below. |
-| **Maintenance** | `strava-maintenance` agent | Breakage + upstream + dep/code health. Read-only + web research; proposes, never fixes. |
-| **Data analyst** | `strava-data-analyst` agent | Discovery (what's interesting) + verification (transform recipe). Runs Python for EDA; no Edit/Write. |
-| **Creativity** | `strava-creativity` agent | Ranked menu of view ideas. Read-only + web. |
-| **Viz design** | `strava-viz-design` agent | Build-ready spec. Read-only; returns spec text, orchestrator writes the file. Uses the `frontend-design` skill. |
-| **Developer** | `strava-developer` agent | The only agent that edits the `strava-data/dashboard/` package (and its thin entrypoint, `build_dashboard.py`). |
-| **QA** | `strava-qa` agent | Build/spec/data/edge/HTML + visual smoke test (Preview MCP). Runs but doesn't edit. |
-| **Code review** | `/code-review` + `/security-review` skills | Quality & safety gate, run by the orchestrator. No agent file. |
-
-## The key rule
-**A subagent cannot spawn another subagent in Claude Code.** So the orchestrator is a *skill
-you invoke in the main session*, not an agent. Everything that dispatches specialists must be
-top-level.
-
-## Safety by least privilege
-Tools are scoped per agent. Creativity and viz-design are read-only (no Edit/Write/Bash). The
-analyst can run code for EDA but cannot edit files. Only the developer edits build code. QA
-runs but doesn't edit. The code-review gate backstops all of it.
-
-## Orchestrator stage flow (`/strava`)
-Intake → Analyze → Ideate → Design → Build → QA → Review gate → Ship. The orchestrator stops
-for your approval between stages — you stay in the loop.
+`build_dashboard.py` writes `running-log/strava.html` (`OUT_HTML` in `dashboard/config.py`) —
+a gitignored build artifact placed in `running-log/` because that directory is the GitHub
+Pages publish root shared by both dashboards. It is never committed; `deploy.yml` rebuilds and
+publishes it. The deployed site, not the local file, is the end of the pipeline.
 
 ## How to invoke
-- `/strava` — build a new view through the full pipeline.
-- `/strava maintenance` — run just the health-check agent.
+- `/dashboard strava-data` — build a new view through the full pipeline.
+- `/strava` — back-compat alias for `/dashboard strava-data`.
+- `/dashboard strava-data maintenance` (or `/strava maintenance`) — run just the
+  `strava-maintenance` health-check agent.
 
-## Dependency
+## Strava-specific agents
+- `strava-qa` — the Strava dashboard's QA agent (build/spec/data/edge/HTML + a responsive
+  light/dark visual smoke test). Target-specific because its build command, imperial units
+  policy, and checks differ from Running Log's.
+- `strava-maintenance` — breakage + upstream (Strava API / Plotly / Claude Code) + dep/code
+  health. Read-only + web research; proposes, never fixes. Kept as a dedicated agent because
+  the live Strava API genuinely needs an upstream watch (Running Log's data has no API to
+  drift against — its dashboard code is still actively developed, just without that risk).
+
+The reasoning agents (analyst, creativity, viz-design, developer) are the **shared**
+`dash-*` agents in `.claude/agents/`; they read the Strava **Pipeline profile** block at the
+top of `Project Docs/Specs/strava-data/dashboard-spec.md`. (The former `strava-data-analyst`,
+`strava-creativity`, `strava-viz-design`, and `strava-developer` agents were retired in
+favor of these — same roles, now profile-driven.)
+
+## Frontend-design dependency
 Enable the official **frontend-design** plugin via `/plugin` so the ideation agents can use
-its aesthetic guidance (it's already in the local marketplace cache). The dashboard's identity
-(dark glass, Geist fonts, teal/amber/slate/violet) is the constraint the skill pushes within.
-
-## Reused skills
-`/requirements` (spec conventions), `/strava-segments` (quick segment Q&A), `/reflect`
-(session log in `Claude's Log.md`).
+its aesthetic guidance. The dashboard's identity (dark glass, Geist fonts,
+teal/amber/slate/violet) is the constraint the skill pushes within.
