@@ -37,7 +37,7 @@ specialists must be top-level.
 | **Creativity** | `dash-creativity` agent | Ranked menu of view ideas. Read-only + web. Both dashboards. |
 | **Viz design** | `dash-viz-design` agent | Build-ready spec text; orchestrator writes the file. Read-only. Both dashboards. |
 | **Developer** | `dash-developer` agent | The only agent that edits build code. Profile-driven, both dashboards. |
-| **QA** | `strava-qa` / `running-log-qa` agents | Target-specific stages (different build, units, checks). Both delegate the rendered visual pass to the shared `.claude/qa-visual-suite.md` (V0–V8). Runs but doesn't edit. |
+| **QA** | `strava-qa` / `running-log-qa` agents | Target-specific stages (different build, units, checks). Both delegate the rendered visual pass to the shared `.claude/qa-visual-suite.md` (V0–V8), which probes for a working browser transport (Preview MCP / `tools/mobile_preview.py` / static-only) and declares its coverage. Runs but doesn't edit. |
 | **Maintenance** | `strava-maintenance` agent (Strava only) / inline orchestrator check (Running Log) | Health/upstream watch. Running Log's data is fixed and there's no live API to watch, so it gets no dedicated maintenance agent — the dashboard code itself still evolves. |
 | **Code review** | `/code-review` + `/security-review` skills | Quality & safety gate, run by the orchestrator. |
 

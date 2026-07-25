@@ -73,7 +73,12 @@ uv run python -m http.server 8765 --directory "running-log" # open index.html or
 
 When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy Maplify API restrictions.
 
-**Mobile / visual checks:** the Claude Preview MCP cannot reach a local server on this machine (its Chromium lands on `chrome-error://`). Use `tools/mobile_preview.py` instead — an in-process `127.0.0.1` server plus a mobile-emulated Playwright Chromium in one host process. **Run it un-sandboxed** (the page loads `plotly.js` from the CDN). It prints chart fill/range measurements and saves screenshots; pass `--url` to check the live site. Setup once: `uv add --dev playwright` + `uv run playwright install chromium`. The deployed site is **`https://ducktapegirl.github.io/distance-nerd-stuff/`** (project page — repo subpath; the bare `ducktapegirl.github.io/strava.html` 404s).
+**Mobile / visual checks:** browser tooling differs by environment (local desktop, mobile app, web/remote container), so **probe rather than assume**. Two transports:
+
+- **Claude Preview MCP** — works where it's provisioned and can reach the page. On the local desktop machine its Chromium can't reach a local server and lands on `chrome-error://`; that's an environment limitation, not a page defect.
+- **`tools/mobile_preview.py`** — an in-process `127.0.0.1` server plus a Playwright Chromium in one host process. **Run it un-sandboxed** (the page loads `plotly.js` from the CDN). `--probe` reports whether it's usable here (exit 0/2, with a JSON `reason` naming the missing piece); it auto-falls-back to any Chromium under `PLAYWRIGHT_BROWSERS_PATH` when Playwright's pinned build is absent. Mobile emulation (375×812, touch, DPR 2) is the default — **pass `--desktop` for a true desktop render** (1440×900, DPR 1, no touch); a wide viewport alone is still a mobile render. Other flags: `--theme light|dark`, `--eval` (raw JS or `@file`), `--click`, `--screenshot`, `--plotly-timeout`, `--url` for the live site. Setup once: `uv add --dev playwright` + `uv run playwright install chromium`.
+
+Where a network policy blocks `cdn.plot.ly`, the browser still loads the page but no chart renders — DOM/theme checks work, chart checks don't. Report that state, don't call empty charts a failure. Full contract: `.claude/qa-visual-suite.md` §V0. The deployed site is **`https://ducktapegirl.github.io/distance-nerd-stuff/`** (project page — repo subpath; the bare `ducktapegirl.github.io/strava.html` 404s).
 
 ## Plotly charts — mobile-safe authoring
 
