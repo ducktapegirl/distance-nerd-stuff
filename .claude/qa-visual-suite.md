@@ -50,31 +50,73 @@ exempt:    charts with no cartesian axis or legend — donuts, sparklines,
 
 ### Transport
 
-Open the target's page and drive it with whichever browser tooling actually works in the
-current environment. **This repo is worked on from several Claude Code environments (local
-desktop, mobile app, web/remote containers) and browser tooling differs in each** — do not
-assume a transport is available, and do not assume a failure means the dashboard is broken.
+**This repo is worked on from several Claude Code environments — local desktop, the mobile app,
+web/remote containers — and browser tooling differs in each.** Do not assume a transport is
+available, do not assume a failure means the dashboard is broken, and never present a run made
+with reduced tooling as a full pass. **Probe, then declare what you used.**
 
-- **Preview MCP** (`mcp__Claude_Preview__preview_*`) — preferred when it can actually reach the
-  page. It gives `preview_console_logs`, `preview_click`, `preview_snapshot`, and screenshots.
-  On some machines its Chromium cannot reach a local server and lands on `chrome-error://`;
-  that is an environment limitation, not a defect in the page.
-- **`tools/mobile_preview.py`** — an in-process `127.0.0.1` server plus a mobile-emulated
-  Playwright Chromium in one host process, so the browser, the server, and the plotly CDN are
-  all reachable. **Run it un-sandboxed** (the page pulls `plotly.js` from the CDN). It accepts
-  `--eval` with a raw JS expression or `@path/to/file.js`, prints chart fill/range
-  measurements, and saves screenshots. Use it for the render check, the measurements below, and
-  the screenshots whenever Preview MCP is unavailable — and prefer it for anything geometric,
-  since it is the only transport with real device emulation.
-- **Neither available** — run the target's static checks only and say so explicitly (see
-  "Reporting" below). Do not present a static-only run as a full pass.
+The JS snippets below are the specification of **what** to measure. Run the equivalent
+measurement through whichever transport actually loads the page — they are plain expressions
+returning JSON, so they run unchanged under either browser transport.
 
-The `preview_eval` snippets below are the specification of **what** to measure. Run the
-equivalent measurement through whichever transport actually loads the page.
+| | Transport | Requires | Strengths | Blind spots |
+|---|---|---|---|---|
+| **T1** | Preview MCP (`mcp__Claude_Preview__preview_*`) | the MCP provisioned **and** able to reach the served page | `preview_snapshot` accessibility tree, `preview_click`, `preview_console_logs`, screenshots | resize only — no true mobile emulation (no touch, DPR 1), so tap-target and touch-affordance checks are approximations |
+| **T2** | `tools/mobile_preview.py` (in-process server + Playwright) | Bash, Playwright, a resolvable Chromium, and network egress to `cdn.plot.ly` | real device emulation (touch, DPR 2), precise geometry, deterministic settle control, screenshots | no accessibility tree; each run is a fresh process |
+| **T3** | Static only | nothing beyond `Read`/`Grep`/`Bash` | always available; the caller's static checks | cannot see rendered geometry — **V1–V8 are unavailable** |
 
-> A fuller transport-probe contract (T1/T2/T3 with an explicit coverage declaration) is
-> specified in `Project Docs/Plans/qa-agent-consolidation.md` Phase 3 and will replace this
-> section when it lands.
+#### The probe
+
+1. **Probe T2** — `uv run python tools/mobile_preview.py --probe --page <target page>`.
+   Exit **0** = usable. Exit **2** = not; the JSON `reason` says which piece is missing:
+   - `playwright-not-installed` → `uv add --dev playwright && uv run playwright install chromium`
+   - `chromium-not-launchable` → no Chromium this Playwright can drive (the script already
+     falls back to any Chromium it can find under `PLAYWRIGHT_BROWSERS_PATH`, so this means
+     there genuinely isn't one)
+   - `plotly-cdn-unreachable` → **T2-degraded**, see below. Re-run un-sandboxed first; if it
+     still fails, this environment's network policy blocks the CDN.
+2. **Probe T1** — `preview_start` on the page, then confirm the URL is not `chrome-error://`
+   and a screenshot is non-blank.
+3. If neither, **T3**.
+
+Cache the verdict for the whole run — do not re-probe per tab.
+
+#### T2-degraded (browser works, CDN blocked)
+
+A real and easily-misread state: the browser launches and the page loads, but `plotly.js` never
+arrives, so **no chart renders**. Everything chart-scoped (V2–V7) is unavailable, while
+page-level DOM and theme checks still work because they don't depend on Plotly. Do **not**
+report empty charts as FAILs — that is the environment, not the dashboard. Report the
+chart checks as `NOT RUN (plotly CDN unreachable)` and run what remains. Pass
+`--plotly-timeout 2000` so each invocation stops paying the full 15s wait.
+
+#### Using both when both are live
+
+Split by strength rather than picking one — that is where the information gain is:
+
+| Check | Preferred | Degraded behavior |
+|---|---|---|
+| V1 render + console errors | T1 | `preview_console_logs` is richer; under T2 read the report's `console_errors` |
+| V2 overlap, V3 edge-clip, V4 width-fill, V6 axis-range | **T2** | pure geometry — needs the real DPR and emulated width to be trustworthy. On T1, flag results as *resize-emulated* |
+| V5 contrast, V7 hover/datatip theme | either | both read computed style |
+| V8 DOM overlap + tap targets | **T1 + T2** | T2 gives true touch-target geometry; T1's a11y tree also catches elements that look fine but are unreachable |
+| Mobile checklist (bottom sheet, swipe, spark stacking) | **T2** | needs touch emulation; on T1 these degrade to visual-only confirmation |
+
+#### T2 invocation reference
+
+```
+--probe                     report usability and exit (0 usable / 2 not)
+--page /index.html          which built page to serve (default /strava.html)
+--desktop                   TRUE desktop render: 1440x900, DPR 1, no touch.
+                            REQUIRED for the desktop pass -- without it a wide
+                            viewport is still mobile-emulated, which is not a
+                            desktop render
+--theme light|dark|system   click the theme toggle after load and settle
+--eval @tools/qa-checks/x.js  run a check file (or a raw JS expression)
+--click '<selector>'        repeatable; use to activate tabs
+--screenshot <path>         save a PNG
+--plotly-timeout <ms>       lower it when the CDN is known blocked
+```
 
 ### Viewport sweep
 
@@ -439,18 +481,31 @@ scoped to the inside of a chart's SVG; nothing currently checks the page itself.
 Return a markdown checklist with PASS / FAIL / WARN / N/A per check. Cover **both viewports**
 (desktop 1440 + mobile 390), with the **Viewport** column populated in every table.
 
-Open the visual section with the transport actually used, and state any resulting coverage loss:
+**Open the visual section with the transport actually used and any resulting coverage loss.**
+This is not optional — it is what keeps a thin run from reading like a clean one. Four shapes:
 
 ```
-Transport: tools/mobile_preview.py (mobile-emulated Chromium, 390x844)
-           Preview MCP unavailable in this environment
+Transport: T2 (mobile_preview.py, Chromium 141, 390x844 @2x mobile-emulated)
+           T1 unavailable (Preview MCP not provisioned in this environment)
 Coverage:  V1-V5 full. V6-V8 not implemented.
+```
+```
+Transport: T1 (Preview MCP, 390x844 resize-emulated) + T2 (geometry)
+Coverage:  V1-V5 full.
+```
+```
+Transport: T2-degraded (browser OK, cdn.plot.ly blocked by network policy)
+Coverage:  V1-V7 NOT RUN (no chart renders without plotly.js).
+           V8 / DOM + theme checks ran normally. Charts unverified.
+```
+```
+Transport: T3 (static only - no browser available in this environment)
+Coverage:  V1-V8 NOT RUN. Partial QA pass; the visual layer is unverified.
 ```
 
 A run made with reduced tooling is a **legitimate, clearly-labeled result** — never a silent
 pass, and never a FAIL merely because a transport was missing. If no browser transport is
-available at all, say so plainly and report V1–V8 as `NOT RUN`; the caller's static checks still
-apply.
+available, say so plainly and report V1–V8 as `NOT RUN`; the caller's static checks still apply.
 
 For each FAIL/WARN add a one-sentence description and, if obvious, a suggested fix. End with the
 screenshots taken and which viewport/theme/tab each shows.
