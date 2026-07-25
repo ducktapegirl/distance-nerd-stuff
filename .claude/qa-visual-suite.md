@@ -12,21 +12,26 @@ in an agent.
 so reports from the two dashboards are directly comparable. (These IDs replace the old
 per-agent numbering — `strava-qa` §6.5 and `running-log-qa` §3.5 were the same check.)
 
-| ID | Check | Status |
+| ID | Check | Script |
 |---|---|---|
-| V0 | Transport + viewport sweep contract | active |
-| V1 | Render smoke + console errors | active |
-| V2 | Label-overlap (label-vs-data, label-vs-label) | active |
-| V3 | Edge-clipping / truncation vs the figure edge | active |
-| V4 | Width-fill / under-fill (figure vs card) | active |
-| V5 | Theme contrast audit, light + dark | active |
-| V6 | Axis-range blowout + plot-area fill | **not yet implemented** — see `Project Docs/Plans/qa-agent-consolidation.md` Phase 2 |
-| V7 | Hover/datatip theme-mismatch | **not yet implemented** — Phase 2 |
-| V8 | General DOM element overlap | **not yet implemented** — Phase 2 |
+| V0 | Transport + viewport sweep contract | — (this file) |
+| V1 | Render smoke + console errors | — (transport report) |
+| V2 | Label-overlap + tick-label collisions | `tools/qa-checks/label-overlap.js` |
+| V3 | Edge-clipping / truncation vs the figure edge | `tools/qa-checks/edge-clip.js` |
+| V4 | Width-fill / under-fill (figure vs card) | `tools/qa-checks/width-fill.js` |
+| V5 | Theme contrast audit, light + dark | `tools/qa-checks/contrast.js` |
+| V6 | Axis-range blowout + plot-area fill + legend | `tools/qa-checks/axis-fill.js` |
+| V7 | Hover/datatip theme-mismatch | `tools/qa-checks/hover-theme.js` |
+| V8 | Page-level overlap, overflow, tap targets | `tools/qa-checks/dom-overlap.js` |
 
-V6–V8 are reserved but not yet written. **Report them as `NOT RUN (not implemented)`** — never
-as PASS. They cover real gaps (axis blowout, datatip theming, page-level overlap) that nothing
-in V0–V5 detects, so silently omitting them would overstate coverage.
+**The checks live in `tools/qa-checks/*.js`, not in this file.** Each is a plain expression
+returning JSON, so the same file runs unchanged under either browser transport: pass
+`--eval @tools/qa-checks/<name>.js` to `mobile_preview.py`, or `Read` the file and hand its
+contents to `preview_eval`. Fix a check in its `.js` file — this document describes intent,
+thresholds, and how to judge the output.
+
+Each script carries a header comment explaining what it catches and why the neighbouring checks
+can't. Read that header before overriding a verdict.
 
 ---
 
@@ -55,9 +60,9 @@ web/remote containers — and browser tooling differs in each.** Do not assume a
 available, do not assume a failure means the dashboard is broken, and never present a run made
 with reduced tooling as a full pass. **Probe, then declare what you used.**
 
-The JS snippets below are the specification of **what** to measure. Run the equivalent
-measurement through whichever transport actually loads the page — they are plain expressions
-returning JSON, so they run unchanged under either browser transport.
+The `tools/qa-checks/*.js` files are the specification of **what** to measure. Run them through
+whichever transport actually loads the page — they are plain expressions returning JSON, so they
+work unchanged under either.
 
 | | Transport | Requires | Strengths | Blind spots |
 |---|---|---|---|---|
@@ -141,10 +146,11 @@ Set the viewport via the transport's size option — `preview_start`'s width/hei
 debounces a `resize`/`visualViewport` listener that calls `Plotly.Plots.resize()` and toggles
 the mobile chart simplifications.
 
-**Run V2–V5 in *each* pass.** Mobile reflow — collapsed legends, a much narrower plot area,
+**Run V2–V8 in *each* pass.** Mobile reflow — collapsed legends, a much narrower plot area,
 thinned ticks, stacked cards — routinely introduces overlap and edge-clipping that never
 appears at desktop width, so the 390px pass is not optional. Tag every row in every table with
-a **Viewport** column (`desktop` / `mobile`).
+a **Viewport** column (`desktop` / `mobile`). V5 and V7 additionally run once per theme, so a
+full sweep is 2 viewports × 2 themes for those two.
 
 ### Tab handling
 
@@ -177,76 +183,8 @@ Sitting in the margin is fine; spilling past the *figure's own edge* so the text
 NOT — that clipping is a separate FAIL caught by V3. **"Outside the plot area" and "outside the
 figure" are different things: the first is allowed, the second is a defect.**
 
-For each tab, activate the tab, then run:
-
-```javascript
-(function() {
-  function ix(a, b) {
-    var x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
-    var y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-    return x * y;
-  }
-  var results = [];
-  document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
-    if (el.offsetParent === null) return;            // skip charts on hidden tabs
-    var id = el.id || 'unnamed';
-
-    // 1. data-mark rects: scatter/box/bar points...
-    var marks = [];
-    el.querySelectorAll('.scatterlayer .point, .barlayer .point, .boxlayer .point, .violinlayer path.violin')
-      .forEach(function(p) {
-        var r = p.getBoundingClientRect();
-        if (r.width || r.height) marks.push(r);
-      });
-    // ...plus points sampled along line traces
-    el.querySelectorAll('.scatterlayer .js-line').forEach(function(path) {
-      var L = path.getTotalLength ? path.getTotalLength() : 0;
-      var m = path.getScreenCTM();
-      if (!L || !m) return;
-      var step = Math.max(6, L / 150);
-      for (var d = 0; d <= L; d += step) {
-        var pt = path.getPointAtLength(d);
-        var sx = m.a * pt.x + m.c * pt.y + m.e;
-        var sy = m.b * pt.x + m.d * pt.y + m.f;
-        marks.push({left: sx - 2, right: sx + 2, top: sy - 2, bottom: sy + 2});
-      }
-    });
-
-    // 2. label rects: legend + every annotation
-    var labels = [];
-    var lg = el.querySelector('.legend');
-    if (lg) labels.push({kind: 'legend', r: lg.getBoundingClientRect()});
-    el.querySelectorAll('.infolayer .annotation').forEach(function(a, i) {
-      labels.push({
-        kind: 'annotation[' + i + '] "' + a.textContent.trim().slice(0, 40) + '"',
-        r: a.getBoundingClientRect()
-      });
-    });
-
-    // 3. label-vs-data and label-vs-label intersections
-    var labelData = [], labelLabel = [];
-    labels.forEach(function(lab) {
-      var hits = 0, px = 0;
-      marks.forEach(function(mr) { var o = ix(lab.r, mr); if (o > 0) { hits++; px += o; } });
-      if (hits > 0) labelData.push({label: lab.kind, marksHit: hits, overlapPx: Math.round(px)});
-    });
-    for (var i = 0; i < labels.length; i++)
-      for (var j = i + 1; j < labels.length; j++) {
-        var o = ix(labels[i].r, labels[j].r);
-        if (o > 25) labelLabel.push({a: labels[i].kind, b: labels[j].kind, overlapPx: Math.round(o)});
-      }
-
-    results.push({
-      id: id,
-      labelData: labelData,
-      labelLabel: labelLabel,
-      status: (labelData.some(function(d) { return d.marksHit >= 3 || d.overlapPx > 200; })
-               || labelLabel.length > 0) ? 'CHECK' : 'OK'
-    });
-  });
-  return JSON.stringify(results, null, 2);
-})()
-```
+Run **`tools/qa-checks/label-overlap.js`** (activate each tab first; the script filters to
+visible charts itself).
 
 Evaluate:
 
@@ -263,6 +201,26 @@ Evaluate:
   .violinlayer path.violin`) and judge against that; if markers-only is clean (only 1–2 grazed
   points, < ~50px), PASS.
 - Charts without standard layers — sparklines, calendars, heatmaps, maps → note as **N/A**.
+
+**Tick-label collisions (`tickStatus` / `tickTick`) are reported separately** from the
+legend/annotation verdict, because crowded or rotated tick labels collide with each other long
+before anything touches the legend, and a wall of tick rows would otherwise bury that signal.
+Judge them on their own:
+
+- `tickStatus: OK` → PASS.
+- `tickStatus: CHECK` → each item reports `gapPx` (actual separation) against `needPx` (what the
+  text needs), plus `rotated`. `frac` is how far short the gap falls. A gap near zero is
+  unreadable text and a **FAIL**; within ~15% of `needPx` is worth a screenshot. Fix by thinning
+  ticks (`dtick`/`nticks`) or rotating (`tickangle`) in the Python figure rather than relying on
+  page-JS defaults.
+
+  **Rotation is handled, and this matters.** Plotly auto-rotates crowded ticks, and a
+  bounding-box test would flag every rotated label as overlapping — `getBoundingClientRect`
+  returns the axis-aligned box, so 30° "Jul 2003"/"Jan 2004" labels 22px apart measure as 47×34
+  boxes "52% overlapping" while reading perfectly. Since rotation is the *fix* for crowding, an
+  AABB test flags the fix. The script instead measures along-axis extent for unrotated ticks and
+  the perpendicular gap between baselines (`spacing × |sin angle|`) for rotated ones. If you
+  ever replace this check, keep that distinction.
 
 For FAIL items suggest a concrete fix: move the annotation outside the plot area
 (`xref`/`yref="paper"`, coordinates beyond [0,1], **with the margin on that side deepened
@@ -283,33 +241,8 @@ it: the label is fully present in the DOM and in `data-unformatted`, but the use
 sliver or nothing. **V2 does not catch this** — the clipped text overlaps no data and no other
 label — so run this separate pass on **every** tab.
 
-```javascript
-(function() {
-  var out = [];
-  document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
-    if (el.offsetParent === null) return;                 // visible charts only
-    var svg = el.querySelector('svg.main-svg'); if (!svg) return;
-    var sv = svg.getBoundingClientRect();                 // the clip viewport
-    el.querySelectorAll('.infolayer .annotation').forEach(function(a, i) {
-      var t = a.querySelector('text');
-      var txt = (t ? t.textContent : a.textContent).trim();
-      var r = a.getBoundingClientRect(); if (!r.width && !r.height) return;
-      var over = {left: Math.round(sv.left - r.left), right: Math.round(r.right - sv.right),
-                  top: Math.round(sv.top - r.top),    bottom: Math.round(r.bottom - sv.bottom)};
-      var sides = Object.keys(over).filter(function(k) { return over[k] > 2; }); // >2px = clipped
-      if (sides.length) {
-        var vl = Math.max(r.left, sv.left), vr = Math.min(r.right, sv.right),
-            vt = Math.max(r.top, sv.top),   vb = Math.min(r.bottom, sv.bottom);
-        var hidden = Math.round((1 - (Math.max(0, vr - vl) * Math.max(0, vb - vt)) /
-                                 (r.width * r.height)) * 100);
-        out.push({chart: el.id, ann: i, text: txt.slice(0, 45),
-                  clippedSides: sides, overflowPx: over, hiddenPct: hidden});
-      }
-    });
-  });
-  return JSON.stringify({clippedCount: out.length, items: out}, null, 2);
-})()
-```
+Run **`tools/qa-checks/edge-clip.js`** (activate each tab first; the script filters to
+visible charts itself).
 
 Evaluate:
 
@@ -339,26 +272,8 @@ y-axis labels and data don't span the available width. Most common on **mobile**
 charts that first rendered in a hidden tab and weren't re-fit. V2 and V3 do **not** catch it —
 the chart occludes nothing and clips nothing, it's just too small.
 
-For each tab, activate the tab, wait ~1s for relayout, then run:
-
-```javascript
-(function() {
-  var out = [];
-  document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
-    if (el.offsetParent === null) return;                 // visible charts only
-    var svg = el.querySelector('svg.main-svg'); if (!svg) return;
-    var card = el.closest('.card');                        // the chart's container
-    var host = card || el.parentElement;
-    var cs = getComputedStyle(host);
-    var inner = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    var chartW = svg.getBoundingClientRect().width;
-    var fill = inner > 0 ? +(chartW / inner * 100).toFixed(1) : null;
-    out.push({chart: el.id, chartPx: Math.round(chartW), cardPx: Math.round(inner),
-              fillPct: fill, status: (fill !== null && fill < 90) ? 'FAIL' : 'OK'});
-  });
-  return JSON.stringify(out, null, 2);
-})()
-```
+Run **`tools/qa-checks/width-fill.js`** (activate each tab first; the script filters to
+visible charts itself).
 
 Evaluate:
 
@@ -394,57 +309,8 @@ For each theme (`light`, then `dark`):
 1. Switch: click `.theme-toggle button[data-theme="light"]` (or `"dark"`). Wait ~1s for relayout.
 2. On each tab, run:
 
-```javascript
-(function() {
-  function lum(c) {
-    var m = (c || '').match(/rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
-    if (!m) return null;
-    var f = [m[1], m[2], m[3]].map(function(v) {
-      v = parseFloat(v) / 255;
-      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-    });
-    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
-  }
-  function contrast(a, b) {
-    var la = lum(a), lb = lum(b);
-    if (la === null || lb === null) return null;
-    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-  }
-  var pageBg = getComputedStyle(document.body).backgroundColor;
-  var results = [];
-  document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
-    if (el.offsetParent === null) return;
-    var bad = [];
-    var groups = {
-      tick: '.xtick text, .ytick text',
-      axisTitle: '.g-xtitle text, .g-ytitle text, .g-x2title text, .g-y2title text',
-      legend: '.legend text',
-      annotation: '.infolayer .annotation text',
-      colorbar: '.infolayer .cbaxis text, .infolayer [class*="colorbar"] text'
-    };
-    Object.keys(groups).forEach(function(kind) {
-      el.querySelectorAll(groups[kind]).forEach(function(t) {
-        var fill = getComputedStyle(t).fill;
-        // annotations may sit on a bg pill — compare against the pill, not the page
-        var bg = pageBg;
-        if (kind === 'annotation') {
-          var pill = t.closest('.annotation') &&
-                     t.closest('.annotation').querySelector('rect.bg');
-          var pf = pill ? getComputedStyle(pill).fill : null;
-          if (pf && pf !== 'none' && !/rgba?\([^)]*,\s*0\)/.test(pf)) bg = pf;
-        }
-        var cr = contrast(fill, bg);
-        if (cr !== null && cr < 3.0) {
-          bad.push({kind: kind, fill: fill, contrast: +cr.toFixed(2),
-                    sample: t.textContent.slice(0, 25)});
-        }
-      });
-    });
-    results.push({id: el.id, badCount: bad.length, worst: bad.slice(0, 5)});
-  });
-  return JSON.stringify(results, null, 2);
-})()
-```
+Run **`tools/qa-checks/contrast.js`** (activate each tab first; the script filters to
+visible charts itself).
 
 3. Thresholds: contrast **< 2.0 = FAIL** (effectively invisible), **2.0–3.0 = WARN**.
    Note: semi-transparent pill backgrounds composite with the page, so computed contrast is
@@ -459,30 +325,79 @@ Report per theme: | Chart ID | Tab | Viewport | Theme | Worst contrast | Status 
 
 ---
 
-## V6 — Axis-range blowout + plot-area fill
+## V6 — Axis-range blowout, plot-area fill, legend presence
 
-**NOT YET IMPLEMENTED** (Phase 2). Report as `NOT RUN (not implemented)`.
+Run **`tools/qa-checks/axis-fill.js`** on every tab, at both viewports.
 
-Will compare `el._fullLayout.xaxis.range` against the true data extent from `el.data` to catch
-the autorange blowout documented in `CLAUDE.md` §"Plotly charts — mobile-safe authoring", where
-data-coordinate-anchored chart chrome silently widens the axis and compresses the data into the
-left portion of the card. Also plot-area-vs-figure margin ratio and a `showlegend` assertion.
+Catches the failure `CLAUDE.md` documents under "Plotly charts — mobile-safe authoring":
+chart chrome anchored in **data** coordinates forces autorange to widen the axis to keep the
+text on canvas, compressing the data into part of the card while looking fine on desktop.
+**V4 cannot see this** — the figure still fills its card at 100%; the defect is inside the
+figure. Three verdicts per chart, reported separately so none masks another:
 
-## V7 — Hover/datatip theme-mismatch
+- **`axisStatus`**
+  - `FAIL` — an **autoranged** axis overruns the data by more than 15% of the data span
+    (or, for a category axis, more than 0.6 beyond `[-0.5, n-0.5]`). This is the blowout.
+    Fix by moving data-coordinate chrome to `xref="paper"` **and** pinning an explicit `range=`.
+  - `PINNED` — the axis is wider than this chart's data but the range was **set explicitly**.
+    That is a deliberate authoring choice, not a defect: running-log's PR charts share
+    `_PR_X_RANGE` so the small-multiples are comparable. **Never report PINNED as a failure** —
+    pinning is the prescribed fix, and flagging it would flag the fix as the bug.
+  - `OK` — within tolerance, or no cartesian x-axis (donuts, sparklines, heatmaps, maps report
+    `axis: "n/a"`).
+- **`plotStatus`** — `WARN` when the plot area is under 55% of the figure width. The floor is
+  calibrated, not guessed: a labelled mobile chart bottoms out near 59% (a ~65px left margin for
+  tick text on a ~297px figure is unavoidable) and typical charts sit at 70–76%, so 55% flags
+  only charts paying for something extra — usually a dual-axis (`secondary_y`) chart with a wide
+  fixed `margin.r`. Fix with `automargin=True` rather than a hardcoded margin.
+- **`legendStatus`** — `FAIL` when `showlegend` is true but no `.legend` node rendered. Catches
+  the stale-`simplify()` failure where page JS hides a legend the chart's redesign now needs.
 
-**NOT YET IMPLEMENTED** (Phase 2). Report as `NOT RUN (not implemented)`.
+Report: | Chart ID | Tab | Viewport | axisStatus | dataFill % | plotFrac | legend | Status |
 
-Will hover data points programmatically and check `.hoverlayer .hovertext` background luminance
-against the page background, catching dark-themed datatips surviving into light mode — which V5
-cannot detect (see its caveat).
+## V7 — Hover/datatip theme mismatch
 
-## V8 — General DOM element overlap
+Run **`tools/qa-checks/hover-theme.js`** once per theme, at both viewports.
 
-**NOT YET IMPLEMENTED** (Phase 2). Report as `NOT RUN (not implemented)`.
+**V5 structurally cannot catch this.** A dark hover pill surviving into light mode holds *light*
+text on a *dark* background — high contrast, so V5 passes it — while looking obviously wrong.
+The defect is a theme **mismatch**, not a legibility failure, so this check compares each
+surface's background **luminance** against the page's instead of computing a ratio.
 
-Will check bounding-box intersection across non-Plotly page chrome (cards, stat tiles, tab
-strip, theme toggle, detail panel) plus a horizontal-overflow assertion. Everything in V0–V5 is
-scoped to the inside of a chart's SVG; nothing currently checks the page itself.
+It also needs a hover to exist: Plotly builds `.hoverlayer .hovertext` only in response to one,
+so nothing in the resting DOM reveals it. The script triggers hover via `Plotly.Fx.hover()`
+rather than a synthetic `mousemove`, which is unreliable under touch emulation.
+
+- `DARK-IN-LIGHT` / `LIGHT-IN-DARK` on `hoverPillFill` → **FAIL**. The page's
+  `applyChartTheme()` is not restyling `hoverlabel` for that chart.
+- The same luminance test is applied to annotation pills (`rect.bg`) and chart titles, which
+  share the failure mode.
+- **Async:** returns a Promise, so it needs a transport that awaits it (`mobile_preview.py`
+  does). Under T1, confirm `preview_eval` resolves promises before trusting a clean result.
+
+Report: | Chart ID | Tab | Viewport | Theme | Pill fill | Verdict | Status |
+
+## V8 — Page-level overlap, overflow, and tap targets
+
+Run **`tools/qa-checks/dom-overlap.js`** at both viewports.
+
+Everything in V2–V7 is scoped to the inside of a chart's SVG. This is the only check that looks
+at the **page**: cards colliding, a stat tile running under the theme toggle, the document
+scrolling sideways. Those are the failures a narrow viewport produces first.
+
+- **`overlap`** — pairwise intersection over rendered **siblings only**, above 24px. Nesting
+  (a card containing its heading) and deliberate overlays (`#detail-panel`, backdrops) are
+  excluded; without those exclusions the output is a wall of true-but-useless hits. `CHECK`
+  means screenshot and judge — `fracOfSmaller` tells you how much of the smaller element is
+  covered.
+- **`horizontalOverflow`** — `FAIL` when `scrollWidth > innerWidth + 2`. On failure the report
+  names the widest offending elements so the fix is obvious.
+- **`tapTargets`** — `WARN` below 40px per `Project Docs/Plans/mobile-redesign-plan.md`.
+  **Only evaluated on the mobile tier** (≤640px or a coarse pointer); at desktop it reports
+  `N/A (desktop pointer)`, since dense toolbar buttons are fine under a mouse and would
+  otherwise bury the real mobile findings.
+
+Report: | Viewport | Overlaps | Overflow px | Tap targets < 40px | Status |
 
 ---
 
@@ -497,11 +412,11 @@ This is not optional — it is what keeps a thin run from reading like a clean o
 ```
 Transport: T2 (mobile_preview.py, Chromium 141, 390x844 @2x mobile-emulated)
            T1 unavailable (Preview MCP not provisioned in this environment)
-Coverage:  V1-V5 full. V6-V8 not implemented.
+Coverage:  V1-V8 full.
 ```
 ```
 Transport: T1 (Preview MCP, 390x844 resize-emulated) + T2 (geometry)
-Coverage:  V1-V5 full.
+Coverage:  V1-V8 full.
 ```
 ```
 Transport: T2-degraded (browser OK, cdn.plot.ly blocked by network policy)
