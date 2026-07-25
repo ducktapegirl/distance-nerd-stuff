@@ -1,0 +1,93 @@
+name: Bug report
+description: Something on one of the dashboards is broken, wrong, or looks off.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The fields below aren't bureaucracy — most bugs in this repo
+        turn out to be **specific to one theme or one screen width**, so the theme/viewport
+        answers are usually what makes a report reproducible.
+
+  - type: dropdown
+    id: dashboard
+    attributes:
+      label: Which dashboard?
+      options:
+        - Strava dashboard (strava.html)
+        - Running Log (index.html)
+        - Both
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: section
+    attributes:
+      label: Which tab or section?
+      description: >
+        Strava tabs: overview, volume, trends, segments, map, exploratory.
+        Running Log tabs: overview, volume, mix, performance, races, patterns.
+        Name the chart if you can.
+      placeholder: e.g. performance → pace-over-time chart
+    validations:
+      required: false
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      placeholder: The legend is missing and the line runs off the right edge of the card.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Theme
+      options:
+        - Dark
+        - Light
+        - System
+        - Happens in both light and dark
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: viewport
+    attributes:
+      label: Screen size
+      description: Mobile-only bugs are the most common kind here, so this matters.
+      options:
+        - Phone (narrow, roughly 375px wide)
+        - Tablet
+        - Desktop
+        - Happens on both phone and desktop
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: e.g. Safari on iPhone 14, or Chrome on macOS
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Drag an image in. Enormously helpful for anything visual.
+    validations:
+      required: false

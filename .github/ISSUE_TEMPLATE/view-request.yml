@@ -1,0 +1,67 @@
+name: New view / chart idea
+description: Suggest a chart, view, or section for one of the dashboards.
+title: "[view] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These dashboards exist to answer questions the Strava app can't. The most useful
+        requests name **a question**, not a chart type — the right visualization usually
+        falls out of the question once the data's been checked.
+
+        Rough ideas are welcome. There's a field below for saying it's rough.
+
+  - type: dropdown
+    id: dashboard
+    attributes:
+      label: Which dashboard?
+      options:
+        - Strava dashboard (strava.html)
+        - Running Log (index.html)
+        - Either / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What question should this answer?
+      placeholder: >
+        Do I actually run slower on trails than roads once elevation is accounted for?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: formedness
+    attributes:
+      label: How formed is this idea?
+      description: >
+        Be honest — a rough idea gets an exploration pass that turns it into options,
+        which is wasted effort on an idea that's already specific.
+      options:
+        - Rough — I know what I'm curious about, not what it should look like
+        - Somewhere in between
+        - Specific — I know the chart I want
+    validations:
+      required: true
+
+  - type: textarea
+    id: shape
+    attributes:
+      label: What should it look like?
+      description: Only if you have something in mind. Skip it otherwise.
+      placeholder: Scatter of pace vs. elevation gain, one point per run, colored by sport.
+    validations:
+      required: false
+
+  - type: textarea
+    id: data
+    attributes:
+      label: What data would it use?
+      description: >
+        Strava has activities, segment efforts, per-activity GPS/HR streams, laps, gear, and
+        weather-derived fields. The Running Log is a fixed 2003–2007 dataset (date, miles,
+        pace, type, notes). Leave blank if you're not sure.
+    validations:
+      required: false
