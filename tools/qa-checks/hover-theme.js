@@ -27,6 +27,16 @@
     return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
   }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  // SVG carries alpha in a SEPARATE fill-opacity property, not only in the
+  // rgba() itself. Plotly emits invisible annotation backgrounds as
+  // fill:rgb(0,0,0) + fill-opacity:0 (bgcolor rgba(0,0,0,0)) -- reading `fill`
+  // alone scores those as pure black and reports every one as a dark pill in
+  // light mode. Nothing is painted, so there is nothing to judge: skip them.
+  function surfaceLum(el) {
+    var cs = getComputedStyle(el);
+    if (parseFloat(cs.fillOpacity) === 0) return null;
+    return lum(cs.fill);
+  }
 
   var pageLum = lum(getComputedStyle(document.body).backgroundColor);
   var theme = document.documentElement.classList.contains('light') ? 'light' : 'dark';
@@ -69,7 +79,7 @@
       if (ht) {
         var pill = ht.querySelector('path, rect');
         var txt = ht.querySelector('text');
-        var pl = pill ? lum(getComputedStyle(pill).fill) : null;
+        var pl = pill ? surfaceLum(pill) : null;
         var tl = txt ? lum(getComputedStyle(txt).fill) : null;
         row.hoverPillFill = pill ? getComputedStyle(pill).fill : null;
         row.hoverTextFill = txt ? getComputedStyle(txt).fill : null;
@@ -92,7 +102,7 @@
     // --- annotation pills + chart title: same failure mode ---------------
     var others = [];
     el.querySelectorAll('.infolayer .annotation rect.bg').forEach(function (r) {
-      var l = lum(getComputedStyle(r).fill);
+      var l = surfaceLum(r);
       var v = verdict(l);
       if (v) others.push({kind: 'annotation-pill', lum: +l.toFixed(3), verdict: v});
     });

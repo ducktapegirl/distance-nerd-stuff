@@ -1479,6 +1479,42 @@ DATE_CHART_IDS.forEach(id => {
   function cssVar(name) {
     return getComputedStyle(root).getPropertyValue(name).trim();
   }
+  // Dark-theme gray text hexes baked into figures by tidy_dark / chart builders.
+  // Annotations using THESE get re-colored to the current secondary text color.
+  // The light-theme grey (#424a53 == rgb(66,74,83)) is included so the retint is
+  // reversible: once an annotation has been recolored for light, switching back
+  // to dark must still match it, or the label sticks at low-contrast light grey
+  // on the dark plot.
+  var GRAY_TEXT = ['#8b949e', '#e6edf3', '#424a53', 'rgb(66,74,83)'];
+  // Brand-colored annotation text is baked with the DARK palette hex by the
+  // chart builders, and those are low-contrast on white. Each entry maps both
+  // palette variants of a color to its CSS var, so text is retinted to the
+  // current theme's variant -- keeping the workout-type identity while fixing
+  // contrast -- and toggling back to dark restores the bright variant.
+  var BRAND_TEXT = [
+    { cssVar: '--easy',    variants: ['#2dd4bf', '#0d9488'] },
+    { cssVar: '--tempo',   variants: ['#f59e0b', '#c2710c'] },
+    { cssVar: '--long',    variants: ['#a78bfa', '#6d28d9'] },
+    { cssVar: '--race',    variants: ['#f87171', '#c81e1e'] },
+    { cssVar: '--workout', variants: ['#60a5fa', '#1d4ed8'] },
+    { cssVar: '--accent',  variants: ['#58a6ff', '#0550ae'] }
+  ];
+  function normColor(c) { return (c == null ? '' : ('' + c)).toLowerCase().replace(/\s+/g, ''); }
+  function isGrayText(c) {
+    var n = normColor(c);
+    for (var i = 0; i < GRAY_TEXT.length; i++) { if (n === GRAY_TEXT[i]) return true; }
+    return false;
+  }
+  function brandTextVar(c) {
+    var n = normColor(c);
+    for (var i = 0; i < BRAND_TEXT.length; i++) {
+      var variants = BRAND_TEXT[i].variants;
+      for (var j = 0; j < variants.length; j++) {
+        if (n === normColor(variants[j])) return BRAND_TEXT[i].cssVar;
+      }
+    }
+    return null;
+  }
   function applyChartTheme() {
     var textPrimary   = cssVar('--text-primary');
     var textSecondary = cssVar('--text-secondary');
@@ -1486,25 +1522,46 @@ DATE_CHART_IDS.forEach(id => {
     var grid          = cssVar('--grid');
     var bgElevated    = cssVar('--bg-elevated');
     var border        = cssVar('--border');
-    var upd = {
-      'xaxis.tickfont.color': textTertiary,
-      'yaxis.tickfont.color': textTertiary,
-      'xaxis.title.font.color': textSecondary,
-      'yaxis.title.font.color': textSecondary,
-      'xaxis.gridcolor': grid,
-      'yaxis.gridcolor': grid,
-      'xaxis.zerolinecolor': grid,
-      'yaxis.zerolinecolor': grid,
-      'font.color': textSecondary,
-      'legend.font.color': textSecondary,
-      'hoverlabel.font.color': textPrimary,
-      'hoverlabel.bgcolor': bgElevated,
-      'hoverlabel.bordercolor': border,
-    };
+    var brandColors   = {};
+    for (var bi = 0; bi < BRAND_TEXT.length; bi++) {
+      brandColors[BRAND_TEXT[bi].cssVar] = cssVar(BRAND_TEXT[bi].cssVar);
+    }
     document.querySelectorAll('.plotly-graph-div').forEach(function(el) {
-      if (el && el._fullLayout && window.Plotly) {
-        try { Plotly.relayout(el, upd); } catch (e) { /* chart may not be ready */ }
+      if (!el || !el._fullLayout || !window.Plotly) return;
+      var fl  = el._fullLayout;
+      var upd = {
+        'font.color': textSecondary,
+        'legend.font.color': textSecondary,
+        'hoverlabel.font.color': textPrimary,
+        'hoverlabel.bgcolor': bgElevated,
+        'hoverlabel.bordercolor': border,
+        // chart titles are baked #e6edf3 by tidy_dark -> invisible on white.
+        'title.font.color': textPrimary,
+      };
+      // Every x/y axis, including subplot axes (xaxis2, yaxis2, ...) matched
+      // dynamically -- a fixed xaxis/yaxis pair silently skips any subplot.
+      Object.keys(fl).forEach(function(k) {
+        if (/^[xy]axis\d*$/.test(k)) {
+          upd[k + '.tickfont.color']   = textTertiary;
+          upd[k + '.title.font.color'] = textSecondary;
+          upd[k + '.gridcolor']        = grid;
+          upd[k + '.zerolinecolor']    = grid;
+        }
+      });
+      // Annotations: gray-text ones become secondary text; brand-colored ones
+      // are retinted to the current theme's variant.
+      if (fl.annotations) {
+        for (var i = 0; i < fl.annotations.length; i++) {
+          var a = fl.annotations[i];
+          if (a && a.font && isGrayText(a.font.color)) {
+            upd['annotations[' + i + '].font.color'] = textSecondary;
+          } else if (a && a.font) {
+            var bvar = brandTextVar(a.font.color);
+            if (bvar) upd['annotations[' + i + '].font.color'] = brandColors[bvar];
+          }
+        }
       }
+      try { Plotly.relayout(el, upd); } catch (e) { /* chart may not be ready */ }
     });
   }
   // Reachable from the tab router so a lazily-rendered section's charts get
