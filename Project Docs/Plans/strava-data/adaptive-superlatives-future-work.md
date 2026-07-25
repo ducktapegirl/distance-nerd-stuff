@@ -159,7 +159,7 @@ before:
   against today's data, confirm San Jacinto stays in and nothing unintended gets pulled in.
 - **"Longest single climb" computation.** Needs a climb-segmentation heuristic (contiguous ascent
   within one activity's altitude stream) that doesn't exist anywhere in the codebase yet — check
-  whether `strava-data-analyst`'s existing methods have anything reusable, or whether this is a new
+  whether `dash-analyst`'s existing methods have anything reusable, or whether this is a new
   small analysis pass. Covered by the graceful-degradation escape hatch above if it stalls.
 - **Exact file paths/schema** for `superlatives.json` and `superlatives_drift.json` (field names,
   where the dismiss list lives) — settle in Build once the shared module's data shapes are drafted.

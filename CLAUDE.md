@@ -4,10 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # distance-nerd-stuff — Claude workspace guide
 
-Two endurance-data dashboards extracted from the old `Experiments` repo:
+Two endurance-data dashboards extracted from the old `Experiments` repo, built and maintained by **one** unified multi-agent pipeline — the `/dashboard <target>` workflow. See [`AGENTS.md`](AGENTS.md) for the full pipeline, agent roles, and the per-dashboard **profile** mechanism. Key rule: a subagent cannot spawn another subagent, so the orchestrator stages (Intake → Analyze → Ideate → Design → Build → QA → Review gate → Ship) run as a top-level skill, not an agent.
 
-- **`strava-data/`** — the Strava dashboard, built and maintained agentically via the `/strava` multi-agent workflow. See [`strava-data/AGENTS.md`](strava-data/AGENTS.md) for the full pipeline and agent roles. Key rule: a subagent cannot spawn another subagent, so the orchestrator stages (Intake → Analyze → Ideate → Design → Build → QA → Review gate → Ship) must run as a top-level skill, not an agent.
-- **`running-log/`** — the running-log dashboard (parsed from old HTML logs into an interactive page). See [`Project Docs/Handoffs/running-log/session-handoff.md`](Project%20Docs/Handoffs/running-log/session-handoff.md).
+- **`strava-data/`** — the Strava dashboard (target `strava-data`). Invoke via `/dashboard strava-data` or the `/strava` alias. Strava-specific notes: [`strava-data/AGENTS.md`](strava-data/AGENTS.md); build spec + profile: [`Project Docs/Specs/strava-data/dashboard-spec.md`](Project%20Docs/Specs/strava-data/dashboard-spec.md).
+- **`running-log/`** — the running-log dashboard (target `running-log`; parsed from old HTML logs into an interactive page). Invoke via `/dashboard running-log` or the `/running-log` alias. Build spec + profile: [`Project Docs/Specs/running-log/dashboard-spec.md`](Project%20Docs/Specs/running-log/dashboard-spec.md); architecture handoff: [`Project Docs/Handoffs/running-log/session-handoff.md`](Project%20Docs/Handoffs/running-log/session-handoff.md).
+
+The shared reasoning agents (`dash-analyst`, `dash-creativity`, `dash-viz-design`, `dash-developer`) read the target's profile block; QA is target-specific (`strava-qa`, `running-log-qa`).
 
 Human-facing documents (not agent-facing config) live under **`Project Docs/`**, grouped by category — each with per-dashboard subfolders (`strava-data/`, `running-log/`) plus cross-cutting docs at the category root: **`Plans/`** (proposed/future work), **`Specs/`** (build specs and design handoffs), **`Handoffs/`** (session handoffs and historical notes).
 
@@ -20,8 +22,8 @@ Project Docs/       human-facing docs, each category with per-dashboard subfolde
   Plans/              proposed/future work + cross-cutting
   Specs/              build specs + design handoffs: strava-data/ (dashboard-spec.md, mocks/), running-log/ (design_handoff_running_log/)
   Handoffs/           session handoffs + historical notes + migration.md
-.claude/agents/     strava-* specialist agents (creativity, data-analyst, developer, maintenance, qa, viz-design) + running-log-qa (visual QA for the Running Log dashboard)
-.claude/commands/   strava, strava-segments, requirements
+.claude/agents/     shared dash-* reasoning agents (analyst, creativity, viz-design, developer) + target-specific QA (strava-qa, running-log-qa) + strava-maintenance
+.claude/commands/   dashboard (unified orchestrator), strava + running-log (target aliases), strava-segments, requirements
 .github/workflows/  strava-fetch.yml (Strava API → data/), deploy.yml (build + publish to Pages)
 ```
 

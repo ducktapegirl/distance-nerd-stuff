@@ -7,9 +7,46 @@ Generated 2026-06-10 by the `/strava` multi-agent pipeline running fully autonom
 > overview, volume, elevation, pace) plus a theme-sync fix. Spec in the
 > "Core Dashboard Refinements (2026-06-11)" section near the end of this file.
 
-Pipeline provenance: strava-data-analyst (discovery + verified transform recipes) →
-strava-creativity (ranked menu; 8 views selected) → strava-viz-design (this spec) →
-strava-developer (build) → strava-qa (validation).
+Pipeline provenance: the `/dashboard strava-data` multi-agent pipeline —
+`dash-analyst` (discovery + verified transform recipes) → `dash-creativity` (ranked menu) →
+`dash-viz-design` (this spec) → `dash-developer` (build) → `strava-qa` (validation). (Earlier
+runs used the now-retired `strava-*` reasoning agents; the roles are unchanged.)
+
+---
+
+## Pipeline profile
+
+Machine-readable facts every shared `dash-*` agent loads first when the orchestrator names
+`strava-data` as the target (see the repo-root `AGENTS.md`).
+
+- **Target**: `strava-data`
+- **Data source**: `strava-data/data/` — live and growing, refreshed by
+  `.github/workflows/strava-fetch.yml`. Primary files: `activities.csv` (41 cols incl.
+  `distance_km`, `moving_time_min`, `total_elevation_gain_m`, `average_heartrate`,
+  `average_speed_kmh`, `suffer_score`, `sport_type`, `start_date_local`, `gear_id`),
+  `segment_efforts.csv`, `segments_summary.csv`, `streams/{id}.csv` (per-activity time
+  series), `laps/{id}.csv` (fetched, not yet consumed — retained intentionally),
+  `gear.json`, `athlete.json`.
+- **Build command**: `uv run python strava-data/build_dashboard.py` (run from repo root).
+- **Output HTML**: `running-log/strava.html` — a gitignored build artifact written into the
+  `running-log/` directory (the GitHub Pages publish root shared by both dashboards). It is
+  never committed; `deploy.yml` rebuilds and publishes it. The deployed Pages site, not this
+  file, is the pipeline's end.
+- **Static QA**: none dedicated — the units grep (below) plus the `strava-qa` agent.
+- **QA agent**: `strava-qa` (build integrity, spec compliance, units policy, data
+  accuracy, edge cases, HTML sanity, responsive light/dark visual audit).
+- **Module map** — `build_dashboard.py` is a thin entrypoint calling `build_page()`. Add
+  `chart_*` functions to the right `strava-data/dashboard/` module and wire into
+  `page.build_page()`: `theme.py` (`tidy_dark`, `fig_html`), `charts_production.py`,
+  `charts_exploratory.py` (`chart_x_*`), `rollups_cards.py`, `config.py`, `data.py`,
+  `geometry_stats.py`, `template.py`, `page.py`.
+- **Units policy**: **imperial display, metric data** — running pace min/mi (`M:SS`, axes
+  reversed), MTB/cycling speed mph, temperature °F. Never emit `min/km`, `km/h`, `kph`, or
+  `°C` in displayed text; `dash-developer` greps the output for those (0 hits) before
+  handoff. Full rules under "Display units" below.
+- **Special data seams**: live Strava MCP tools (`mcp__strava__*`) for stats/zones/streams
+  the CSVs lack; per-activity GPS streams power the Places views. This is the rich, growing
+  data contrast with the frozen Running Log dataset.
 
 ---
 
