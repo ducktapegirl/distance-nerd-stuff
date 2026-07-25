@@ -40,6 +40,12 @@ Examples:
     uv run python tools/mobile_preview.py --page /index.html --theme light \
         --eval @tools/qa-checks/contrast.js
 
+    # Where the network blocks cdn.plot.ly, render charts from the installed
+    # plotly package instead, so the chart-level checks still run:
+    uv run python tools/mobile_preview.py --page /index.html --offline-plotly \
+        --click '.tab[data-view="performance"]' \
+        --eval @tools/qa-checks/width-fill.js
+
     # Verify against production instead of the local build:
     uv run python tools/mobile_preview.py \
         --url https://ducktapegirl.github.io/distance-nerd-stuff/strava.html \
@@ -55,6 +61,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import socket
 import sys
 import threading
@@ -99,6 +106,29 @@ MEASURE_JS = r"""
   return out;
 }
 """
+
+
+def _plotly_local() -> tuple:
+    """The plotly.js the installed plotly package vendors: (path, version).
+
+    Both dashboards load plotly.js from a pinned CDN tag, so where that host is
+    blocked no chart renders at all. The Python package ships the same bundle,
+    which lets --offline-plotly serve it from disk with no network. Returns
+    ("", "") when plotly isn't importable or the bundle is missing.
+    """
+    try:
+        import plotly
+        from plotly.offline import get_plotlyjs_version
+    except Exception:  # noqa: BLE001 - absence is a reported condition
+        return "", ""
+    path = os.path.join(os.path.dirname(plotly.__file__),
+                        "package_data", "plotly.min.js")
+    if not os.path.exists(path):
+        return "", ""
+    try:
+        return path, get_plotlyjs_version()
+    except Exception:  # noqa: BLE001
+        return path, ""
 
 
 def _discover_chromium() -> str:
@@ -199,6 +229,11 @@ def main() -> int:
                     help="path to save a PNG (full active viewport)")
     ap.add_argument("--settle", type=int, default=450,
                     help="ms to wait after load / each click (default 450)")
+    ap.add_argument("--offline-plotly", action="store_true",
+                    help="serve plotly.js from the installed plotly package "
+                         "instead of cdn.plot.ly, so charts render with no "
+                         "network egress. Warns if the vendored version isn't "
+                         "the one the page requests")
     ap.add_argument("--plotly-timeout", type=int, default=15000,
                     help="ms to wait for window.Plotly (default 15000). Lower "
                          "it in environments where the plotly CDN is known to "
@@ -287,6 +322,35 @@ def main() -> int:
             console_errors: list = []
             page.on("console", lambda m: console_errors.append(m.text)
                     if m.type == "error" else None)
+
+            if args.offline_plotly:
+                js_path, js_ver = _plotly_local()
+                if not js_path:
+                    return _fail(
+                        "plotly-js-not-vendored",
+                        "the installed plotly package has no "
+                        "package_data/plotly.min.js",
+                        "uv sync (the plotly package ships the bundle)",
+                    )
+                report["plotly_source"] = js_path
+                report["plotly_local_version"] = js_ver or "unknown"
+                mismatches: list = []
+
+                def _serve_plotly(route):
+                    # The requested URL carries the version the page pins, so
+                    # this is the one place a drift between that pin and the
+                    # installed package is visible. Serving a *different* build
+                    # silently is worse than a blank chart -- it looks like it
+                    # worked -- so record it loudly.
+                    want = re.search(r"plotly-(\d+\.\d+\.\d+)", route.request.url)
+                    if want and js_ver and want.group(1) != js_ver:
+                        mismatches.append({"requested": want.group(1),
+                                           "served": js_ver})
+                    route.fulfill(path=js_path,
+                                  content_type="application/javascript")
+
+                page.route("**/cdn.plot.ly/**", _serve_plotly)
+
             page.goto(url, wait_until="load")
             # Wait for Plotly + the init JS (runs on window 'load') to settle.
             plotly_ok = True
@@ -356,6 +420,16 @@ def main() -> int:
 
             if console_errors:
                 report["console_errors"] = console_errors[:20]
+            if args.offline_plotly and mismatches:
+                report["plotly_version_mismatch"] = mismatches[0]
+                report["warning"] = (
+                    "VERSION DRIFT: the page pins plotly "
+                    f"{mismatches[0]['requested']} but the installed package "
+                    f"vendors {mismatches[0]['served']}. Charts rendered "
+                    "against a DIFFERENT build than production serves - treat "
+                    "these measurements as unreliable and re-sync the pin in "
+                    "nerd_common/tokens.py with pyproject.toml's plotly."
+                )
 
             browser.close()
     finally:

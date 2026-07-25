@@ -2,9 +2,15 @@
 
 **Written:** 2026-07-25, during the QA-agent consolidation work (Phases 1 and 3).
 **Why:** Phase 3 landed the environment-adaptive transport, but the container it was
-built in blocks `cdn.plot.ly`, so **no check that needs a rendered Plotly chart was
-exercised against a live chart**. This note says exactly what's unverified and how to
-close it — either in an environment with normal network access, or offline.
+built in blocks `cdn.plot.ly`, so no check that needs a rendered Plotly chart could be
+exercised against a live chart.
+
+> **Update, same day — the gap was closed offline.** `--offline-plotly` is now wired
+> into `tools/mobile_preview.py` (Option B below), and V2–V5 were run against real
+> rendered charts in the blocked container: all clean on running-log's *performance*
+> tab and Strava's *exploratory* tab at 375px. **This note is no longer a blocker.**
+> It stays as the reference for verifying in an environment with normal network access
+> (Option A), which is still worth doing — see "What's still worth checking elsewhere".
 
 ## The gap, precisely
 
@@ -18,12 +24,12 @@ host is unreachable, the browser still loads the page and the DOM is complete, b
 |---|---|
 | V0 transport probe (all failure paths) | **yes** — each forced deliberately |
 | `--desktop` / `--theme` / `--eval @file` / Chromium fallback | **yes** |
-| V1 render smoke | partially — page loads, charts don't |
-| V2 overlap, V3 edge-clip, V4 width-fill, V5 contrast | **no** — need rendered charts |
+| V1 render smoke | **yes**, via `--offline-plotly` |
+| V2 overlap, V3 edge-clip, V4 width-fill, V5 contrast | **yes**, via `--offline-plotly` |
 
 V2–V5 are byte-identical to the code that shipped in both QA agents before Phase 1
-(verified by diffing against `git show`), so this is a *re-verification* gap, not
-new untested logic. Still worth closing before Phase 2 builds on it.
+(verified by diffing against `git show`), so this was a *re-verification* gap rather
+than new untested logic — now closed offline.
 
 Two other hosts are blocked in the same environment and are worth knowing about:
 `unpkg.com` (maplibre-gl → the Strava **map** tab only) and `gc.zgo.at`
@@ -71,46 +77,40 @@ uv run python -c "from plotly.offline import get_plotlyjs_version; print(get_plo
 # -> 2.35.2, which is exactly what nerd_common/tokens.py pins
 ```
 
-So Playwright can fulfil the CDN request from disk. The whole workaround is one
-`page.route` call:
+So Playwright can fulfil the CDN request from disk. **This is wired into the CLI** as
+`--offline-plotly`:
 
-```python
-import os, plotly
-PLOTLY_JS = os.path.join(os.path.dirname(plotly.__file__), "package_data", "plotly.min.js")
-page.route("**/cdn.plot.ly/**",
-           lambda r: r.fulfill(path=PLOTLY_JS, content_type="application/javascript"))
+```bash
+# The transport reports usable even with the CDN blocked:
+uv run python tools/mobile_preview.py --probe --offline-plotly --page /index.html
+# -> {"ok": true, "plotly": true, "plotly_local_version": "2.35.2", ...}, exit 0
+
+# Run any suite check against real rendered charts, no network needed:
+uv run python tools/mobile_preview.py --page /index.html --offline-plotly \
+  --click '.tab[data-view="performance"]' --eval @tools/qa-checks/width-fill.js
 ```
 
-Inserted immediately after `page = context.new_page()` in `tools/mobile_preview.py`
-(before `page.goto`). Verified result in the blocked container — charts rendered and
-`_fullLayout` was readable:
+It reports `plotly_source` and `plotly_local_version` so a run always says which
+bundle it used.
+
+**The version-drift trap is guarded, not just documented.** The intercepted URL carries
+the version the page pins, so the handler compares it against the installed package and
+records a loud `plotly_version_mismatch` + `warning` when they differ. Verified by
+pointing a copy of the page at `plotly-2.99.9.min.js`:
 
 ```json
-{"plotlyVersion": "2.35.2", "visible": 1, "rendered": 1,
- "sample": {"id": "chart-cumulative",
-            "xRange": ["2003-08-31", "2007-05-12"],
-            "size": {"l": 62, "r": 20, "t": 20, "b": 40, "w": 215, "h": 220}}}
+{"plotly_version_mismatch": {"requested": "2.99.9", "served": "2.35.2"},
+ "warning": "VERSION DRIFT: the page pins plotly 2.99.9 but the installed package
+             vendors 2.35.2. Charts rendered against a DIFFERENT build than
+             production serves - treat these measurements as unreliable ..."}
 ```
 
-That `xRange` is exactly the dataset's extent (2003-08-31 → 2007-05-12) with no
-autorange blowout — i.e. the measurement **V6** is being built to assert was
-readable offline.
+If you ever see that warning, the measurements from that run are not trustworthy —
+re-sync `nerd_common/tokens.py`'s pin with `pyproject.toml`'s plotly version.
 
-**Not yet wired into the CLI.** Adding an `--offline-plotly` flag to
-`tools/mobile_preview.py` is the obvious next step (~6 lines, plus a `plotly_source`
-field in the report so a run says which it used). It was left out because Phase 3's
-scope was the transport ladder; ask for it if a CDN-blocked environment turns out to be
-the normal case rather than the exception.
-
-**Caveats.**
-- Only substitutes plotly.js. The Strava **map** tab also needs `unpkg.com`
-  (maplibre-gl) and would stay blank; maplibre is not vendored in any Python package
-  here, so that tab needs Option A or a separately cached copy.
-- Keep the local file and the pinned tag in sync. If `nerd_common/tokens.py` ever moves
-  off 2.35.2 while `pyproject.toml` keeps plotly 5.24.1 (or vice versa), the offline
-  substitute silently becomes a *different* build than production serves — which is a
-  worse failure than a blank chart, because it looks like it worked. Re-check
-  `get_plotlyjs_version()` against the tag whenever either is bumped.
+**Caveat — what `--offline-plotly` does NOT cover.** Only plotly.js is substituted. The
+Strava **map** tab also needs `unpkg.com` (maplibre-gl), which is not vendored in any
+Python package here, so that tab stays blank offline and needs Option A or C.
 
 ## Option C — allow the host in the environment's network policy
 
@@ -128,12 +128,22 @@ it.
 
 ---
 
-## What to do with the result
+## What's still worth checking elsewhere
 
-If Options A/B show V2–V5 clean at both viewports and both themes, the Phase 1 + 3 work
-is fully verified and Phase 2 can proceed on solid ground. If any check misbehaves,
-fix it in `.claude/qa-visual-suite.md` — it is the single source of truth, and both QA
-agents read it.
+Offline verification closed the blocking gap, but three things are only observable in an
+environment with real network access — none blocks Phase 2:
+
+1. **The Strava map tab** (`unpkg.com`/maplibre-gl) — never renders offline, so its
+   charts and any map-specific layout issue are unverified.
+2. **Real CDN delivery** — offline serves the bundle instantly from disk, so it can't
+   surface a slow-CDN race where a chart is measured before it finishes laying out. If
+   checks are ever flaky in normal use but clean offline, suspect settle timing and
+   raise `--settle`.
+3. **Transport T1 (Preview MCP)** — not provisioned in the build container, so the
+   T1 branch of V0 and the `preview_snapshot` a11y path are untested end to end.
+
+If any check misbehaves, fix it in `.claude/qa-visual-suite.md` — it is the single
+source of truth, and both QA agents read it.
 
 ## Related
 
