@@ -78,8 +78,15 @@ def fig_html(fig, height, div_id=None):
     spec = fig.to_plotly_json()
     spec["config"] = _CHART_CONFIG
     payload = json.dumps(spec, cls=PlotlyJSONEncoder).replace("</", "<\\/")
+    # ``plotly-graph-div`` is the class plotly.py's own ``to_html`` puts on a
+    # chart container. Building the placeholder by hand skips that wrapper, and
+    # both dashboards' pages were written against it: ``applyChartTheme()``
+    # selects ``.plotly-graph-div`` to restyle charts for light mode, and five
+    # CSS rules size charts through it. Without the class every one of those was
+    # a silent no-op -- charts kept dark-theme text and dark datatips in light
+    # mode. Keep it on the div.
     return (
-        f'<div id="{div_id}" class="lazy-chart" data-plotly="{div_id}" '
-        f'style="height:{height}px"></div>'
+        f'<div id="{div_id}" class="lazy-chart plotly-graph-div" '
+        f'data-plotly="{div_id}" style="height:{height}px"></div>'
         f'<script type="application/json" data-plotly-spec="{div_id}">{payload}</script>'
     )
