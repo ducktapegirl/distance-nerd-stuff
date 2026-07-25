@@ -1,4 +1,36 @@
 
+## 25 July 2026
+
+### QA Pipeline Consolidation: Shared Suite, Adaptive Transport, and a Blind Validation Run
+
+Consolidated the two dashboards' QA agents (`strava-qa`, `running-log-qa`) around a single shared rendered-check suite (`.claude/qa-visual-suite.md`, checks V0–V8) instead of the ~200 duplicated lines of JS each agent had been carrying independently. Landed in four phases: extracted the shared suite (Phase 1); added an environment-adaptive browser transport with a T1 (Preview MCP) / T2 (`mobile_preview.py`) / T3 (static-only) probe plus an `--offline-plotly` flag for CDN-blocked environments (Phase 3); added four new checks — axis-range blowout, hover/datatip theme mismatch, page-level DOM overlap, and a tick-collision extension (Phase 2); and fixed a real bug the new checks found — `applyChartTheme()` was a complete no-op on both dashboards, because the chart placeholder div was missing the `plotly-graph-div` class both the JS and five CSS rules selected on (Phase 4). Closed with a deliberately blind dispatch of `strava-qa` (no mention of the three already-known findings) to validate the rebuilt pipeline: it rediscovered all three independently, recovered from a CDN-blocked sandbox using only the new transport's documented guidance, and surfaced two bugs in the check scripts themselves plus one new systemic dashboard defect. Findings banked (not fixed) in `Project Docs/Handoffs/qa-pipeline-test-run-findings.md`; full process retrospective in `Project Docs/Lessons/qa-pipeline-consolidation-retrospective.md`.
+
+### Iterations
+
+| # | What happened | Root cause | Fix |
+|---|---|---|---|
+| 1 | The new axis-blowout check flagged all 5 running-log PR charts as FAIL | Those charts deliberately pin a shared x-axis range (`_PR_X_RANGE`) wider than any one chart's own data, so a set of small-multiples stays comparable — a convention already documented in the running-log spec read earlier in this same session, but not cross-referenced before writing the detector | Added an `autoranged` vs `PINNED` distinction: only an axis Plotly itself widened can FAIL; an explicitly-set wide range reports PINNED and passes |
+| 2 | The same check's `Math.max(1, span)` divide-by-zero guard silently corrupted its own numbers on a sub-unit axis (a partial-R² chart ranging [0, 0.036]) | The clamp assumed spans are always ≥1 (true for dates/miles, false for a 0-to-0.04 stat axis) — it reported `padFrac 0.002` instead of the true `0.081` | Removed the hard clamp; guard divide-by-zero only when the span is exactly zero |
+| 3 | The new tick-collision check flagged 6 of 7 mobile charts as failing, with absurd 52%+ overlaps | Plotly auto-rotates crowded tick labels ~30°, and a bounding-box test measures the *axis-aligned* box of rotated text, which vastly overstates overlap — rotation is the crowding *fix*, so the naive test flagged the fix as the bug | Rewrote as a rotation-aware model: along-axis extent when flat, perpendicular baseline gap (`spacing × \|sin angle\|`) when rotated |
+| 4 | The new hover/datatip theme check flagged transparent annotation backgrounds as dark pills | SVG carries alpha in a separate `fill-opacity` property; Plotly's invisible pills are `fill:rgb(0,0,0)` + `fill-opacity:0`, and reading `fill` alone scores them pure black | Skip the luminance judgment entirely when `fill-opacity` is 0 |
+| 5 | The new page-level tap-target check flagged nearly every desktop toolbar button as under the 40px minimum | The check ran at all viewports; a mouse-driven desktop button doesn't need a touch-sized target | Gated the check to the mobile tier (`≤640px` or a coarse pointer) |
+
+### Prompting lessons
+
+- **The highest-leverage catch in this session was a one-sentence framing correction, made before any code was written.** The initial plan assumed `mobile_preview.py` should be "primary" and Preview MCP "demoted" — the correction was that the real need is detecting whichever transport actually works in the current environment (desktop / mobile app / web container all differ), not picking a favorite. That single correction reshaped the whole transport layer before four phases were built on the wrong assumption. Catching a wrong frame before implementation is worth far more than catching an implementation bug after — the frame is what everything downstream inherits.
+- **Cross-reference already-known repo conventions before writing a new detector.** The `_PR_X_RANGE` pinned-axis convention that tripped up iteration 1 was already documented in a spec this same session had read earlier. A standing rule for this kind of work — *"before implementing a check, list what it must NOT flag, against documented conventions, before writing the detection logic"* — would have caught it without a test-and-fix cycle.
+- **Most of the other self-corrections (iterations 2–5) were genuine empirical calibration, not planning gaps** — false-positive/false-negative modes in geometry-based heuristics (rotation, opacity, sub-unit axes) only reveal themselves once tested against real chart data. That's what a test-driven build of this kind of tooling looks like, not evidence of insufficient upfront design.
+- **This session ran on Opus 5 for nearly its entire length** (an explicit "changed to Sonnet 5" system message appeared only near the end) — likely the single biggest driver of the session's long wall-clock time, ahead of any execution inefficiency. For a similar shape next time — a plan/architecture phase followed by a long iterative implementation-and-test phase — consider the heavier model for the former and switching to a faster one before the latter.
+- **A dispatched subagent is not free, even when the isolation is worth it.** The blind `strava-qa` validation run alone took ~30 minutes and 91 tool calls to sweep two tabs at two viewports and two themes — appropriate for a genuine blind-validation test, but worth naming explicitly as a speed/rigor tradeoff if a faster sanity check is what's wanted next time instead.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| ~4–5 hours across 4 build phases + a validation run | — | 2/5 — the plan itself never needed rework; friction was concentrated in expected calibration of new geometric heuristics against real chart data, plus one avoidable miss (the pinned-axis convention) that a cross-reference step would have caught |
+
+---
+
 ## 22 July 2026
 
 ### Performance Section Redesign — Build, Refine, and Three Rounds of Mobile Fixes
