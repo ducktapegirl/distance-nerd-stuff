@@ -115,8 +115,18 @@ Split by strength rather than picking one — that is where the information gain
 --eval @tools/qa-checks/x.js  run a check file (or a raw JS expression)
 --click '<selector>'        repeatable; use to activate tabs
 --screenshot <path>         save a PNG
+--offline-plotly            serve plotly.js from the installed plotly
+                            package instead of the CDN -- turns
+                            T2-degraded back into a full T2 run with no
+                            network. Warns loudly if the vendored build
+                            isn't the one the page pins
 --plotly-timeout <ms>       lower it when the CDN is known blocked
 ```
+
+**If the probe reports `plotly-cdn-unreachable`, retry with `--offline-plotly` before
+falling back to T2-degraded** — it usually recovers full chart coverage outright. It
+does not help the Strava map tab, which needs `unpkg.com`. See
+`Project Docs/Handoffs/qa-visual-verification.md`.
 
 ### Viewport sweep
 
