@@ -1,0 +1,66 @@
+name: PR checks
+
+# Static quality gate for pull requests. Builds both dashboards from source and
+# runs the running-log regression suite. Previously PRs had no checks at all —
+# deploy.yml only runs on push to main, and neither workflow executed qa.py — so
+# a PR could only be validated by hand.
+#
+# Deliberately `pull_request`, never `pull_request_target`: this repo is public,
+# and pull_request_target would run fork-authored code with secrets and a write
+# token.
+#
+# Deliberately no Playwright / no rendered pass. `uv sync --no-dev` excludes it,
+# and the rendered checks (.claude/qa-visual-suite.md V0-V8) stay in-session with
+# the QA agents by standing decision — see
+# Project Docs/Plans/running-log/qa-mobile-checks.md.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "strava-data/data/**"
+      - "strava-data/build_dashboard.py"
+      - "strava-data/dashboard/**"
+      - "running-log/dashboard/**"
+      - "running-log/parse_log.py"
+      - "running-log/visualize_log.py"
+      - "running-log/qa.py"
+      - "running-log/running_log.csv"
+      - "running-log/running_log_story.html"
+      - "nerd_common/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/pr-checks.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --no-dev  # runtime deps only; Playwright is dev-only and unused here
+
+      - name: Build Strava dashboard
+        run: uv run python strava-data/build_dashboard.py
+        env:
+          # Unavailable to fork PRs by design. Absent -> the Places hero runs
+          # Glow-only, same fallback deploy.yml documents, and the build passes.
+          MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
+
+      - name: Build Running Log dashboard
+        run: uv run python running-log/visualize_log.py
+
+      # Must run after the build: qa.py's Group B checks read the freshly
+      # generated running-log/index.html as text.
+      - name: Run Running Log QA suite
+        run: uv run python running-log/qa.py
