@@ -23,6 +23,7 @@ Project Docs/       human-facing docs, each category with per-dashboard subfolde
   Specs/              build specs + design handoffs: strava-data/ (dashboard-spec.md, mocks/), running-log/ (design_handoff_running_log/)
   Handoffs/           session handoffs + historical notes + migration.md
 .claude/agents/     shared dash-* reasoning agents (analyst, creativity, viz-design, developer) + target-specific QA (strava-qa, running-log-qa) + strava-maintenance
+.claude/qa-visual-suite.md  shared rendered-QA checks (V0-V8) both QA agents run — single source of truth
 .claude/commands/   dashboard (unified orchestrator), strava + running-log (target aliases), strava-segments, requirements
 .github/workflows/  strava-fetch.yml (Strava API → data/), deploy.yml (build + publish to Pages)
 ```
