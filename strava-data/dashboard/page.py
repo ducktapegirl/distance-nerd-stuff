@@ -580,7 +580,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
     <button class="detail-close" onclick="closeDetail()" aria-label="Close">×</button>
   </div>
   <div class="detail-body" id="detail-body">
-    <div class="d-hint">Click any point on the Heart Rate, Pace, or Map charts to see activity details.</div>
+    <div class="d-hint">Click any day on the Activity Calendar in Overview to see that day's activity details.</div>
   </div>
 </aside>
 
@@ -621,7 +621,11 @@ def build_page(rows, segs):
     date_range, stats_html, nav_links, theme_buttons = _build_stats_panel(rows, stats)
 
     SYNC_IDS  = ["chart-volume", "chart-hr", "chart-pace", "chart-elev"]
-    CLICK_IDS = ["chart-hr", "chart-pace"]
+    # No chart opens the Activity Details panel on click: the Trends charts each
+    # show only Plotly's hover datatip, and the panel is reached by clicking a day
+    # on the Overview Activity Calendar (showDay). Empty list keeps the
+    # plotly_click branch in wireChart() inert without removing the machinery.
+    CLICK_IDS = []
     js = build_js(act_json, geo_json, SYNC_IDS, CLICK_IDS, heat_air_text, heat_app_text,
                   mirage_air_text, mirage_app_text, run_hr_temp_meta,
                   heatsun_temp_text, heatsun_uv_text)
