@@ -1,7 +1,7 @@
 name: New view / chart idea
 description: Suggest a chart, view, or section for one of the dashboards.
 title: "[view] "
-labels: []
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:

@@ -87,16 +87,17 @@ do** — the following, and present them as a numbered menu:
 | Condition | Route |
 |---|---|
 | carries `bug` | **bugfix** — `/dashboard <target> bugfix` |
-| carries `enhancement` | **feature, with Ideate** — the label means "open-ended idea," so the pipeline explores variants |
-| otherwise, and the ask is **vague** | **feature, with Ideate** |
-| otherwise, and the ask is **specific** | **feature, skip Ideate** — straight to verification + Design |
+| carries `enhancement`, or anything else actionable | **feature** — Ideate or not, per vague-vs-specific below |
 | not about either dashboard, or unactionable | **no action** — out of scope; flag and leave alone |
 | trips a guardrail | **blocked** — name the rule (G1/G2), don't act |
 
-**Vague vs specific** is the one judgement call, and the view-request form usually answers it
-for you — its **"How formed is this idea?"** field maps directly: *Rough* → with Ideate,
-*Specific* → skip Ideate, *Somewhere in between* → your call. Trust the author's own answer over
-your read of their prose.
+`enhancement` picks the **route** (feature work, not a bugfix) — it does not by itself decide
+whether Ideate runs. That's a separate call:
+
+**Vague vs specific** is the one judgement call. Both non-bug forms (*New view / chart idea* and
+*General enhancement*) carry the same **"How formed is this idea?"** field — it maps directly:
+*Rough* → with Ideate, *Specific* → skip Ideate, *Somewhere in between* → your call. Trust the
+author's own answer over your read of their prose.
 
 For issues filed without the form: "add an elevation-vs-pace scatter for trail runs" is specific
 — the view is named. "Something about hills," "the Places section feels flat," "more insight
