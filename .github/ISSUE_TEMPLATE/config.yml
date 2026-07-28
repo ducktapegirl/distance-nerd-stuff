@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: The dashboards themselves
+    url: https://ducktapegirl.github.io/distance-nerd-stuff/
+    about: The live site — worth a look before filing, in case it's already there.
+  - name: How this repo is built
+    url: https://github.com/ducktapegirl/distance-nerd-stuff/blob/main/AGENTS.md
+    about: The multi-agent pipeline that builds and maintains both dashboards.
