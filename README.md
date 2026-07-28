@@ -32,6 +32,23 @@ each stage along the way. It's equal parts "I wanted these specific charts"
 and "I wanted to see how far an agentic build pipeline could go." Curious
 how it works under the hood? See [`strava-data/AGENTS.md`](strava-data/AGENTS.md).
 
+## Filing an issue
+
+Want something fixed or added? [Open an issue](https://github.com/ducktapegirl/distance-nerd-stuff/issues/new/choose) — there are three forms, and each needs the right tag:
+
+- **Bug report** — something's broken, wrong, or looks off. This form auto-tags itself **`bug`**.
+- **New view / chart idea** — propose a question you want a dashboard to answer. This form
+  auto-tags itself **`enhancement`**.
+- **General enhancement** — anything else you'd like improved that isn't a new chart or view
+  (navigation, layout, exports, workflow, etc.). This form auto-tags itself **`enhancement`**.
+
+Filing an issue with the `bug` or `enhancement` tag doesn't trigger anything by itself — only I
+can apply the `agent:ready` label, and nothing happens until I do. Once it's applied, the issue
+may get picked up and routed automatically: `bug` reports go straight to a fix, and `enhancement`
+requests go through the full design pipeline if rough or get built more directly if specific
+(based on your own "how formed is this idea?" answer on the form). You'll see progress as label changes
+(`agent:in-progress` → `agent:done`) and eventually a pull request that closes the issue.
+
 ## Poking at the code
 
 The data here is mine — the Strava dashboard is built from CSVs pulled

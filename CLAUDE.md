@@ -13,7 +13,7 @@ The shared reasoning agents (`dash-analyst`, `dash-creativity`, `dash-viz-design
 
 ## GitHub issues as pipeline input (`/issues`)
 
-A filed issue can enter the pipeline instead of you describing the work by hand. `/issues` sweeps open issues labeled **`agent:ready`**, triages each into a menu (route, target, author, body quoted verbatim), and routes the one **you pick** into `/dashboard` — `bug` → `bugfix` mode; `enhancement` or a vague ask → the full path with Ideate; a specific view request → skip Ideate. It ships a branch + PR with `Closes #N` and posts one comment linking it. See [`AGENTS.md`](AGENTS.md) for the flow diagram.
+A filed issue can enter the pipeline instead of you describing the work by hand. `/issues` sweeps open issues labeled **`agent:ready`**, triages each into a menu (route, target, author, body quoted verbatim), and routes the one **you pick** into `/dashboard` — `bug` → `bugfix` mode; `enhancement` → the feature path, with Ideate run or skipped per the issue's own "how formed is this idea?" answer, not the label. It ships a branch + PR with `Closes #N` and posts one comment linking it. See [`AGENTS.md`](AGENTS.md) for the flow diagram.
 
 Nothing runs unattended: `/issues` is invoked by you, there's no Actions job and no API key, and `agent:ready` can only be applied by the repo owner.
 
@@ -35,7 +35,7 @@ Project Docs/       human-facing docs, each category with per-dashboard subfolde
 .claude/issue-guardrails.md shared safety contract (G1-G6) for issue-sourced runs — single source of truth
 .claude/commands/   dashboard (unified orchestrator), issues (GitHub issue intake), strava + running-log (target aliases), strava-segments, requirements
 .github/workflows/  strava-fetch.yml (Strava API → data/), deploy.yml (build + publish to Pages), pr-checks.yml (build + qa.py on PRs)
-.github/ISSUE_TEMPLATE/  bug.yml, view-request.yml, config.yml
+.github/ISSUE_TEMPLATE/  bug.yml, view-request.yml, enhancement.yml, config.yml
 ```
 
 ## Python environment

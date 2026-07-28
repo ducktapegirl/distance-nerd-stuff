@@ -73,12 +73,16 @@ A filed GitHub issue can enter the pipeline instead of you describing the work b
 ```
 issue labeled agent:ready → /issues sweep → triage menu → you pick one
                                                   ↓
-             bug ────────────────────→ /dashboard <target> bugfix
-             enhancement / vague ────→ /dashboard <target>  (with Ideate)
-             specific view request ──→ /dashboard <target>  (skip Ideate)
+             bug ──────────────────────────→ /dashboard <target> bugfix
+             enhancement, vague ask ───────→ /dashboard <target>  (with Ideate)
+             enhancement, specific ask ────→ /dashboard <target>  (skip Ideate)
                                                   ↓
                           Review gate → branch → PR (Closes #N) → stop
 ```
+
+Three issue forms feed this: *Bug report* (auto-tags `bug`), *New view / chart idea*, and
+*General enhancement* (both auto-tag `enhancement`). The two `enhancement` forms share a "how
+formed is this idea?" field — that answer, not the label, decides whether Ideate runs.
 
 Three properties are load-bearing:
 

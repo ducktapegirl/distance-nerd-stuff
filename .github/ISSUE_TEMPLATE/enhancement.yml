@@ -1,0 +1,52 @@
+name: General enhancement
+description: Something else you'd like improved — not a bug, and not a new chart or view.
+title: "[enhancement] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a new chart or view, use the "New view / chart idea" form instead — it asks
+        chart-shaped questions this one skips. Use this one for anything else: navigation,
+        layout, exports, performance, workflow, whatever.
+
+  - type: dropdown
+    id: dashboard
+    attributes:
+      label: Which dashboard?
+      options:
+        - Strava dashboard (strava.html)
+        - Running Log (index.html)
+        - Either / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: enhancement
+    attributes:
+      label: What's the enhancement?
+      placeholder: The theme toggle is hard to find on mobile — move it somewhere more obvious.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: formedness
+    attributes:
+      label: How formed is this idea?
+      description: >
+        Be honest — a rough idea gets an exploration pass that turns it into options,
+        which is wasted effort on an idea that's already specific.
+      options:
+        - Rough — I know what bugs me, not how to fix it
+        - Somewhere in between
+        - Specific — I know exactly what should change
+    validations:
+      required: true
+
+  - type: textarea
+    id: shape
+    attributes:
+      label: What should it look like or do?
+      description: Only if you have something in mind. Skip it otherwise.
+    validations:
+      required: false
