@@ -41,7 +41,13 @@ modules for the target:
   cases, expected shape, spot-check values). Implement the transform verbatim.
 
 ## Technical rules
-- Plotly only — no D3 or other JS libraries.
+- Plotly only — no D3 or other JS libraries, **except** map views (Strava's Places hero in
+  `charts_places.py`, the Activity Details mini-map in `template.py`), which use MapLibre GL
+  JS + MapTiler tiles. For that work, prefer the **`maptiler` skill** over ad hoc
+  implementation — it covers MapTiler Cloud APIs, the SDK/MapLibre GL JS, tile styles, and
+  data-driven styling. If the skill isn't available on this machine, fall back to reading the
+  existing map code (`charts_places.py`, `template.py`) and MapTiler/MapLibre's public docs
+  directly — don't block on the skill.
 - Self-contained HTML — Plotly from CDN, individual chart divs rendered with
   `full_html=False`, the final page assembled by the existing pattern.
 - Imports: stdlib + `plotly` + `numpy` only in the build package — **no pandas**. All data
