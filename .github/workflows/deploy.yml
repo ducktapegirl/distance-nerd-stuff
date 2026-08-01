@@ -2,8 +2,12 @@ name: Deploy dashboards
 
 # Builds the dashboards from source (data + Python) and publishes to GitHub
 # Pages. Triggers on any push to main that changes the data, the build
-# scripts, the running-log source, or the Python environment — including the
-# data-only commits pushed by strava-fetch.yml.
+# scripts, the running-log source, or the Python environment. Also triggers
+# when Strava Data Fetch completes: that workflow pushes data commits using
+# the default GITHUB_TOKEN, and pushes made with that token don't fire other
+# workflows' `push` triggers (GitHub's loop-prevention rule) — so the path
+# filter above alone never catches the scheduled fetch. workflow_run isn't
+# subject to that restriction.
 on:
   push:
     branches: [main]
@@ -20,6 +24,9 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/deploy.yml"
+  workflow_run:
+    workflows: ["Strava Data Fetch"]
+    types: [completed]
   workflow_dispatch: {}
 
 permissions:
@@ -33,6 +40,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
