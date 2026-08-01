@@ -30,7 +30,11 @@ color palette.
 ## Research the encoding
 Use WebSearch/WebFetch to confirm the *right* visual encoding before committing (e.g. how to
 show training load or aerobic efficiency drift without misleading). Prefer well-established
-chart grammar.
+chart grammar. For views involving a map (location, route, or other geographic encoding),
+prefer the **`maptiler` skill** over generic WebSearch/WebFetch for MapTiler/MapLibre-specific
+capabilities (tile styles, static maps, data-driven styling) — reserve WebSearch for general
+chart-grammar questions. If the skill isn't available on this machine, fall back to
+WebSearch/WebFetch against MapTiler/MapLibre's public docs — don't block on the skill.
 
 ## Aesthetic backbone
 Commit to a deliberate visual direction (typography, color, motion, spatial composition)

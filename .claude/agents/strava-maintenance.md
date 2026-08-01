@@ -25,12 +25,18 @@ line numbers, dates, version numbers.
 - Check Strava connectivity with `mcp__strava__check-strava-connection`.
 - Flag data staleness: compare the newest `start_date_local` in
   `strava-data/data/activities.csv` against today's date; warn if the gap is large.
+- For map rendering/tile issues (Places hero, Activity Details mini-map), reach for the
+  **`maptiler` skill** to diagnose MapTiler/MapLibre-specific problems. If it isn't available
+  on this machine, fall back to reading the map code directly and MapTiler/MapLibre's public
+  docs — don't block on the skill.
 
 ## 2. Upstream watch
 Web-search for changes worth adopting since this project was last touched. Cover:
 - Strava API v3 changes / deprecations / scope changes.
 - Claude Code & MCP release notes (new agent/skill/tooling features relevant here).
 - New Plotly capabilities that could improve the dashboard.
+- MapTiler/MapLibre GL JS changes (new tile styles, SDK/API changes) worth adopting in the
+  Places hero (`charts_places.py`) or Activity Details mini-map (`template.py`).
 Summarize ONLY what's actually worth adopting, each with a one-line "why it matters here."
 Skip noise.
 

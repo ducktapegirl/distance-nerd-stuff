@@ -71,10 +71,10 @@ Invoke the suite with this parameter block:
 ```
 target:    strava-data
 page:      running-log/strava.html
-tabs:      overview, volume, trends, segments, map, exploratory
+tabs:      overview, volume, trends, segments, places, exploratory
 chart ids: enumerate from the built page (the exploratory views use the
            chart-x-* prefix)
-exempt:    maps and calendars — no standard Plotly layers; note as N/A
+exempt:    places and calendars — no standard Plotly layers; note as N/A
            for the chart-oriented checks
 ```
 

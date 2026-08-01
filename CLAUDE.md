@@ -81,7 +81,9 @@ manually — both dashboards' HTML lives under `running-log/`:
 uv run python -m http.server 8765 --directory "running-log" # open index.html or strava.html
 ```
 
-When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy Maplify API restrictions.
+When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy MapTiler API restrictions.
+
+**Map work (Strava Places hero, Activity Details mini-map):** prefer the **`maptiler` skill** — it covers MapTiler Cloud APIs, the SDK/MapLibre GL JS, tile styles, and data-driven styling — over ad hoc implementation or generic web research. If the skill isn't available on this machine (it's not guaranteed to be installed everywhere this repo is worked on), fall back to reading the existing map code (`charts_places.py`, `template.py`) and MapTiler/MapLibre's public docs directly rather than blocking on it.
 
 **Mobile / visual checks:** browser tooling differs by environment (local desktop, mobile app, web/remote container), so **probe rather than assume**. Two transports:
 

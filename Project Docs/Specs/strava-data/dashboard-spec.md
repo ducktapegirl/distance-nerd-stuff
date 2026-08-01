@@ -627,6 +627,11 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 
 ## Places — Build-Ready Spec
 
+> Building or designing here? Prefer the **`maptiler` skill** for MapTiler/MapLibre specifics
+> (tile styles, static maps, SDK/data-driven styling) over ad hoc implementation or research.
+> If it isn't available on this machine, fall back to reading `charts_places.py`/`template.py`
+> and MapTiler/MapLibre's public docs directly — don't block on the skill.
+
 > **UPDATE (2026-07 · open-source tiled basemap).** The hero's **basemap** is now a
 > real tiled map rendered by **MapLibre GL JS** (loaded from CDN; `config.MAPLIBRE_CDN`),
 > with a three-way **Glow / Street / Terrain** toggle. **Street/Terrain use MapTiler
