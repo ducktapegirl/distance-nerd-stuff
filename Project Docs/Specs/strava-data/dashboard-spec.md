@@ -1510,3 +1510,426 @@ MTB" symbol-key pills) — they stayed dark grey in light theme.
   definitions) are three independent hardcoded `rgba(13,17,23,0.65)` strings
   that happen to stay in sync by convention only. Worth a shared constant
   someday; out of scope for this fix.
+
+## Search Activities — title + description search (2026-08-02)
+
+**Added 2026-08-02** via the `/issues` → `/dashboard strava-data` pipeline, from
+[issue #35](https://github.com/ducktapegirl/distance-nerd-stuff/issues/35).
+
+**Type:** Hand-rolled HTML/CSS/JS card — **not a Plotly chart**. `tidy_dark`/`fig_html` do not
+apply; styling is plain CSS using the existing theme custom properties, and filtering is
+client-side JS over data already loaded into `ACT_DATA`.
+
+**Data:** No new data plumbing. Reuses `ACT_DATA` (`page.py:_activity_detail_json`, emitted by
+`template.py:build_js`) — `{id, name, date, sport, dist_mi, hr, elev_ft, elapsed, pace, desc}`
+for all activities. The JS builds its search corpus at load from
+`Object.keys(ACT_DATA).map(id => ACT_DATA[id])`, sorted by `date` descending. The Python side
+needs only `len(rows)` for the server-rendered baseline text.
+
+**Placement:** In `page.py:_assemble_html`, `#view-overview` — insert immediately after
+`{stats_html}` and before the existing Activity Calendar `<div class="card">`. Threaded through
+as a new `search_html` kwarg built by `_build_activity_search_html(n_total)` in `page.py`.
+
+### Verified data constraints (dash-analyst Job B, 2026-08-02)
+
+357 activities, 2024-10-13 → 2026-07-30.
+
+- **Titles 100% populated, 34.5% Strava generics.** Only 10 distinct titles repeat; "Morning
+  Run" (30), "Afternoon Run" (30), "Lunch Run" (25) are ~24% of all activities on their own.
+  → result rows **must** carry date + distance; the title alone cannot disambiguate.
+- **Descriptions 76.8% populated** (274/357). Median 117 chars, p90 294, max 2358. One contains
+  an embedded newline. → preview truncates to ~110 chars and collapses newlines.
+- **Result sets are large for common words**: "run" → 146 (41%), "trail" → 49, "hill" → 42.
+  Specific place/person queries return 1–10. → the list needs a max-height scroll container and
+  a visible count, or a long result set shoves the calendar hundreds of px down the page.
+- **Escaping is mandatory.** `<`/`>` occur in real descriptions (one contains `-->`). 12 titles
+  and 52 descriptions contain emoji, which already render correctly and must not be mangled.
+- Matching is literal substring, so short queries produce false positives ("pr" matches
+  "surprisingly"). UI copy must not imply smart/fuzzy matching.
+
+### 1. Card markup
+
+```html
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Search Activities</div>
+    <div class="act-search-count" id="act-search-count">{n_total} activities</div>
+  </div>
+  <div class="act-search-bar">
+    <input type="text" id="act-search-input" placeholder="Search by title or description…" autocomplete="off"/>
+    <button id="act-search-clear" hidden aria-label="Clear search">×</button>
+  </div>
+  <div class="act-search-list" id="act-search-list"></div>
+</div>
+```
+
+`{n_total}` = `len(rows)` at build time. Mirrors the Activity Calendar card's `.card` +
+`.card-header` idiom used directly below it.
+
+### 2. Result row anatomy
+
+Two lines, plus a third only when a description exists:
+
+- **Top line** (flex): sport-colored dot · **title** (13px, weight 600, `--text-primary`,
+  single-line ellipsis, flex-grow) · **date** (right-aligned, Geist Mono 11px,
+  `--text-tertiary`, no wrap).
+- **Meta line** (Geist Mono 11px, `--text-secondary`): `{sport} · {dist_mi} mi · {pace}`, joined
+  with " · ", each segment conditional (`dist_mi` omitted when falsy, `pace` when empty). Sport
+  shown raw (`Run`, `TrailRun`, `MountainBikeRide`) to match `renderActivity`'s own `d-date`
+  line, so a result and the panel it opens read identically.
+- **Desc preview** (12px, `--text-secondary`, single-line ellipsis), rendered only when
+  `a.desc` is truthy.
+
+Sport dot: `--running` (teal) for `Run`/`TrailRun`, `--mtb` (amber) for `MountainBikeRide`,
+`--other` (slate) otherwise — all three already defined in `:root` and `:root.light`.
+
+Matched substrings are wrapped in `<mark>` in both title and desc preview, built on this app's
+`esc()`.
+
+### 3. Empty and edge states
+
+- **No query typed:** list renders empty — **added 2026-08-02**: the original spec paired this
+  state with a "Start typing to search…" hint; user feedback on the live build asked for it
+  removed, so `#act-search-list` is simply empty until a query exists. No rows rendered (avoids
+  357 rows on every page load). Count reads **"{N} activities"**, using the live `ACT_DATA`
+  length so it never drifts as Strava fetches add rows.
+- **Matches:** count reads **"{n} results"** (**"1 result"** singular). All matches render — the
+  worst case (146) is cheap client-side and the container scrolls.
+- **Zero matches:** count reads **"0 results"**; list shows `No activities match "{query}".`
+  with the query passed through `esc()` so `<`/`>` in a query cannot break the message.
+
+### 4. CSS
+
+Goes into the `CSS` f-string in `template.py` — **every brace must be doubled** there. Written
+here as plain CSS for readability.
+
+**Added 2026-08-02** — the input's `background` was originally a flat `var(--bg-elevated)` fill.
+User feedback on the live build: in dark mode the input already read as offset from the card
+(the card uses `--bg-glass`, translucent and blended with the page's ambient radial-gradient
+background, while the input was a flat opaque color), but in light mode `--bg-elevated`
+(`#ffffff`) is nearly identical to the card's `--bg-glass` (`rgba(255,255,255,0.94)`), so the
+input read flat. Fix: a top-to-bottom gradient between the two existing neutral tokens
+(`--bg-elevated` → `--bg-surface`), same recipe in both themes — dark goes `#1c2230 → #161b22`
+(subtle, close to the original look), light goes `#ffffff → #f3f4f6` (previously flat
+white-on-near-white, now has actual gradation). No new custom properties, no raw hex.
+
+```css
+/* Activity search (Overview, above the calendar) */
+.act-search-bar { position: relative; margin-bottom: 12px; }
+.act-search-bar input {
+  width: 100%;
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-surface) 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 9px 34px 9px 12px;
+  min-height: 40px;
+  font-family: 'Geist', sans-serif;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 120ms;
+}
+.act-search-bar input:focus { border-color: var(--accent); }
+.act-search-bar input::placeholder { color: var(--text-tertiary); }
+.act-search-bar #act-search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 8px;
+}
+.act-search-bar #act-search-clear:hover { color: var(--text-primary); }
+
+.act-search-count {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.act-search-list {
+  max-height: 340px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 6px;
+  padding-right: 4px;
+}
+.act-search-list::-webkit-scrollbar { width: 8px; }
+.act-search-list::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+
+.act-search-empty {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 18px 12px;
+}
+
+.act-search-row {
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.act-search-row:hover { background: color-mix(in srgb, var(--bg-elevated) 70%, var(--bg-surface)); }
+
+.act-search-row-top { display: flex; align-items: center; gap: 8px; }
+.act-search-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.act-search-dot-run   { background: var(--running); }
+.act-search-dot-mtb   { background: var(--mtb); }
+.act-search-dot-other { background: var(--other); }
+
+.act-search-name {
+  flex: 1; min-width: 0;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.act-search-date {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px; color: var(--text-tertiary);
+  white-space: nowrap; flex-shrink: 0;
+}
+.act-search-meta {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px; color: var(--text-secondary);
+  margin-top: 3px;
+}
+.act-search-desc {
+  font-size: 12px; color: var(--text-secondary);
+  margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.act-search-name mark,
+.act-search-desc mark {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text-primary);
+  border-radius: 2px;
+}
+```
+
+Added to the existing `@media (max-width: 640px)` block:
+
+```css
+.act-search-list { max-height: 280px; }
+.act-search-bar input { min-height: 44px; font-size: 14px; }
+.act-search-row { padding: 12px 14px; }
+```
+
+`color-mix(in srgb, ...)` is already used in this file (`.hm-legend-grad`), so it introduces no
+new browser-support assumption. Every color resolves through an existing custom property defined
+in both `:root` and `:root.light` — **no raw hex**, so both themes work with zero extra JS and
+nothing needs adding to `applyChartTheme()` (that function styles Plotly charts; this card is
+plain DOM).
+
+### 5. Interaction
+
+- **No debounce.** Filtering is synchronous over an in-memory ≤357-row array — sub-millisecond.
+  Same unthrottled precedent as running-log's `notes-search`.
+- **Clear button** hidden via the `hidden` attribute unless the input is non-empty
+  (`clear.hidden = !q`). Click empties, re-renders, refocuses.
+- **Escape** clears a non-empty input and re-renders.
+- **Click → `showDetail(id)`.** Each row carries `data-id`; the listener calls the **existing**
+  `showDetail(actId)` (`template.py:870`) — the same function the SVG calendar day-cells use,
+  which does `ACT_DATA[String(actId)]` → `openPanel(renderActivity(a))`. Opens the shared
+  right-drawer (desktop) / bottom-sheet (mobile) panel. No new panel plumbing.
+- **`esc()` hoist (required).** `var esc = function(s) {...}` is currently local to
+  `renderActivity()` (`template.py:738`), so a separate renderer cannot call it. Promote it to a
+  top-level declaration in the same script and delete the local line; the four existing call
+  sites (`a.name`, `a.sport`, `a.pace`, `a.desc`) resolve via the outer scope, unchanged. The
+  new renderer calls this same function — one escaping path, not two.
+- **New JS block** goes near the end of `build_js`'s returned template, immediately before the
+  `// ─── Cross-chart date sync ───` section:
+
+```js
+// ─── Activity search (Overview) ────────────────────────────────────────────
+// Reuses ACT_DATA (already loaded for the detail panel) -- no new data blob.
+(function() {
+  var input = document.getElementById('act-search-input');
+  var clear = document.getElementById('act-search-clear');
+  var list  = document.getElementById('act-search-list');
+  var count = document.getElementById('act-search-count');
+  if (!input || !list || !count) return;
+
+  var ACT_LIST = Object.keys(ACT_DATA)
+    .map(function(id) { return ACT_DATA[id]; })
+    .sort(function(a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+  var TOTAL = ACT_LIST.length;
+
+  function dotClass(sport) {
+    return (sport === 'MountainBikeRide') ? 'act-search-dot-mtb'
+         : (sport === 'Run' || sport === 'TrailRun') ? 'act-search-dot-run'
+         : 'act-search-dot-other';
+  }
+  function highlight(s, q) {
+    var e = esc(s);
+    if (!q) return e;
+    var re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+    return e.replace(re, function(m) { return '<mark>' + m + '</mark>'; });
+  }
+  function descPreview(desc) {
+    var collapsed = desc.replace(/\s*\n+\s*/g, ' ').trim();
+    return collapsed.length > 110 ? collapsed.slice(0, 110) + '…' : collapsed;
+  }
+
+  function render() {
+    var q = input.value.trim();
+    var ql = q.toLowerCase();
+    clear.hidden = !q;
+
+    if (!q) {
+      // Added 2026-08-02: originally rendered a "Start typing to search…" hint
+      // here; removed per user feedback on the live build. List stays empty
+      // until a query exists.
+      count.textContent = TOTAL + ' activities';
+      list.innerHTML = '';
+      return;
+    }
+
+    var hits = ACT_LIST.filter(function(a) {
+      return a.name.toLowerCase().includes(ql)
+        || (a.desc && a.desc.toLowerCase().includes(ql));
+    });
+
+    count.textContent = hits.length + (hits.length === 1 ? ' result' : ' results');
+
+    if (!hits.length) {
+      list.innerHTML = '<div class="act-search-empty">No activities match &ldquo;'
+        + esc(q) + '&rdquo;.</div>';
+      return;
+    }
+
+    list.innerHTML = hits.map(function(a) {
+      var metaParts = [esc(a.sport)];
+      if (a.dist_mi > 0) metaParts.push(a.dist_mi.toFixed(1) + ' mi');
+      if (a.pace) metaParts.push(esc(a.pace));
+      var descHtml = a.desc
+        ? '<div class="act-search-desc">' + highlight(descPreview(a.desc), q) + '</div>'
+        : '';
+      return '<div class="act-search-row" data-id="' + a.id + '">'
+        + '<div class="act-search-row-top">'
+        +   '<span class="act-search-dot ' + dotClass(a.sport) + '"></span>'
+        +   '<span class="act-search-name">' + highlight(a.name, q) + '</span>'
+        +   '<span class="act-search-date">' + a.date + '</span>'
+        + '</div>'
+        + '<div class="act-search-meta">' + metaParts.join(' · ') + '</div>'
+        + descHtml
+        + '</div>';
+    }).join('');
+
+    list.querySelectorAll('.act-search-row').forEach(function(row) {
+      row.addEventListener('click', function() { showDetail(row.getAttribute('data-id')); });
+    });
+  }
+
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape' && input.value) { input.value = ''; render(); }
+  });
+  clear.addEventListener('click', function() { input.value = ''; render(); input.focus(); });
+  render();
+})();
+```
+
+### 5b. Calendar match highlighting
+
+While a query is active, the Activity Calendar directly below dims to background and only the
+days containing a matching activity stay lit — so the search doubles as a "when did I do these?"
+view across the whole date range.
+
+**Mechanism.** Class-based opacity only. This is safe from both existing calendar behaviors,
+verified before speccing:
+
+- `toggleCalMode()` (`template.py:883`) repaints cells via `c.setAttribute('fill', ...)` and
+  **never touches classList**, so mileage↔type switching cannot clobber the match classes, and
+  the dim cannot clobber the mode colors.
+- The theme toggle re-runs `applyChartTheme()`, which styles Plotly charts. The calendar is
+  hand-built SVG, not Plotly, so it is untouched. Opacity is orthogonal to `fill` in both themes.
+
+**CSS** (plain here; double the braces in the `template.py` f-string):
+
+```css
+/* Calendar dimming while an activity search is active */
+.hm-grid.hm-searching .hm-cell { opacity: 0.12; transition: opacity 140ms; }
+.hm-grid.hm-searching .hm-star { opacity: 0.12; transition: opacity 140ms; }
+.hm-grid.hm-searching .hm-cell.hm-match { opacity: 1; }
+```
+
+`.hm-cell` already carries a `transform` transition; adding `opacity` to it is additive and does
+not disturb the existing hover scale.
+
+**Wiring.** The search's `render()` gains a call to `paintCalendar(hits, q)`:
+
+```js
+function paintCalendar(hits, q) {
+  var grid = document.querySelector('.hm-grid');
+  if (!grid) return;
+  if (!q) {
+    grid.classList.remove('hm-searching');
+    grid.querySelectorAll('.hm-cell.hm-match').forEach(function(c) {
+      c.classList.remove('hm-match');
+    });
+    return;
+  }
+  var days = {};
+  hits.forEach(function(a) { days[a.date] = true; });
+  grid.classList.add('hm-searching');
+  grid.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {
+    c.classList.toggle('hm-match', !!days[c.getAttribute('data-date')]);
+  });
+}
+```
+
+Call it on **every** branch of `render()` — the empty-query branch (clears the dim), the
+zero-hit branch (dims everything, lights nothing, which is the honest signal), and the
+matches branch. `a.date` is `YYYY-MM-DD` (`_activity_detail_json` slices
+`start_date_local[:10]`) and `data-date` is the same key `DAY_INDEX` is built from, so the two
+compare directly with no reformatting.
+
+**Count readout gains a day count** when a query is active, since results and lit days differ
+(several activities can share one day): `"{n} results · {d} days"`, where `d` is
+`Object.keys(days).length`. Singular forms: `"1 result"`, `"1 day"`.
+
+### 6. Mobile at 375px
+
+- Card fills the same full-width `.card` column as every other Overview card; `main { max-width:
+  1100px }` already constrains width uniformly, so no special-casing.
+- Input `min-height` 40px desktop → 44px + 14px font at ≤640px, matching the existing
+  `.tab`/`.seg-btn` mobile tap-target bumps in the same responsive block.
+- Results container `max-height` 340px desktop → 280px at ≤640px, both `overflow-y: auto`. The
+  page never expands and the calendar below is never pushed, even at 146 hits.
+- Rows keep their stacked layout at all widths — the layout is already flex, not a fixed-column
+  grid, so no breakpoint override is needed (unlike running-log's `note-row`).
+
+### 7. Display units
+
+- Distance: `a.dist_mi.toFixed(1)` — already miles (`_activity_detail_json` computes
+  `km * KM_TO_MI`). Never emit km.
+- Pace/speed: `a.pace` — already a formatted, unit-suffixed string (`8:15 /mi` for runs,
+  `14.2 mph` for MTB). Render verbatim; no re-conversion.
+
+### Verify vs recipe (developer confirms, QA asserts)
+
+- Baseline count with no query = `len(rows)` (currently **357**), and the client-rendered count
+  matches the SSR text exactly at load.
+- Query **"run"** → **146** results. **"trail"** → **49**. **"hill"** → **42**.
+- Query **"pr"** returns at least one activity matching only inside a longer word
+  (e.g. "sur**pr**isingly") — confirms literal substring matching, consistent with the UI copy.
+- The description containing an embedded newline renders on a **single line**, truncated to ≤111
+  chars.
+- The description containing `-->` renders with `>` escaped to `&gt;`; no raw `>` reaches the DOM
+  and the row layout is intact.
+- At least one emoji-bearing title/description renders its emoji correctly (unescaped — `esc()`
+  touches only `<`/`>`).
+- Zero-hit query → count **"0 results"** and the `.act-search-empty` message with the query
+  echoed, escaped.
+- Empty query at load → **zero** `.act-search-row` elements and an empty `#act-search-list`
+  (no hint text, per the 2026-08-02 revision above).
+- Clicking a row opens the same panel as clicking a calendar day: `#detail-panel.open` is set and
+  `#detail-body` contains that activity's `.d-name`.
+- Light and dark: dots, `mark` background, and text colors resolve via `getComputedStyle` to the
+  same values as sibling elements (`.d-date`, `.seg-btn`) in the same theme; no raw hex in the
+  new CSS.
+- **Calendar highlight**: with a query active, `.hm-grid` carries `hm-searching`, and the set of
+  `.hm-cell.hm-match` dates equals the distinct `date` values of the hit set. Clearing the query
+  removes `hm-searching` and leaves **zero** `.hm-match` cells.
+- **Calendar highlight survives a mode toggle**: type "run", click the Activity Type / Mileage
+  segmented buttons, and confirm the lit days are unchanged (proves `toggleCalMode`'s `fill`
+  writes don't clobber the match classes).
+- **Calendar highlight survives a theme switch**: same check across light/dark.
+- Count readout with a query active reads `"{n} results · {d} days"` and `d` ≤ `n`.
