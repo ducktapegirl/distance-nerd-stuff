@@ -308,6 +308,24 @@ def _build_exploratory_charts(rows):
             v9m["heatsun_temp_text"], v9m["heatsun_uv_text"])
 
 
+def _build_activity_search_html(n_total):
+    """Search Activities card (Overview, above the calendar). Hand-rolled HTML
+    only -- filtering + rendering happens client-side in template.py:build_js
+    against ACT_DATA. `n_total` is the SSR baseline count (len(rows)); the
+    client re-derives its own TOTAL from ACT_DATA so it never drifts."""
+    return f"""<div class="card">
+  <div class="card-header">
+    <div class="card-title">Search Activities</div>
+    <div class="act-search-count" id="act-search-count">{n_total} activities</div>
+  </div>
+  <div class="act-search-bar">
+    <input type="text" id="act-search-input" placeholder="Search by title or description…" autocomplete="off"/>
+    <button id="act-search-clear" hidden aria-label="Clear search">×</button>
+  </div>
+  <div class="act-search-list" id="act-search-list"></div>
+</div>"""
+
+
 def _build_stats_panel(rows, stats):
     dates = sorted(r["start_date_local"][:10] for r in rows)
     date_range = f"{dates[0]} – {dates[-1]}" if dates else "—"
@@ -341,6 +359,7 @@ def _build_stats_panel(rows, stats):
 
 
 def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
+                    search_html,
                     cal, vol, hr_c, pac, elev_c, segs_c, places_hero, places_homes,
                     places_passport, places_peaks,
                     run_pace_hr, run_hr_temp, run_pace_tort, run_pace_grade,
@@ -394,6 +413,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
     <div class="date-range">{date_range}</div>
   </div>
   {stats_html}
+  {search_html}
   <div class="card">
     <div class="card-header">
       <div class="card-title">Activity Calendar</div>
@@ -619,6 +639,7 @@ def build_page(rows, segs):
      heatsun_temp_text, heatsun_uv_text) = _build_exploratory_charts(rows)
 
     date_range, stats_html, nav_links, theme_buttons = _build_stats_panel(rows, stats)
+    search_html = _build_activity_search_html(len(rows))
 
     SYNC_IDS  = ["chart-volume", "chart-hr", "chart-pace", "chart-elev"]
     # No chart opens the Activity Details panel on click: the Trends charts each
@@ -632,7 +653,7 @@ def build_page(rows, segs):
 
     return _assemble_html(
         date_range=date_range, stats_html=stats_html, nav_links=nav_links,
-        theme_buttons=theme_buttons, js=js,
+        theme_buttons=theme_buttons, js=js, search_html=search_html,
         cal=cal, vol=vol, hr_c=hr_c, pac=pac, elev_c=elev_c, segs_c=segs_c,
         places_hero=places_hero, places_homes=places_homes,
         places_passport=places_passport, places_peaks=places_peaks,
