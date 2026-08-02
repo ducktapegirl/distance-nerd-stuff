@@ -593,6 +593,99 @@ main {{
   fill-opacity: 1 !important;
 }}
 
+/* Activity search (Overview, above the calendar) */
+.act-search-bar {{ position: relative; margin-bottom: 12px; }}
+.act-search-bar input {{
+  width: 100%;
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-surface) 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 9px 34px 9px 12px;
+  min-height: 40px;
+  font-family: 'Geist', sans-serif;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 120ms;
+}}
+.act-search-bar input:focus {{ border-color: var(--accent); }}
+.act-search-bar input::placeholder {{ color: var(--text-tertiary); }}
+.act-search-bar #act-search-clear {{
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 8px;
+}}
+.act-search-bar #act-search-clear:hover {{ color: var(--text-primary); }}
+
+.act-search-count {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}}
+
+.act-search-list {{
+  max-height: 340px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 6px;
+  padding-right: 4px;
+}}
+.act-search-list::-webkit-scrollbar {{ width: 8px; }}
+.act-search-list::-webkit-scrollbar-thumb {{ background: var(--border-subtle); border-radius: 4px; }}
+
+.act-search-empty {{
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 18px 12px;
+}}
+
+.act-search-row {{
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 120ms;
+}}
+.act-search-row:hover {{ background: color-mix(in srgb, var(--bg-elevated) 70%, var(--bg-surface)); }}
+
+.act-search-row-top {{ display: flex; align-items: center; gap: 8px; }}
+.act-search-dot {{ width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }}
+.act-search-dot-run   {{ background: var(--running); }}
+.act-search-dot-mtb   {{ background: var(--mtb); }}
+.act-search-dot-other {{ background: var(--other); }}
+
+.act-search-name {{
+  flex: 1; min-width: 0;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}}
+.act-search-date {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px; color: var(--text-tertiary);
+  white-space: nowrap; flex-shrink: 0;
+}}
+.act-search-meta {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px; color: var(--text-secondary);
+  margin-top: 3px;
+}}
+.act-search-desc {{
+  font-size: 12px; color: var(--text-secondary);
+  margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}}
+.act-search-name mark,
+.act-search-desc mark {{
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text-primary);
+  border-radius: 2px;
+}}
+
+/* Calendar dimming while an activity search is active */
+.hm-grid.hm-searching .hm-cell {{ opacity: 0.12; transition: opacity 140ms; }}
+.hm-grid.hm-searching .hm-star {{ opacity: 0.12; transition: opacity 140ms; }}
+.hm-grid.hm-searching .hm-cell.hm-match {{ opacity: 1; }}
+
 /* ── Responsive / mobile (kept last so overrides win by source order) ── */
 @media (max-width: 900px) {{
   .stat-grid {{ grid-template-columns: repeat(3, 1fr); }}
@@ -606,6 +699,14 @@ main {{
   .tab {{ min-height: 44px; padding: 10px 12px; }}
   .seg-btn {{ min-height: 40px; padding: 6px 14px; }}
   .js-plotly-plot {{ max-width: 100%; }}
+  .act-search-list {{ max-height: 280px; }}
+  .act-search-bar input {{ min-height: 44px; font-size: 14px; padding-right: 52px; }}
+  .act-search-bar #act-search-clear {{
+    min-width: 40px; min-height: 40px;
+    padding: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }}
+  .act-search-row {{ padding: 12px 14px; }}
 
   /* #1 Topnav: stack title over date, compact switch button */
   .topnav-row {{ padding: 0 14px; }}
@@ -729,13 +830,15 @@ Object.keys(ACT_DATA).forEach(function(id) {{
 }});
 
 // ─── Detail panel ───────────────────────────────────────────────────────────
+// Escapes only < and > (deliberately) so emoji keep rendering. Top-level so the
+// activity-search renderer (below) can share it -- one escaping path, not two.
+function esc(s) {{ return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }}
 function closeDetail() {{
   document.getElementById('detail-panel').classList.remove('open');
   document.getElementById('detail-backdrop').classList.remove('open');
   destroyMiniMaps();   // free WebGL contexts from any open mini-maps
 }}
 function renderActivity(a) {{
-  var esc = function(s) {{ return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;'); }};
   var html = '';
   html += '<div class="d-name">' + esc(a.name) + '</div>';
   html += '<div class="d-date">' + a.date + ' · ' + esc(a.sport) + '</div>';
@@ -1001,6 +1104,124 @@ function toggleHeatSun(view, btn) {{
   }});
   if (btn) btn.classList.add('active');
 }}
+
+// ─── Activity search (Overview) ────────────────────────────────────────────
+// Reuses ACT_DATA (already loaded for the detail panel) -- no new data blob.
+(function() {{
+  var input = document.getElementById('act-search-input');
+  var clear = document.getElementById('act-search-clear');
+  var list  = document.getElementById('act-search-list');
+  var count = document.getElementById('act-search-count');
+  if (!input || !list || !count) return;
+
+  var ACT_LIST = Object.keys(ACT_DATA)
+    .map(function(id) {{ return ACT_DATA[id]; }})
+    .sort(function(a, b) {{ return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); }});
+  var TOTAL = ACT_LIST.length;
+
+  function dotClass(sport) {{
+    return (sport === 'MountainBikeRide') ? 'act-search-dot-mtb'
+         : (sport === 'Run' || sport === 'TrailRun') ? 'act-search-dot-run'
+         : 'act-search-dot-other';
+  }}
+  function highlight(s, q) {{
+    var e = esc(s);
+    if (!q) return e;
+    var re = new RegExp(q.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&'), 'ig');
+    return e.replace(re, function(m) {{ return '<mark>' + m + '</mark>'; }});
+  }}
+  function descPreview(desc) {{
+    var collapsed = desc.replace(/\\s*\\n+\\s*/g, ' ').trim();
+    return collapsed.length > 110 ? collapsed.slice(0, 110) + '…' : collapsed;
+  }}
+  function matchDays(hits) {{
+    var days = {{}};
+    hits.forEach(function(a) {{ days[a.date] = true; }});
+    return days;
+  }}
+
+  // Dims the Activity Calendar to background and lights only the days
+  // containing a matching activity. Class-based opacity only (never touches
+  // `fill`, which toggleCalMode() owns) so the mileage/type toggle and the
+  // theme toggle can't fight it.
+  function paintCalendar(days, q) {{
+    var grid = document.querySelector('.hm-grid');
+    if (!grid) return;
+    if (!q) {{
+      grid.classList.remove('hm-searching');
+      grid.querySelectorAll('.hm-cell.hm-match').forEach(function(c) {{
+        c.classList.remove('hm-match');
+      }});
+      return;
+    }}
+    grid.classList.add('hm-searching');
+    grid.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {{
+      c.classList.toggle('hm-match', !!days[c.getAttribute('data-date')]);
+    }});
+  }}
+
+  function render() {{
+    var q = input.value.trim();
+    var ql = q.toLowerCase();
+    clear.hidden = !q;
+
+    if (!q) {{
+      count.textContent = TOTAL + ' activities';
+      list.innerHTML = '';
+      paintCalendar([], q);
+      return;
+    }}
+
+    var hits = ACT_LIST.filter(function(a) {{
+      return a.name.toLowerCase().includes(ql)
+        || (a.desc && a.desc.toLowerCase().includes(ql));
+    }});
+
+    if (!hits.length) {{
+      count.textContent = '0 results';
+      list.innerHTML = '<div class="act-search-empty">No activities match &ldquo;'
+        + esc(q) + '&rdquo;.</div>';
+      paintCalendar(matchDays(hits), q);
+      return;
+    }}
+
+    var days = matchDays(hits);
+    var d = Object.keys(days).length;
+    count.textContent = hits.length + (hits.length === 1 ? ' result' : ' results')
+      + ' · ' + d + (d === 1 ? ' day' : ' days');
+
+    list.innerHTML = hits.map(function(a) {{
+      var metaParts = [esc(a.sport)];
+      if (a.dist_mi > 0) metaParts.push(a.dist_mi.toFixed(1) + ' mi');
+      if (a.pace) metaParts.push(esc(a.pace));
+      var descHtml = a.desc
+        ? '<div class="act-search-desc">' + highlight(descPreview(a.desc), q) + '</div>'
+        : '';
+      return '<div class="act-search-row" data-id="' + a.id + '">'
+        + '<div class="act-search-row-top">'
+        +   '<span class="act-search-dot ' + dotClass(a.sport) + '"></span>'
+        +   '<span class="act-search-name">' + highlight(a.name, q) + '</span>'
+        +   '<span class="act-search-date">' + a.date + '</span>'
+        + '</div>'
+        + '<div class="act-search-meta">' + metaParts.join(' · ') + '</div>'
+        + descHtml
+        + '</div>';
+    }}).join('');
+
+    list.querySelectorAll('.act-search-row').forEach(function(row) {{
+      row.addEventListener('click', function() {{ showDetail(row.getAttribute('data-id')); }});
+    }});
+
+    paintCalendar(days, q);
+  }}
+
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', function(ev) {{
+    if (ev.key === 'Escape' && input.value) {{ input.value = ''; render(); }}
+  }});
+  clear.addEventListener('click', function() {{ input.value = ''; render(); input.focus(); }});
+  render();
+}})();
 
 // ─── Cross-chart date sync ─────────────────────────────────────────────────
 function syncRange(sourceId, ed) {{
