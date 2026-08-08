@@ -875,9 +875,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   #places-hero .maplibregl-ctrl-attrib,
   #places-hero .maplibregl-ctrl-attrib a{ color:var(--text-tertiary); }
   #places-hero .seg-btn:disabled{ opacity:.4; cursor:default; }
-  /* 3D Terrain only makes sense for a single deep-linked activity -- hidden
-     rather than disabled outside that view (see curActivity in the script). */
-  #places-hero .seg-btn.hero-hidden{ display:none; }
   @keyframes places-rise{from{opacity:0} to{opacity:1}}
   @keyframes places-fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
 
@@ -1035,7 +1032,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       <span class="places-seg-lbl">Map</span>
       <button class="seg-btn active" data-base="glow"    aria-pressed="true">Overview</button>
       <button class="seg-btn"        data-base="street"  aria-pressed="false">Street</button>
-      <button class="seg-btn hero-hidden" data-base="terrain" aria-pressed="false">3D Terrain</button>
+      <button class="seg-btn" data-base="terrain" aria-pressed="false">3D Terrain</button>
     </div>
   </div>
   <div class="places-foot">
@@ -1205,20 +1202,20 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     map.on('load', function(){
       if(pendingActivity){ flyToActivity(pendingActivity, false); }
       else if(pendingFrame){ goFrame(pendingFrame, false); }
-      updateTerrainButtonVisibility();
       applyTerrainState();
       drawGlow();
     });
   }
 
-  // ── 3D terrain (single-activity view only) ────────────────────────────────
+  // ── 3D terrain (a peer basemap alongside Overview/Street; also drapes any
+  //    selected single-activity route on top when one is active) ───────────
   var TERRAIN_SRC = 'places-terrain-dem';
   var ROUTE_SRC = 'places-activity-route';
   var ROUTE_LAYER = 'places-activity-route-line';
   var terrainActive = false;   // tracks whether we've already eased/enabled rotate
   function applyTerrainState(){
     if(!map) return;
-    var want = (mode==='terrain' && !!curActivity && TILES_OK);
+    var want = (mode==='terrain' && TILES_OK);
     // enterActivity()/the basemap buttons call this synchronously right after
     // triggering a style change -- addSource()/setTerrain() throw if the style
     // isn't done loading yet (common on a fresh/slow connection, since setStyle()
@@ -1278,6 +1275,12 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
             paint: {'line-color': routeColor, 'line-width': 4, 'line-opacity': 0.95}
           });
         }
+      } else {
+        // Terrain is on but no activity is selected (or it has no geometry) --
+        // clear any stale route left over from a previously-viewed activity
+        // while staying in terrain mode (e.g. the user clicked back to "All").
+        if(map.getLayer(ROUTE_LAYER)) map.removeLayer(ROUTE_LAYER);
+        if(map.getSource(ROUTE_SRC)) map.removeSource(ROUTE_SRC);
       }
       if(!terrainActive){
         map.easeTo({pitch: 60, duration: 700});
@@ -1294,12 +1297,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       if(map.touchZoomRotate) map.touchZoomRotate.disableRotation();
       terrainActive = false;
     }
-  }
-  // Show/hide the 3D Terrain basemap button -- it only means something once an
-  // activity is deep-linked (see curActivity).
-  function updateTerrainButtonVisibility(){
-    var btn = hero.querySelector('[data-base="terrain"]');
-    if(btn) btn.classList.toggle('hero-hidden', !(curActivity && TILES_OK));
   }
 
   // ── projection + glow overlay ─────────────────────────────────────────────
@@ -1544,8 +1541,8 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     });
   }
   // Entering a single-activity deep link: record the id, and -- unless the user
-  // had explicitly chosen Street -- default the basemap to 3D Terrain (the whole
-  // point of showing terrain only makes sense for one route). See applyTerrainState().
+  // had explicitly chosen Street -- default the basemap to 3D Terrain so the
+  // route shows up draped on the terrain right away. See applyTerrainState().
   function enterActivity(id){
     curActivity = String(id);
     if(mode!=='street' && mode!=='terrain' && TILES_OK){
@@ -1554,20 +1551,13 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       setBaseButtons('terrain');
       applyMapStyle();
     }
-    updateTerrainButtonVisibility();
     applyTerrainState();
   }
-  // Leaving single-activity view (a View button, or an unresolved deep link):
-  // 3D Terrain has no meaning without an activity, so fall back to Overview.
+  // Leaving single-activity view (a View button, or an unresolved deep link).
+  // 3D Terrain is a regular basemap now (like Overview/Street), so the chosen
+  // mode persists -- applyTerrainState() just drops the now-stale route line.
   function exitActivityMode(){
     curActivity = null;
-    updateTerrainButtonVisibility();
-    if(mode==='terrain'){
-      mode = 'glow';
-      setModeClass();
-      setBaseButtons('glow');
-      applyMapStyle();
-    }
     applyTerrainState();
   }
   // Deep-link hook for stamp/peak clicks: record the activity id -> '#places?a=<id>'.
@@ -1641,7 +1631,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       lens = (v==='trips') ? 'trips' : 'none';
       setFrameButtons(v);
     }
-    updateTerrainButtonVisibility();
   })();
   setModeClass();   // set the boot mode class (glow by default, or hash-restored)
 
