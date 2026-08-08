@@ -1,13 +1,18 @@
 """
-Places Hero Camera Regression Tests
-Run: uv run python tools/qa-checks/places-camera-regression.py [--url URL]
+Places Hero -- dynamic (rendered) regression tests
+Run: uv run python tools/qa-checks/places-hero-dynamic.py [--url URL]
 Exit 0 = all pass, 1 = any fail
 
-Tests for the camera/framing bugs in the Places hero:
-- First activity click zooming (issue: setStyle() destroys in-flight fitBounds)
-- Basemap switching doesn't stick camera at aggregate zoom
-- Multi-day trip cards frame correctly
-- Deep-link routes work (both ?a=<id>&b=terrain and ?a=<id> default-to-terrain paths)
+For issues that only exist as a function of real camera animation timing in a
+real browser -- can't be caught by a text/regex check against the built HTML,
+since the code path is correct on paper and only breaks at runtime. Static
+checks (JS source guards, data-assembly correctness) live in
+strava-data/qa.py instead; add there first if a regex check can prove it.
+
+Tests:
+- First activity click after a fresh page load zooms to that activity, not
+  the aggregate view (setStyle() was destroying the in-flight fitBounds)
+- Deep-link ?a=<id>&b=terrain opens already framed on that activity
 
 Requires Playwright (uv add --dev playwright; uv run playwright install chromium).
 Runs headless via tools/mobile_preview.py (transport T2).
