@@ -5,9 +5,9 @@ session. Read this first, then `strava-data/dashboard/charts_places.py` — ever
 relevant lives inside `_HERO_TEMPLATE`'s inline `<script>` (roughly lines 1063–1660).
 
 **Branch:** `main` (all work this session was committed and pushed directly to `main`,
-no feature branch). **Status:** feature complete and deployed; one bug reported as
-recurring (see "The bug to debug" below) — not yet reproduced or root-caused in this
-handoff.
+no feature branch). **Status:** feature complete and deployed. The reported "two
+clicks to zoom in" bug was reproduced, root-caused and fixed on 8 Aug 2026 — see
+"RESOLVED" below. It was **not** a recurrence of `4126db2`.
 
 **Live site:** `https://ducktapegirl.github.io/distance-nerd-stuff/strava.html` — the
 Places tab, `#places?a=<id>&b=terrain` deep-links, or just click "3D Terrain" in the
@@ -59,7 +59,85 @@ MapTiler style, no actual elevation/pitch). Landed across 8 commits on `main`:
 
 ---
 
-## The bug to debug: "specific activities require two clicks to zoom in" (recurring)
+## RESOLVED (8 Aug 2026): "two clicks to zoom in" was a *different* bug
+
+**Status: root-caused, fixed, and verified.** It was not a recurrence of `4126db2`.
+That one was *terrain/pitch missing with the camera correct*; this one was the
+mirror image — *terrain and pitch correct, camera never moved*.
+
+### Root cause
+
+**`map.setStyle()` called while a camera animation is in flight permanently
+destroys that animation.** MapLibre stops feeding the ease render frames: it never
+completes, never fires `moveend`/`idle`, and the map sits at `isMoving() === true`
+forever, stranded at a partial zoom. Everything hanging off `'idle'` — including
+the terrain retry — is dead behind it.
+
+The first click on a passport/peak card ran this sequence (measured, not inferred):
+
+```
+t=0    fitBounds -> flyTo{zoom:10.468, duration:620}   camera at z=3.546, p=0  [movestart]
+t=8    setStyle                        via applyMapStyle <- enterActivity
+t=9    setTerrain                      via applyTerrainState <- enterActivity
+t=13   easeTo{pitch:60, duration:700}  via applyTerrainState <- enterActivity
+t=13   zoomend + moveend at z=3.546    <- the 620ms fly is killed 13ms in
+t=877  pitchend  p=60, z=3.546         <- pitched 3D terrain over the whole US
+```
+
+Two agents, in sequence:
+
+1. `applyTerrainState()`'s `easeTo({pitch:60})` calls `stop()` internally, killing
+   the fly **13 ms into a 620 ms animation**.
+2. Underneath that, `setStyle()` at t=8 had *already* doomed the fly. Removing only
+   the `easeTo` made things **worse**, not better — the fly then froze permanently
+   (`isMoving()` still true at t=9000, no events at all after t=883, terrain wiped).
+   The `easeTo`'s `stop()` was accidentally *rescuing* the wedged camera into a
+   consistent — if wrongly framed — state.
+
+**Why only the first click, and why "whichever I click first":** `enterActivity()`
+calls `applyMapStyle()` only when `mode` isn't already `street`/`terrain`. Since
+`24a49be` removed the force-reset to `glow` on exit, `mode` sticks at `terrain`
+after the first card click, and the basemap **button** handler sets `mode` itself —
+so a manual Overview→Terrain round-trip doesn't re-arm it either. Exactly one click
+per page load takes the style-swap path. Nothing to do with *which* activity.
+
+### The fix (in `charts_places.py`, all inside `_HERO_TEMPLATE`)
+
+- `applyMapStyle()` calls `map.stop()` before `setStyle()`, so no ease is ever left
+  wedged, and sets a `styleSwapping` flag.
+- New `onStyleSettled(fn)` arms `'style.load'` **and** `'idle'` (first wins) plus a
+  re-checking timeout, because neither event is dependable alone here.
+- New `frameBounds(bounds, padding, animate)` — the single funnel for every framing
+  move (`goFrame`, `placesFlyTo`, `enterActivity`). It defers the move while a style
+  swap is in flight and replays it afterwards, and **bakes `TERRAIN_PITCH` into the
+  `fitBounds` itself** so terrain never needs a second camera animation.
+- `applyTerrainState()` only eases pitch when no framing move owns the camera.
+
+Two traps worth remembering, both of which produced a wrong intermediate fix:
+
+- **`isStyleLoaded()` still returns `true` for a moment after `setStyle()`** (visible
+  at t=8→t=9 above), so it cannot detect "swap in flight." That's what `styleSwapping`
+  is for. A first attempt gated `frameBounds` on `isStyleLoaded()` and failed 3/3.
+- **Conversely, don't gate on `isStyleLoaded()` in the steady state:** terrain DEM
+  tiles keep it `false` most of the time, so gating there deferred every routine fly
+  by seconds, and a stale held move later replayed with the wrong pitch.
+
+### Verification
+
+`tools/mobile_preview.py` (transport T2), fresh page load per trial:
+
+- First-click framing: **3/3 PASS** on the live site (simulated fix) and **3/3** on
+  the local build — settles at `z=11.459`, the exact `cameraForBounds()` target,
+  `pitch=60`, terrain + route present, not stuck.
+- 9-step regression sweep (activity→activity, Overview/Street/Terrain switching,
+  View button, multi-day trip, theme toggle): **9/9 PASS on the fixed build; the
+  pre-fix build fails only step A** (`z=3.546`, centre outside the activity box) with
+  every other step identical — a clean controlled comparison.
+- Both deep-link forms (`?a=<id>&b=terrain` and `?a=<id>`): PASS.
+- Mobile 375×812 first click: PASS.
+- `running-log/qa.py`: 13/13.
+
+### Original report (for context)
 
 **User's report, verbatim:** *"a similar 'specific activities require two clicks to
 zoom in' bug that we fixed in commit 4126db2... It's happening again."*
@@ -139,6 +217,21 @@ raw event tracing found the real answer.
 
 ## Debugging methodology that worked (reuse this)
 
+0. **Check the transport can actually run animations before trusting it.** In the
+   Aug 2026 session the Browser pane tool was structurally unusable for this bug:
+   its tab reports `document.visibilityState === "hidden"` and delivers **zero**
+   `requestAnimationFrame` callbacks and **zero** `ResizeObserver` callbacks. The
+   Places map is created lazily *by* a ResizeObserver and its camera eases are
+   rAF-driven, so the map never even constructed there (`#places-map` had no
+   children, `maplibregl.Map` was never called) — which reads exactly like a page
+   bug if you don't probe. **Use `tools/mobile_preview.py` (transport T2) for any
+   map/camera/animation work**; it reports `visible` with rAF and RO both firing,
+   takes `--url` for the live site, and `--eval @file` returns a `Promise`, so a
+   whole install-tracer → click → wait → dump experiment fits in one call. Two
+   gotchas: `--hash` prepends its own `#` (pass `places`, not `#places`), and Git
+   Bash rewrites `--page /strava.html` into a Windows path unless you set
+   `MSYS_NO_PATHCONV=1`.
+
 1. **Temporary debug hook pattern.** Add `window.__DEBUG_placesMap = map;` right after
    `map = new maplibregl.Map({...})` in `initMap()` (line ~1188), rebuild, and drive
    the page via `mcp__Claude_Browser__javascript_tool` calling
@@ -146,6 +239,11 @@ raw event tracing found the real answer.
    getZoom()/isStyleLoaded()` etc. **Always remove the hook before the final commit**
    (`grep -c "__DEBUG" strava-data/dashboard/charts_places.py` should be 0).
 2. **Raw event tracing is what actually found the `'style.load'` unreliability.**
+   (Caveat added Aug 2026: in the T2 traces `'style.load'` *did* fire after every
+   `setStyle()`, once, at ~820–1550 ms. So treat "style.load never fires" as
+   environment- or sequence-dependent rather than absolute — `onStyleSettled()`
+   now arms `'style.load'`, `'idle'` and a timeout together instead of betting on
+   any one of them.)
    Don't trust a library's documented "recommended pattern" under your app's specific
    call sequence — register listeners on every candidate MapLibre event
    (`'style.load'`, `'styledata'`, `'sourcedata'`, `'idle'`, `'error'`) with
@@ -197,24 +295,31 @@ raw event tracing found the real answer.
   was caught by a Plan-mode validation subagent before any code was written, not
   during testing — worth continuing to route non-trivial fixes through that
   validation step even when a fix looks obvious.
-- **3D Terrain is now unrestricted (this session's final change, `24a49be`)** — user
-  explicitly reversed the original single-activity-only design. If the recurring bug
-  turns out to be caused by this change, that's a real regression to fix, not a
-  reason to revert the feature (user wants it available everywhere).
+- **3D Terrain is now unrestricted (`24a49be`)** — user explicitly reversed the
+  original single-activity-only design; it stays that way. For the record, the
+  "two clicks" bug was **not** caused by `24a49be`: the underlying
+  setStyle-kills-the-camera race lives in `enterActivity()`/`applyMapStyle()` and
+  predates it. What `24a49be` changed is *how often* it fires — by letting `mode`
+  persist as `terrain`, it reduced the style-swap path from potentially every
+  activity click to just the first one per page load, which is why the symptom
+  presented as "whichever I click first."
 
 ---
 
-## Outstanding questions for the user (ask before/while investigating)
+## Questions that were asked, and the answers (8 Aug 2026)
 
-1. When you say "two clicks to zoom in" — on the first click, does the camera pan to
-   roughly the right area but stay flat/2D, or does it not move much at all?
-2. Is this the *same specific activities* failing every time, or does it seem to be
-   "whichever one I click first" in a session? (Bears directly on the fitBounds/
-   setStyle-interruption hypothesis above.)
-3. Reproducing on the live deployed site, or locally? Slow connection, or does it
-   happen on a fast one too?
-4. Does switching to Overview/Street and back to Terrain make it happen again on the
-   next activity click, or only right after a fresh page load?
+These four answers are what collapsed the search space to a single code path before
+any instrumentation ran — worth asking first in any similar investigation.
+
+1. *First-click behaviour?* — "Navigates me back to the map and changes to the 3D
+   Terrain view, but **doesn't zoom in enough**." (Ruled out a `4126db2` recurrence
+   immediately: terrain was fine, the camera was not.)
+2. *Same activities each time?* — "**Whichever I click first.**"
+3. *Where?* — the **live deployed site**.
+4. *Does Overview/Street → Terrain re-arm it?* — "**Only after a fresh page load.**"
+
+2 + 4 together pin it to `enterActivity()`'s `applyMapStyle()` branch, which runs on
+exactly one click per page load. See RESOLVED above.
 
 ---
 
@@ -244,11 +349,19 @@ raw event tracing found the real answer.
 
 ---
 
-## Suggested prompt to start the next session
+## Where this stands
 
-> Read `Project Docs/Handoffs/strava-data/places-3d-terrain-handoff.md` for full
-> context, then help me debug a recurrence of the "requires two clicks" bug in the
-> Places 3D Terrain view (originally fixed in commit `4126db2`, now happening again
-> for specific activities). Use the debug-hook + raw-event-tracing methodology
-> described in the handoff rather than guessing from first principles — that's what
-> found the real root causes last time.
+The "two clicks to zoom in" bug is fixed and verified (see RESOLVED above); no
+open bug is outstanding on this feature. Possible follow-ups, none started:
+
+- **Perceived delay on the first activity click.** The framing move is now held
+  until the new style reports in, ~1.8 s after the click on the live site, so the
+  camera sits still and then flies. Correct, but a loading affordance or a shorter
+  hold (e.g. framing on `style.load` for the *base* style before DEM tiles) would
+  feel better.
+- **The `AbortError: signal is aborted without reason`** from
+  `Style._remove` ← `Map._updateStyle` still appears once per style swap. It is
+  benign here (it predates this fix and did not cause the camera bug) but it has
+  never been chased down.
+- **Per-day route colouring for multi-day trips** — scoped out by the user, see
+  Decisions above.

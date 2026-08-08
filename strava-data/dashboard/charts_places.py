@@ -1160,6 +1160,15 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   }
   function applyMapStyle(){
     if(!map) return;
+    // setStyle() while a camera animation is running permanently destroys that
+    // animation: MapLibre stops feeding the ease render frames, so it never
+    // completes and never fires moveend/idle -- the map is stranded mid-flight
+    // at a partial zoom, with the whole 'idle'-driven terrain retry below dead
+    // behind it. Confirmed by event tracing: with nothing else touching the
+    // camera, a fitBounds() interrupted this way sat at isMoving()===true for
+    // 9s with no further events. Stop cleanly first; callers re-issue their
+    // framing through frameBounds(), which waits for the new style.
+    if(map.isMoving() || map.isEasing()) map.stop();
     // Strip any active 3D terrain before swapping styles: MapLibre's style-diff
     // throws (AbortError / "_checkLoaded") when a raster-dem source tied to
     // setTerrain() isn't present in the incoming style. applyTerrainState()
@@ -1168,7 +1177,30 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     if(map.getLayer(ROUTE_LAYER)) map.removeLayer(ROUTE_LAYER);
     if(map.getSource(ROUTE_SRC)) map.removeSource(ROUTE_SRC);
     if(map.getSource(TERRAIN_SRC)) map.removeSource(TERRAIN_SRC);
+    styleSwapping = true;
     map.setStyle(styleForMode(mode));
+    onStyleSettled(function(){ styleSwapping = false; });
+  }
+  // isStyleLoaded() still reports true for a moment after setStyle(), so it
+  // can't be used to detect "swap in flight" -- this flag is the source of
+  // truth for frameBounds().
+  var styleSwapping = false;
+  // Run fn once the style swap has reported in. Both events are armed because
+  // neither is dependable alone here: 'idle' can trail terrain DEM tile loads
+  // by seconds, and 'style.load' has a history of not firing for setStyle() in
+  // this app. The timeout is a last resort so a missed event can't wedge the
+  // camera permanently, and it re-checks rather than firing blind (running a
+  // fitBounds while the style is still loading is the very thing that breaks).
+  function onStyleSettled(fn){
+    var done = false;
+    var run = function(){ if(done) return; done = true; fn(); };
+    map.once('style.load', run);
+    map.once('idle', run);
+    var tick = function(){
+      if(done) return;
+      if(map.isStyleLoaded()) run(); else setTimeout(tick, 300);
+    };
+    setTimeout(tick, 2500);
   }
   // Reflect the active basemap mode as a class on the hero so CSS can target a
   // single mode.
@@ -1212,6 +1244,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   var TERRAIN_SRC = 'places-terrain-dem';
   var ROUTE_SRC = 'places-activity-route';
   var ROUTE_LAYER = 'places-activity-route-line';
+  var TERRAIN_PITCH = 60;
   var terrainActive = false;   // tracks whether we've already eased/enabled rotate
   function applyTerrainState(){
     if(!map) return;
@@ -1283,7 +1316,13 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         if(map.getSource(ROUTE_SRC)) map.removeSource(ROUTE_SRC);
       }
       if(!terrainActive){
-        map.easeTo({pitch: 60, duration: 700});
+        // Only tilt on our own if no framing move owns the camera: frameBounds()
+        // folds TERRAIN_PITCH into its fitBounds, and easeTo() here would call
+        // stop() and kill that move (it ran 13ms into a 620ms fly, which is what
+        // stranded activity clicks at the aggregate zoom).
+        if(!heldFraming && !map.isEasing()){
+          map.easeTo({pitch: TERRAIN_PITCH, duration: 700});
+        }
         map.dragRotate.enable();
         if(map.touchZoomRotate) map.touchZoomRotate.enableRotation();
         terrainActive = true;
@@ -1482,14 +1521,41 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       b.setAttribute('aria-pressed', on?'true':'false');
     });
   }
+  // Every framing move funnels through here so two things can't go wrong:
+  //  1. A fitBounds() issued while map.setStyle() is still loading is destroyed
+  //     mid-flight and never recovers (see applyMapStyle()). If the style isn't
+  //     ready, hold the move and replay it on whichever of 'style.load'/'idle'
+  //     arrives first -- 'idle' alone can be seconds late behind terrain DEM
+  //     tiles, and 'style.load' alone has been unreliable here historically, so
+  //     both are armed and the first one wins.
+  //  2. The pitch is baked into the framing move rather than eased separately
+  //     afterwards, so 3D Terrain never needs a second camera animation that
+  //     would stop this one.
+  var heldFraming = null;
+  function frameBounds(bounds, padding, animate){
+    if(!map) return;
+    var opts = {padding: padding, duration: 620,
+                pitch: (mode==='terrain' && TILES_OK) ? TERRAIN_PITCH : 0,
+                animate: animate!==false && !reduce};
+    // Only an in-flight style *swap* breaks a camera move. Ordinary tile loading
+    // does not, and terrain DEM tiles keep isStyleLoaded() false most of the
+    // time -- gating on that would defer every routine fly by seconds.
+    if(!styleSwapping){ map.fitBounds(bounds, opts); return; }
+    heldFraming = {bounds: bounds, opts: opts};   // a newer request supersedes
+    onStyleSettled(function(){
+      var h = heldFraming;
+      if(!h) return;                              // already replayed
+      heldFraming = null;
+      // Re-read the pitch: the basemap may have changed while this was held.
+      h.opts.pitch = (mode==='terrain' && TILES_OK) ? TERRAIN_PITCH : 0;
+      map.fitBounds(h.bounds, h.opts);
+    });
+  }
   function goFrame(v, animate){
     lens = (v==='trips') ? 'trips' : 'none';
     var bounds = (v==='sd' || v==='bos') ? viewBounds(v) : allBounds;
     var pad = (v==='sd' || v==='bos') ? 60 : 34;
-    if(map){
-      map.fitBounds(bounds, {padding: pad, duration: 620,
-                             animate: animate!==false && !reduce});
-    }
+    frameBounds(bounds, pad, animate);
     drawGlow();
   }
 
@@ -1504,10 +1570,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       goFrame(target, animate);
     } else if(target && typeof target==='object'){
       lens = 'none';
-      if(map){
-        map.fitBounds([[target.lng0, target.lat0], [target.lng1, target.lat1]],
-                      {padding: 50, duration: 620, animate: anim});
-      }
+      frameBounds([[target.lng0, target.lat0], [target.lng1, target.lat1]], 50, anim);
       drawGlow();
     }
     setFrameButtons(name);
@@ -1549,7 +1612,16 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       mode = 'terrain';
       setModeClass();
       setBaseButtons('terrain');
+      // The stamp/peak handlers call placesFlyTo() just before this, so a fly to
+      // this activity is already in flight -- and applyMapStyle() is about to
+      // stop it. Re-issue it through frameBounds(), which holds it until the new
+      // style is ready and folds the terrain pitch in, so the activity still
+      // gets framed on this first click instead of needing a second one.
+      var box = window.placesFlyTargets && window.placesFlyTargets[curActivity];
       applyMapStyle();
+      if(box){
+        frameBounds([[box.lng0, box.lat0], [box.lng1, box.lat1]], 50, true);
+      }
     }
     applyTerrainState();
   }
