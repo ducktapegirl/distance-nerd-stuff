@@ -98,7 +98,7 @@ html, body {{
 
 .wordmark {{ display: flex; align-items: baseline; gap: 10px; }}
 .wordmark-name {{
-  font-size: clamp(16px, 4.5vw, 22px); font-weight: 700;
+  font-size: clamp(22px, 6vw, 34px); font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text-primary);
 }}
