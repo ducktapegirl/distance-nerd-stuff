@@ -1214,6 +1214,13 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   function applyTerrainState(){
     if(!map) return;
     var want = (mode==='terrain' && !!curActivity && TILES_OK);
+    // enterActivity()/the basemap buttons call this synchronously right after
+    // triggering a style change -- addSource()/setTerrain() throw if the style
+    // isn't done loading yet (common on a fresh/slow connection, since setStyle()
+    // is async), which would abort before pitch/route-layer/drag-rotate ever run
+    // and strand the map zoomed-in but flat until something re-triggers this.
+    // 'idle' (below) reliably re-calls this once the style has actually settled.
+    if(want && !map.isStyleLoaded()) return;
     if(want){
       if(!map.getSource(TERRAIN_SRC)){
         map.addSource(TERRAIN_SRC, {
