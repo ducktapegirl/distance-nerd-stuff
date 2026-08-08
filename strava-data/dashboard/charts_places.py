@@ -1231,22 +1231,30 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       }
       map.setTerrain({source: TERRAIN_SRC, exaggeration: 1.5});
       var coords = window.placesRouteCoords && window.placesRouteCoords[curActivity];
+      // Match the route line to the activity's own sport color (same palette as
+      // the legend / the old glow overlay), not a generic accent -- falls back to
+      // accent only if the sport-color index wasn't published for this id.
+      var sportIdx = window.placesRouteColorIdx && window.placesRouteColorIdx[curActivity];
+      var routeRGB = (TH && sportIdx != null && TH.route[sportIdx]) ? TH.route[sportIdx]
+                    : (TH ? TH.accent : [245,158,11]);
+      var routeColor = 'rgb(' + routeRGB.join(',') + ')';
       if(coords && coords.length >= 4){
         var line = [];
         for(var i=0; i<coords.length; i+=2){ line.push([coords[i], coords[i+1]]); }
         var geojson = {type:'Feature', properties:{},
                         geometry:{type:'LineString', coordinates: line}};
         var src = map.getSource(ROUTE_SRC);
-        if(src){ src.setData(geojson); }
-        else {
+        if(src){
+          src.setData(geojson);
+          // Reused across an activity switch (no style reload) -- the sport
+          // color can differ from whatever the layer was created with.
+          if(map.getLayer(ROUTE_LAYER)) map.setPaintProperty(ROUTE_LAYER, 'line-color', routeColor);
+        } else {
           map.addSource(ROUTE_SRC, {type:'geojson', data: geojson});
           map.addLayer({
             id: ROUTE_LAYER, type: 'line', source: ROUTE_SRC,
             layout: {'line-cap':'round', 'line-join':'round'},
-            paint: {
-              'line-color': 'rgb(' + (TH ? TH.accent.join(',') : '245,158,11') + ')',
-              'line-width': 4, 'line-opacity': 0.95
-            }
+            paint: {'line-color': routeColor, 'line-width': 4, 'line-opacity': 0.95}
           });
         }
       }
@@ -1307,6 +1315,11 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     var lw = Math.max(1.4, Math.min(3.0, 0.7 + z*0.18));
     var alphaMul = TH.light ? 0.85 : 1.0;
 
+    // Skip the aggregate route glow entirely in single-activity view: the
+    // dedicated terrain-draped GL route layer (applyTerrainState) already shows
+    // this exact track, and drawing both doubled up as two overlapping lines --
+    // this canvas pass in the aggregate sport color, the GL layer in --accent.
+    if(!curActivity){
     // Project each track's polyline once into a Path2D (with its colored-pass
     // alpha), then stroke every path twice below — cheaper than re-projecting.
     var paths = [];
@@ -1347,6 +1360,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     }
 
     ctx.globalCompositeOperation='source-over';
+    }
     drawLabels();
     updateZoomButtons();
   }
@@ -1995,7 +2009,7 @@ def _passport_data(rows):
             geo = _load_trip_geo(sigact["id"]) or {}
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
                         "elev": geo.get("elev", []), "coords": geo.get("coords", []),
-                        "id": sigact["id"],
+                        "id": sigact["id"], "sci": _bucket(sigact.get("sport_type", "")),
                         "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
             featured.append({
                 "slot": slot, "region": spec["region"], "caption": spec["caption"],
@@ -2022,7 +2036,8 @@ def _passport_data(rows):
             else:
                 la0, la1, ln0, ln1 = ll[0], ll[0], ll[1], ll[1]
             pc[slot] = {"fly": _fly_box(la0, la1, ln0, ln1), "id": r["id"],
-                        "coords": (geo or {}).get("coords", [])}
+                        "coords": (geo or {}).get("coords", []),
+                        "sci": _bucket(r.get("sport_type", ""))}
             brief.append({"slot": slot, "title": r.get("name") or "",
                           "date": "%s %d" % (_MONTHS[d0.month], d0.year)})
         else:
@@ -2034,7 +2049,7 @@ def _passport_data(rows):
             geo = _load_trip_geo(sigact["id"]) or {}
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
                         "elev": geo.get("elev", []), "coords": geo.get("coords", []),
-                        "id": sigact["id"],
+                        "id": sigact["id"], "sci": _bucket(sigact.get("sport_type", "")),
                         "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
             featured.append({
                 "slot": slot, "region": "", "caption": sigact.get("name") or "",
@@ -2076,6 +2091,7 @@ def _peaks_data(rows):
                 la0, la1, ln0, ln1 = geo["bbox"]
                 pc[slot] = {"elev": geo["elev"], "id": act["id"],
                             "coords": geo.get("coords", []),
+                            "sci": _bucket(act.get("sport_type", "")),
                             "fly": _fly_box(la0, la1, ln0, ln1)}
             elif ll:
                 pc[slot] = {"elev": [], "id": act["id"],
@@ -2346,9 +2362,11 @@ __CHIPS__
   // can resolve a '#places?a=<id>' deep link on load (merged with the peaks payload).
   window.placesFlyTargets = window.placesFlyTargets || {};
   window.placesRouteCoords = window.placesRouteCoords || {};
+  window.placesRouteColorIdx = window.placesRouteColorIdx || {};
   Object.keys(PC).forEach(function(s){
     var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
     if(e && e.id && e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
+    if(e && e.id && typeof e.sci === 'number'){ window.placesRouteColorIdx[e.id] = e.sci; }
   });
 
   // grade -> color (cool descent blue, flat slate, warm climb amber) -- reuses
@@ -2531,9 +2549,11 @@ __ROWS__
   // can resolve a '#places?a=<id>' deep link on load (merged with the passport payload).
   window.placesFlyTargets = window.placesFlyTargets || {};
   window.placesRouteCoords = window.placesRouteCoords || {};
+  window.placesRouteColorIdx = window.placesRouteColorIdx || {};
   Object.keys(PC).forEach(function(s){
     var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
     if(e && e.id && e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
+    if(e && e.id && typeof e.sci === 'number'){ window.placesRouteColorIdx[e.id] = e.sci; }
   });
 
   function drawSpark(cv){
