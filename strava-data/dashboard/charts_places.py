@@ -875,6 +875,9 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   #places-hero .maplibregl-ctrl-attrib,
   #places-hero .maplibregl-ctrl-attrib a{ color:var(--text-tertiary); }
   #places-hero .seg-btn:disabled{ opacity:.4; cursor:default; }
+  /* 3D Terrain only makes sense for a single deep-linked activity -- hidden
+     rather than disabled outside that view (see curActivity in the script). */
+  #places-hero .seg-btn.hero-hidden{ display:none; }
   @keyframes places-rise{from{opacity:0} to{opacity:1}}
   @keyframes places-fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
 
@@ -1032,7 +1035,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       <span class="places-seg-lbl">Map</span>
       <button class="seg-btn active" data-base="glow"    aria-pressed="true">Overview</button>
       <button class="seg-btn"        data-base="street"  aria-pressed="false">Street</button>
-      <button class="seg-btn"        data-base="terrain" aria-pressed="false">Terrain</button>
+      <button class="seg-btn hero-hidden" data-base="terrain" aria-pressed="false">3D Terrain</button>
     </div>
   </div>
   <div class="places-foot">
@@ -1115,7 +1118,8 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       route: [ readVar('--running'), readVar('--mtb'), readVar('--elevation'),
                hexRGB('#4ade80'), readVar('--other') ],
       tp: readVar('--text-primary'),
-      ts: readVar('--text-secondary')
+      ts: readVar('--text-secondary'),
+      accent: readVar('--accent')
     };
   }
 
@@ -1138,7 +1142,9 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   function mtStyle(slug){ return 'https://api.maptiler.com/maps/'+slug+'/style.json?key='+MT_KEY; }
   // Each mode maps to a MapTiler style whose exact '-dark' counterpart is used in
   // dark theme, so every basemap tracks the page theme through one code path.
-  var SLUGS = {glow:'backdrop-v4', street:'streets-v4', terrain:'topo-v4'}; //Consider aquarelle-v4 for streets
+  // terrain's slug is the drape surface for real 3D terrain (outdoor-v4's
+  // hillshading/contours read best pitched) -- see applyTerrainState().
+  var SLUGS = {glow:'backdrop-v4', street:'streets-v4', terrain:'outdoor-v4'}; //Consider aquarelle-v4 for streets
   // Glow's light-theme ground is a custom MapTiler style ("BackgroundGhost") tuned
   // to the near-white/faint-line look the hero had before the MapTiler conversion --
   // lighter than stock Backdrop, so no CSS wash is layered on top of it. Dark theme
@@ -1150,7 +1156,18 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     var slug = SLUGS[m] || SLUGS.glow;
     return mtStyle(slug + (isLight() ? '' : '-dark'));
   }
-  function applyMapStyle(){ if(map) map.setStyle(styleForMode(mode)); }
+  function applyMapStyle(){
+    if(!map) return;
+    // Strip any active 3D terrain before swapping styles: MapLibre's style-diff
+    // throws (AbortError / "_checkLoaded") when a raster-dem source tied to
+    // setTerrain() isn't present in the incoming style. applyTerrainState()
+    // (on 'idle', once the new style has settled) re-adds it if still wanted.
+    if(map.getTerrain()) map.setTerrain(null);
+    if(map.getLayer(ROUTE_LAYER)) map.removeLayer(ROUTE_LAYER);
+    if(map.getSource(ROUTE_SRC)) map.removeSource(ROUTE_SRC);
+    if(map.getSource(TERRAIN_SRC)) map.removeSource(TERRAIN_SRC);
+    map.setStyle(styleForMode(mode));
+  }
   // Reflect the active basemap mode as a class on the hero so CSS can target a
   // single mode.
   function setModeClass(){
@@ -1166,16 +1183,87 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       fitBoundsOptions: {padding: 34, animate: false},
       attributionControl: {compact: true},
       dragRotate: false, pitchWithRotate: false,
-      renderWorldCopies: false, minZoom: 1, maxZoom: 16, fadeDuration: 120
+      renderWorldCopies: false, minZoom: 1, maxZoom: 16, maxPitch: 75, fadeDuration: 120
     });
     if(map.touchZoomRotate) map.touchZoomRotate.disableRotation();
     map.on('move', drawGlow);
     map.on('styledata', drawGlow);
+    // setStyle() (basemap switch) wipes custom sources/layers, so re-assert 3D
+    // terrain once the new style has settled. 'style.load' looked like the right
+    // event (it's what MapTiler's own docs use) but empirically does NOT fire
+    // reliably for setStyle() calls after the map's initial style -- confirmed via
+    // direct event tracing: after a setStyle() call, sourcedata/styledata/idle all
+    // fired but style.load never did, silently leaving terrain permanently missing
+    // with no console error. 'idle' (fires once the map has fully finished
+    // rendering, incl. all sources) fired reliably in every case tested.
+    map.on('idle', applyTerrainState);
     map.on('load', function(){
       if(pendingActivity){ flyToActivity(pendingActivity, false); }
       else if(pendingFrame){ goFrame(pendingFrame, false); }
+      updateTerrainButtonVisibility();
+      applyTerrainState();
       drawGlow();
     });
+  }
+
+  // ── 3D terrain (single-activity view only) ────────────────────────────────
+  var TERRAIN_SRC = 'places-terrain-dem';
+  var ROUTE_SRC = 'places-activity-route';
+  var ROUTE_LAYER = 'places-activity-route-line';
+  var terrainActive = false;   // tracks whether we've already eased/enabled rotate
+  function applyTerrainState(){
+    if(!map) return;
+    var want = (mode==='terrain' && !!curActivity && TILES_OK);
+    if(want){
+      if(!map.getSource(TERRAIN_SRC)){
+        map.addSource(TERRAIN_SRC, {
+          type: 'raster-dem',
+          url: 'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=' + MT_KEY,
+          tileSize: 512
+        });
+      }
+      map.setTerrain({source: TERRAIN_SRC, exaggeration: 1.5});
+      var coords = window.placesRouteCoords && window.placesRouteCoords[curActivity];
+      if(coords && coords.length >= 4){
+        var line = [];
+        for(var i=0; i<coords.length; i+=2){ line.push([coords[i], coords[i+1]]); }
+        var geojson = {type:'Feature', properties:{},
+                        geometry:{type:'LineString', coordinates: line}};
+        var src = map.getSource(ROUTE_SRC);
+        if(src){ src.setData(geojson); }
+        else {
+          map.addSource(ROUTE_SRC, {type:'geojson', data: geojson});
+          map.addLayer({
+            id: ROUTE_LAYER, type: 'line', source: ROUTE_SRC,
+            layout: {'line-cap':'round', 'line-join':'round'},
+            paint: {
+              'line-color': 'rgb(' + (TH ? TH.accent.join(',') : '245,158,11') + ')',
+              'line-width': 4, 'line-opacity': 0.95
+            }
+          });
+        }
+      }
+      if(!terrainActive){
+        map.easeTo({pitch: 60, duration: 700});
+        map.dragRotate.enable();
+        if(map.touchZoomRotate) map.touchZoomRotate.enableRotation();
+        terrainActive = true;
+      }
+    } else if(terrainActive){
+      map.setTerrain(null);
+      if(map.getLayer(ROUTE_LAYER)) map.removeLayer(ROUTE_LAYER);
+      if(map.getSource(ROUTE_SRC)) map.removeSource(ROUTE_SRC);
+      map.easeTo({pitch: 0, bearing: 0, duration: 500});
+      map.dragRotate.disable();
+      if(map.touchZoomRotate) map.touchZoomRotate.disableRotation();
+      terrainActive = false;
+    }
+  }
+  // Show/hide the 3D Terrain basemap button -- it only means something once an
+  // activity is deep-linked (see curActivity).
+  function updateTerrainButtonVisibility(){
+    var btn = hero.querySelector('[data-base="terrain"]');
+    if(btn) btn.classList.toggle('hero-hidden', !(curActivity && TILES_OK));
   }
 
   // ── projection + glow overlay ─────────────────────────────────────────────
@@ -1407,10 +1495,43 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   // becomes active again (otherwise it writes a bare '#places', desyncing the URL
   // from the still-shown map).
   window.placesSyncHash = syncHashState;
+  function setBaseButtons(m){
+    hero.querySelectorAll('[data-base]').forEach(function(b){
+      var on=(b.dataset.base===m); b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on?'true':'false');
+    });
+  }
+  // Entering a single-activity deep link: record the id, and -- unless the user
+  // had explicitly chosen Street -- default the basemap to 3D Terrain (the whole
+  // point of showing terrain only makes sense for one route). See applyTerrainState().
+  function enterActivity(id){
+    curActivity = String(id);
+    if(mode!=='street' && mode!=='terrain' && TILES_OK){
+      mode = 'terrain';
+      setModeClass();
+      setBaseButtons('terrain');
+      applyMapStyle();
+    }
+    updateTerrainButtonVisibility();
+    applyTerrainState();
+  }
+  // Leaving single-activity view (a View button, or an unresolved deep link):
+  // 3D Terrain has no meaning without an activity, so fall back to Overview.
+  function exitActivityMode(){
+    curActivity = null;
+    updateTerrainButtonVisibility();
+    if(mode==='terrain'){
+      mode = 'glow';
+      setModeClass();
+      setBaseButtons('glow');
+      applyMapStyle();
+    }
+    applyTerrainState();
+  }
   // Deep-link hook for stamp/peak clicks: record the activity id -> '#places?a=<id>'.
   // placesFlyTo already cleared the frame buttons for a box target.
   window.placesLinkActivity = function(id){
-    curActivity = id ? String(id) : null;
+    if(id){ enterActivity(id); } else { exitActivityMode(); }
     syncHashState();
   };
   // Resolve a deep-linked activity id to its fly box (published by the passport +
@@ -1418,13 +1539,13 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   // back to the default frame, no console error.
   function flyToActivity(id, animate){
     var box = window.placesFlyTargets && window.placesFlyTargets[id];
-    if(!box){ curActivity = null; goFrame('all', animate); return; }
-    curActivity = String(id);
+    if(!box){ exitActivityMode(); goFrame('all', animate); return; }
+    enterActivity(id);
     window.placesFlyTo(box, animate);
   }
   hero.querySelectorAll('[data-frame]').forEach(function(b){
     b.addEventListener('click', function(){
-      curActivity = null;          // a named frame supersedes any ?a= deep link
+      exitActivityMode();          // a named frame supersedes any ?a= deep link
       setFrameButtons(b.dataset.frame);
       goFrame(b.dataset.frame, true);
       syncHashState();
@@ -1440,13 +1561,11 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       return;
     }
     b.addEventListener('click', function(){
-      hero.querySelectorAll('[data-base]').forEach(function(o){
-        var on=(o===b); o.classList.toggle('active', on);
-        o.setAttribute('aria-pressed', on?'true':'false');
-      });
+      setBaseButtons(m);
       mode = m;
       setModeClass();
       applyMapStyle();
+      applyTerrainState();
       drawGlow();
       syncHashState();
     });
@@ -1463,12 +1582,12 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     var v = params.get('v'), bmode = params.get('b'), a = params.get('a');
     if((bmode==='street' || bmode==='terrain') && TILES_OK){
       mode = bmode;
-      hero.querySelectorAll('[data-base]').forEach(function(b){
-        var on = b.dataset.base===bmode;
-        b.classList.toggle('active', on);
-        b.setAttribute('aria-pressed', on?'true':'false');
-      });
+    } else if(a && TILES_OK){
+      // A deep-linked activity with no explicit basemap override defaults to
+      // 3D Terrain (mirrors enterActivity()'s default for stamp/peak clicks).
+      mode = 'terrain';
     }
+    if(mode==='street' || mode==='terrain') setBaseButtons(mode);
     if(a){
       // Deep link to a specific activity: defer the fly to map 'load' (the fly
       // targets are published by the passport/peaks scripts, which run after this).
@@ -1480,6 +1599,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       lens = (v==='trips') ? 'trips' : 'none';
       setFrameButtons(v);
     }
+    updateTerrainButtonVisibility();
   })();
   setModeClass();   // set the boot mode class (glow by default, or hash-restored)
 
@@ -1867,7 +1987,8 @@ def _passport_data(rows):
             slot = "t%d" % len(featured)
             geo = _load_trip_geo(sigact["id"]) or {}
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
-                        "elev": geo.get("elev", []), "id": sigact["id"],
+                        "elev": geo.get("elev", []), "coords": geo.get("coords", []),
+                        "id": sigact["id"],
                         "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
             featured.append({
                 "slot": slot, "region": spec["region"], "caption": spec["caption"],
@@ -1893,7 +2014,8 @@ def _passport_data(rows):
                 la0, la1, ln0, ln1 = geo["bbox"]
             else:
                 la0, la1, ln0, ln1 = ll[0], ll[0], ll[1], ll[1]
-            pc[slot] = {"fly": _fly_box(la0, la1, ln0, ln1), "id": r["id"]}
+            pc[slot] = {"fly": _fly_box(la0, la1, ln0, ln1), "id": r["id"],
+                        "coords": (geo or {}).get("coords", [])}
             brief.append({"slot": slot, "title": r.get("name") or "",
                           "date": "%s %d" % (_MONTHS[d0.month], d0.year)})
         else:
@@ -1904,7 +2026,8 @@ def _passport_data(rows):
             slot = "t%d" % len(featured)
             geo = _load_trip_geo(sigact["id"]) or {}
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
-                        "elev": geo.get("elev", []), "id": sigact["id"],
+                        "elev": geo.get("elev", []), "coords": geo.get("coords", []),
+                        "id": sigact["id"],
                         "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
             featured.append({
                 "slot": slot, "region": "", "caption": sigact.get("name") or "",
@@ -1945,6 +2068,7 @@ def _peaks_data(rows):
             if geo:
                 la0, la1, ln0, ln1 = geo["bbox"]
                 pc[slot] = {"elev": geo["elev"], "id": act["id"],
+                            "coords": geo.get("coords", []),
                             "fly": _fly_box(la0, la1, ln0, ln1)}
             elif ll:
                 pc[slot] = {"elev": [], "id": act["id"],
@@ -2214,8 +2338,10 @@ __CHIPS__
   // Publish each target's fly box under its stable Strava activity id so the hero
   // can resolve a '#places?a=<id>' deep link on load (merged with the peaks payload).
   window.placesFlyTargets = window.placesFlyTargets || {};
+  window.placesRouteCoords = window.placesRouteCoords || {};
   Object.keys(PC).forEach(function(s){
     var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
+    if(e && e.id && e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
   });
 
   // grade -> color (cool descent blue, flat slate, warm climb amber) -- reuses
@@ -2397,8 +2523,10 @@ __ROWS__
   // Publish each target's fly box under its stable Strava activity id so the hero
   // can resolve a '#places?a=<id>' deep link on load (merged with the passport payload).
   window.placesFlyTargets = window.placesFlyTargets || {};
+  window.placesRouteCoords = window.placesRouteCoords || {};
   Object.keys(PC).forEach(function(s){
     var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
+    if(e && e.id && e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
   });
 
   function drawSpark(cv){
