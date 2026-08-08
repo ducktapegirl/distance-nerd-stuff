@@ -1142,17 +1142,22 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   function mtStyle(slug){ return 'https://api.maptiler.com/maps/'+slug+'/style.json?key='+MT_KEY; }
   // Each mode maps to a MapTiler style whose exact '-dark' counterpart is used in
   // dark theme, so every basemap tracks the page theme through one code path.
-  // terrain's slug is the drape surface for real 3D terrain (outdoor-v4's
-  // hillshading/contours read best pitched) -- see applyTerrainState().
-  var SLUGS = {glow:'backdrop-v4', street:'streets-v4', terrain:'outdoor-v4'}; //Consider aquarelle-v4 for streets
+  var SLUGS = {glow:'backdrop-v4', street:'streets-v4'}; //Consider aquarelle-v4 for streets
   // Glow's light-theme ground is a custom MapTiler style ("BackgroundGhost") tuned
   // to the near-white/faint-line look the hero had before the MapTiler conversion --
   // lighter than stock Backdrop, so no CSS wash is layered on top of it. Dark theme
   // still uses backdrop-v4-dark (no custom dark counterpart exists yet).
   var GLOW_LIGHT_STYLE_ID = '019f7141-13e8-7ca3-bd1d-c8bc1184f396';
+  // 3D Terrain's drape surface is a pair of custom MapTiler styles (light/dark
+  // counterparts, same convention as Glow). Real elevation/pitch/route are
+  // layered on top at runtime regardless of which style this points to; see
+  // applyTerrainState().
+  var TERRAIN_STYLE_ID = '019fe2f9-32eb-7c1c-856d-ed5499e401cd';
+  var TERRAIN_STYLE_ID_DARK = '019fe30f-cd64-7835-afd2-56ffea88cc0f';
   function styleForMode(m){
     if(!TILES_OK) return tilelessStyle();
     if(m==='glow' && isLight()) return mtStyle(GLOW_LIGHT_STYLE_ID);
+    if(m==='terrain') return mtStyle(isLight() ? TERRAIN_STYLE_ID : TERRAIN_STYLE_ID_DARK);
     var slug = SLUGS[m] || SLUGS.glow;
     return mtStyle(slug + (isLight() ? '' : '-dark'));
   }
