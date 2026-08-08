@@ -1,4 +1,36 @@
 
+## 8 August 2026
+
+### 3D Terrain for Places — Feature Build Plus Four Follow-On Bug Fixes
+
+Added a real 3D terrain view (MapLibre raster-dem elevation, pitched camera, a terrain-draped GL route line) to the Strava dashboard's Places single-activity deep-link view, replacing the old flat "Terrain" basemap style. Landed across six commits: the initial feature build, a title font-size fix, and four follow-up bug fixes surfaced by hands-on verification and user reports — a "requires two clicks to appear" bug, a duplicate/mismatched-color route line, custom light/dark MapTiler styles for the terrain drape, and multi-day curated trips (e.g. "Maine Hut Trail — Days 1–3") only showing one day's route.
+
+### Iterations
+
+| # | What happened | Root cause | Fix |
+|---|---|---|---|
+| 1 | First fix for a MapLibre `setStyle()`/terrain crash worked but logged a "rebuild style from scratch" warning | Calling `setStyle()` while a raster-dem terrain source was active crashed MapLibre's internal style-diff | Manually strip the terrain source/layer before every `setStyle()` call |
+| 2 | A "cleaner" version of the same fix (let `setStyle()`'s own diff handle removal) passed once, then silently failed non-deterministically on identical retests, leaving terrain missing with no error | The retry listener was wired to MapLibre's `'style.load'` event — confirmed via direct raw-event tracing to not reliably fire for `setStyle()` calls after the map's initial load, despite MapTiler's own docs using that exact pattern | Reverted to explicit teardown; switched the retry listener to `'idle'`, confirmed reliable across every test |
+| 3 | Even after switching to `'idle'`, a genuinely fresh click could still leave the map zoomed-in but flat — the user-reported "have to click twice" bug | The synchronous call to add terrain ran immediately after triggering a style change, before the new style had finished loading; `addSource()`/`setTerrain()` throw in that state, silently aborting before pitch/route setup ran | Restored an `isStyleLoaded()` guard on the terrain-adding path — safe now that `'idle'` (not the unreliable `'style.load'`) provides the retry |
+| 4 | Initially reported a recurring `AbortError` in console output as "pre-existing, on every load" | Wrong diagnosis: the browser tool's console buffer persists across many `navigate()` calls in a reused tab, so one earlier error kept resurfacing on later checks | Verified in a genuinely fresh tab (zero console messages) and corrected the claim before it misdirected further debugging |
+| 5 | User-reported duplicate route line (green + blue for the same track) | The old 2D canvas "glow" overlay still drew every activity's route unconditionally, duplicating the new terrain-draped GL line layer | Suppressed the canvas overlay's route-drawing pass whenever a single activity is selected |
+| 6 | That suppression then caused multi-day trips to show only one day's route | The canvas overlay had been incidentally rendering the trip's other days all along; the new GL layer only ever loaded geometry for one "signature" activity per trip | Collected per-day coordinates for cluster members matching the trip's own curated name, rendered as a `MultiLineString` |
+
+### Prompting lessons
+
+- **A library's own documented "recommended pattern" isn't proof it holds under your app's actual call pattern.** MapTiler's docs use `'style.load'` for adding terrain after `setStyle()` — reasoning from that produced two wrong fixes in a row. Direct raw-event tracing (logging every fired event with timestamps) found the real answer in one pass. For complex third-party state machines, verify empirically before trusting docs-cited patterns.
+- **A single successful test run looks identical to a flaky one for async, multi-invocation UI state.** Both the two-clicks bug and the failed "cleaner" retry fix only surfaced under repeat interaction (fresh tabs, repeated activity switches, theme toggles) — not a single happy-path check. Once stress-testing became the default habit mid-session, the later fixes (multi-day routes, sport color) landed clean on the first attempt.
+- **When a fix removes something, audit what else depended on the removed behavior before shipping.** The duplicate-line fix was correct in isolation but broke multi-day trips because the canvas overlay it suppressed was quietly doing double duty. A same-session "what else does this draw, and does anything rely on it?" check would have caught the regression before a follow-up bug report was needed.
+- **The Plan-mode validation subagent caught a real data edge case before any code was written** — one curated trip's activity cluster turns out to span a 7-day, multi-city vacation merged by a day-gap clustering rule, and a naive "loop the whole cluster" fix would have pulled unrelated legs into its route. Worth continuing to route non-trivial fixes through that validation step even when the fix looks obvious, since the data can hide surprises the code doesn't.
+
+### Summary
+
+| Time | Money | Pain<br>1:😊  5:🤕 |
+| ---- | ----- | ------------------- |
+| 1-2 hours | — | 3/5 — the feature build itself was clean; friction was concentrated in the setStyle/terrain debugging chain (3 sequential root causes before landing) and one wrong initial diagnosis, both resolved within-session |
+
+---
+
 ## 25 July 2026
 
 ### QA Pipeline Consolidation: Shared Suite, Adaptive Transport, and a Blind Validation Run
