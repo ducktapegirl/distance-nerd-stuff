@@ -1235,7 +1235,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         });
       }
       map.setTerrain({source: TERRAIN_SRC, exaggeration: 1.5});
-      var coords = window.placesRouteCoords && window.placesRouteCoords[curActivity];
       // Match the route line to the activity's own sport color (same palette as
       // the legend / the old glow overlay), not a generic accent -- falls back to
       // accent only if the sport-color index wasn't published for this id.
@@ -1243,11 +1242,28 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       var routeRGB = (TH && sportIdx != null && TH.route[sportIdx]) ? TH.route[sportIdx]
                     : (TH ? TH.accent : [245,158,11]);
       var routeColor = 'rgb(' + routeRGB.join(',') + ')';
-      if(coords && coords.length >= 4){
+      function toLine(flat){
         var line = [];
-        for(var i=0; i<coords.length; i+=2){ line.push([coords[i], coords[i+1]]); }
-        var geojson = {type:'Feature', properties:{},
-                        geometry:{type:'LineString', coordinates: line}};
+        for(var i=0; i<flat.length; i+=2){ line.push([flat[i], flat[i+1]]); }
+        return line;
+      }
+      // Multi-day trips (e.g. "Maine Hut Trail -- Days 1-3") publish one flat
+      // coords array per day into placesRouteDays; render as a MultiLineString so
+      // each day is its own segment (no spurious jump-line stitching day N's end
+      // to day N+1's start). Everything else (peaks, brief stops, single-day
+      // trips) only has placesRouteCoords -- a single LineString, as before.
+      var dayGroups = window.placesRouteDays && window.placesRouteDays[curActivity];
+      var coords = window.placesRouteCoords && window.placesRouteCoords[curActivity];
+      var geojson = null;
+      if(dayGroups && dayGroups.length){
+        var lines = dayGroups.map(toLine).filter(function(l){ return l.length >= 2; });
+        if(lines.length) geojson = {type:'Feature', properties:{},
+                                     geometry:{type:'MultiLineString', coordinates: lines}};
+      } else if(coords && coords.length >= 4){
+        geojson = {type:'Feature', properties:{},
+                   geometry:{type:'LineString', coordinates: toLine(coords)}};
+      }
+      if(geojson){
         var src = map.getSource(ROUTE_SRC);
         if(src){
           src.setData(geojson);
@@ -1914,6 +1930,18 @@ def _fly_box(lat0, lat1, lng0, lng1, pad=0.05):
             "lng0": round(lng0 - pad, 4), "lng1": round(lng1 + pad, 4)}
 
 
+def _trip_days_coords(members):
+    """Per-day route coords for a multi-day trip's hero line (one flat [lng,lat,...]
+    list per activity, chronological). Skips activities with no/unreadable stream --
+    same defensive pattern as every other _load_trip_geo caller."""
+    days = []
+    for r in members:
+        geo = _load_trip_geo(r["id"])
+        if geo and geo.get("coords"):
+            days.append(geo["coords"])
+    return days
+
+
 def _away_clusters(rows):
     """Cluster every away activity (start_latlng outside both home boxes) by
     time-gap-away-from-home: a new cluster starts wherever the day-gap to the
@@ -2002,18 +2030,23 @@ def _passport_data(rows):
         for ci, c in enumerate(clusters):
             if ci in used:
                 continue
-            sigact = next((r for _, _, r in c if sig in (r.get("name") or "").lower()),
-                          None)
-            if sigact is None:
+            sig_members = [r for _, _, r in c if sig in (r.get("name") or "").lower()]
+            if not sig_members:
                 continue
+            sigact = sig_members[0]
             used.add(ci)
             d0, d1 = c[0][0], c[-1][0]
             lats = [ll[0] for _, ll, _ in c]
             lngs = [ll[1] for _, ll, _ in c]
             slot = "t%d" % len(featured)
             geo = _load_trip_geo(sigact["id"]) or {}
+            # days: only the cluster members matching THIS trip's sig, not the whole
+            # cluster -- some clusters span multiple unrelated trips/legs merged by
+            # _away_clusters' day-gap rule (e.g. Stanley Park's cluster also holds a
+            # Bellevue/Seattle leg that isn't part of the "Stanley Park" stamp).
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
                         "elev": geo.get("elev", []), "coords": geo.get("coords", []),
+                        "days": _trip_days_coords(sig_members),
                         "id": sigact["id"], "sci": _bucket(sigact.get("sport_type", "")),
                         "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
             featured.append({
@@ -2052,8 +2085,12 @@ def _passport_data(rows):
                                            mf(x[2].get("distance_km")) or 0))[2]
             slot = "t%d" % len(featured)
             geo = _load_trip_geo(sigact["id"]) or {}
+            # No curated sig to filter by here (unlike the featured-trip loop above)
+            # -- the whole cluster IS the trip, same as this branch's existing
+            # whole-cluster fly box, so days covers every member.
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
                         "elev": geo.get("elev", []), "coords": geo.get("coords", []),
+                        "days": _trip_days_coords([r for _, _, r in c]),
                         "id": sigact["id"], "sci": _bucket(sigact.get("sport_type", "")),
                         "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
             featured.append({
@@ -2368,10 +2405,12 @@ __CHIPS__
   window.placesFlyTargets = window.placesFlyTargets || {};
   window.placesRouteCoords = window.placesRouteCoords || {};
   window.placesRouteColorIdx = window.placesRouteColorIdx || {};
+  window.placesRouteDays = window.placesRouteDays || {};
   Object.keys(PC).forEach(function(s){
     var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
     if(e && e.id && e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
     if(e && e.id && typeof e.sci === 'number'){ window.placesRouteColorIdx[e.id] = e.sci; }
+    if(e && e.id && e.days && e.days.length){ window.placesRouteDays[e.id] = e.days; }
   });
 
   // grade -> color (cool descent blue, flat slate, warm climb amber) -- reuses
@@ -2555,10 +2594,12 @@ __ROWS__
   window.placesFlyTargets = window.placesFlyTargets || {};
   window.placesRouteCoords = window.placesRouteCoords || {};
   window.placesRouteColorIdx = window.placesRouteColorIdx || {};
+  window.placesRouteDays = window.placesRouteDays || {};
   Object.keys(PC).forEach(function(s){
     var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
     if(e && e.id && e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
     if(e && e.id && typeof e.sci === 'number'){ window.placesRouteColorIdx[e.id] = e.sci; }
+    if(e && e.id && e.days && e.days.length){ window.placesRouteDays[e.id] = e.days; }
   });
 
   function drawSpark(cv){
