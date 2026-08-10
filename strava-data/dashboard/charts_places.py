@@ -875,6 +875,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   #places-hero .maplibregl-ctrl-attrib,
   #places-hero .maplibregl-ctrl-attrib a{ color:var(--text-tertiary); }
   #places-hero .seg-btn:disabled{ opacity:.4; cursor:default; }
+  #places-hero .seg-btn.hero-hidden{ display:none; }
   @keyframes places-rise{from{opacity:0} to{opacity:1}}
   @keyframes places-fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
 
@@ -1032,7 +1033,8 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       <span class="places-seg-lbl">Map</span>
       <button class="seg-btn active" data-base="glow"    aria-pressed="true">Overview</button>
       <button class="seg-btn"        data-base="street"  aria-pressed="false">Street</button>
-      <button class="seg-btn" data-base="terrain" aria-pressed="false">3D Terrain</button>
+      <button class="seg-btn" data-base="topo" aria-pressed="false">Terrain</button>
+      <button class="seg-btn hero-hidden" data-base="terrain" aria-pressed="false">3D Terrain</button>
     </div>
   </div>
   <div class="places-foot">
@@ -1120,7 +1122,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     };
   }
 
-  // ── MapLibre basemap (Glow / Street / Terrain) ────────────────────────────
+  // ── MapLibre basemap (Glow / Street / Terrain / 3D Terrain) ────────────────
   var MT_KEY = "__MAPTILER_KEY__";
   var HAS_ML = !!window.maplibregl;
   var TILES_OK = HAS_ML && MT_KEY.length > 0;
@@ -1139,7 +1141,10 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   function mtStyle(slug){ return 'https://api.maptiler.com/maps/'+slug+'/style.json?key='+MT_KEY; }
   // Each mode maps to a MapTiler style whose exact '-dark' counterpart is used in
   // dark theme, so every basemap tracks the page theme through one code path.
-  var SLUGS = {glow:'backdrop-v4', street:'streets-v4'}; //Consider aquarelle-v4 for streets
+  // 'topo' (flat 2D topographic style) is the main aggregate view's terrain
+  // option; 3D Terrain (raster-DEM + pitch, below) is scoped to the
+  // single-activity/passport view instead -- see applyTerrainState().
+  var SLUGS = {glow:'backdrop-v4', street:'streets-v4', topo:'topo-v4'}; //Consider aquarelle-v4 for streets
   // Glow's light-theme ground is a custom MapTiler style ("BackgroundGhost") tuned
   // to the near-white/faint-line look the hero had before the MapTiler conversion --
   // lighter than stock Backdrop, so no CSS wash is layered on top of it. Dark theme
@@ -1239,8 +1244,9 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     });
   }
 
-  // ── 3D terrain (a peer basemap alongside Overview/Street; also drapes any
-  //    selected single-activity route on top when one is active) ───────────
+  // ── 3D terrain (single-activity/passport view only -- draping the selected
+  //    activity's route on elevation with a tilted camera; the main aggregate
+  //    view uses the flat 'topo' style above instead) ───────────────────────
   var TERRAIN_SRC = 'places-terrain-dem';
   var ROUTE_SRC = 'places-activity-route';
   var ROUTE_LAYER = 'places-activity-route-line';
@@ -1248,7 +1254,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   var terrainActive = false;   // tracks whether we've already eased/enabled rotate
   function applyTerrainState(){
     if(!map) return;
-    var want = (mode==='terrain' && TILES_OK);
+    var want = (mode==='terrain' && !!curActivity && TILES_OK);
     // enterActivity()/the basemap buttons call this synchronously right after
     // triggering a style change -- addSource()/setTerrain() throw if the style
     // isn't done loading yet (common on a fresh/slow connection, since setStyle()
@@ -1603,11 +1609,21 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
       b.setAttribute('aria-pressed', on?'true':'false');
     });
   }
+  // 2D Terrain (topo) is a main-view-only option; 3D Terrain is a
+  // single-activity/passport-view-only option -- swap which basemap button is
+  // visible whenever curActivity changes.
+  function updateBasemapButtonVisibility(){
+    var topoBtn = hero.querySelector('[data-base="topo"]');
+    var terrainBtn = hero.querySelector('[data-base="terrain"]');
+    if(topoBtn) topoBtn.classList.toggle('hero-hidden', !!curActivity);
+    if(terrainBtn) terrainBtn.classList.toggle('hero-hidden', !curActivity);
+  }
   // Entering a single-activity deep link: record the id, and -- unless the user
   // had explicitly chosen Street -- default the basemap to 3D Terrain so the
   // route shows up draped on the terrain right away. See applyTerrainState().
   function enterActivity(id){
     curActivity = String(id);
+    updateBasemapButtonVisibility();
     if(mode!=='street' && mode!=='terrain' && TILES_OK){
       mode = 'terrain';
       setModeClass();
@@ -1626,10 +1642,17 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     applyTerrainState();
   }
   // Leaving single-activity view (a View button, or an unresolved deep link).
-  // 3D Terrain is a regular basemap now (like Overview/Street), so the chosen
-  // mode persists -- applyTerrainState() just drops the now-stale route line.
+  // 3D Terrain isn't a valid main-view basemap, so fall back to Overview if it
+  // was active; Street/2D Terrain persist as chosen since both remain valid.
   function exitActivityMode(){
     curActivity = null;
+    if(mode === 'terrain'){
+      mode = 'glow';
+      setModeClass();
+      setBaseButtons('glow');
+      applyMapStyle();
+    }
+    updateBasemapButtonVisibility();
     applyTerrainState();
   }
   // Deep-link hook for stamp/peak clicks: record the activity id -> '#places?a=<id>'.
@@ -1684,14 +1707,18 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     if(h.indexOf('places')===-1 || qIdx===-1) return;
     var params = new URLSearchParams(h.slice(qIdx+1));
     var v = params.get('v'), bmode = params.get('b'), a = params.get('a');
-    if((bmode==='street' || bmode==='terrain') && TILES_OK){
+    if((bmode==='street' || bmode==='topo') && TILES_OK){
+      mode = bmode;
+    } else if(bmode==='terrain' && a && TILES_OK){
+      // 3D Terrain is only valid alongside a deep-linked activity -- a bare
+      // b=terrain with no a= would strand the main view on the unavailable style.
       mode = bmode;
     } else if(a && TILES_OK){
       // A deep-linked activity with no explicit basemap override defaults to
       // 3D Terrain (mirrors enterActivity()'s default for stamp/peak clicks).
       mode = 'terrain';
     }
-    if(mode==='street' || mode==='terrain') setBaseButtons(mode);
+    if(mode==='street' || mode==='terrain' || mode==='topo') setBaseButtons(mode);
     if(a){
       // Deep link to a specific activity: defer the fly to map 'load' (the fly
       // targets are published by the passport/peaks scripts, which run after this).
@@ -1705,6 +1732,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     }
   })();
   setModeClass();   // set the boot mode class (glow by default, or hash-restored)
+  updateBasemapButtonVisibility();   // show the right terrain button for the boot state
 
   // ── fullscreen toggle (feature-detected) ────────────────────────────────
   var fsBtn = document.getElementById('places-fs');
