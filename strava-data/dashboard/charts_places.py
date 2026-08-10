@@ -1244,9 +1244,8 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
     });
   }
 
-  // ── 3D terrain (single-activity/passport view only -- draping the selected
-  //    activity's route on elevation with a tilted camera; the main aggregate
-  //    view uses the flat 'topo' style above instead) ───────────────────────
+  // ── Single-activity route line (shown in every basemap mode) + 3D terrain
+  //    drape (DEM elevation + tilted camera, 3D Terrain mode only) ──────────
   var TERRAIN_SRC = 'places-terrain-dem';
   var ROUTE_SRC = 'places-activity-route';
   var ROUTE_LAYER = 'places-activity-route-line';
@@ -1254,15 +1253,22 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
   var terrainActive = false;   // tracks whether we've already eased/enabled rotate
   function applyTerrainState(){
     if(!map) return;
-    var want = (mode==='terrain' && !!curActivity && TILES_OK);
+    // Two independent gates: the route line should show for a selected
+    // activity regardless of which basemap is active (Overview/Street/2D
+    // Terrain/3D Terrain); the DEM drape + pitch + drag-rotate stay exclusive
+    // to 3D Terrain. Keeping both tied to a single "terrain mode" gate used to
+    // mean the route vanished the moment you switched off 3D Terrain mid-activity.
+    var wantRoute = (!!curActivity && TILES_OK);
+    var wantTerrain = (mode==='terrain' && wantRoute);
     // enterActivity()/the basemap buttons call this synchronously right after
     // triggering a style change -- addSource()/setTerrain() throw if the style
     // isn't done loading yet (common on a fresh/slow connection, since setStyle()
     // is async), which would abort before pitch/route-layer/drag-rotate ever run
     // and strand the map zoomed-in but flat until something re-triggers this.
     // 'idle' (below) reliably re-calls this once the style has actually settled.
-    if(want && !map.isStyleLoaded()) return;
-    if(want){
+    if((wantRoute || wantTerrain) && !map.isStyleLoaded()) return;
+
+    if(wantTerrain){
       if(!map.getSource(TERRAIN_SRC)){
         map.addSource(TERRAIN_SRC, {
           type: 'raster-dem',
@@ -1271,6 +1277,11 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         });
       }
       map.setTerrain({source: TERRAIN_SRC, exaggeration: 1.5});
+    } else if(map.getTerrain()){
+      map.setTerrain(null);
+    }
+
+    if(wantRoute){
       // Match the route line to the activity's own sport color (same palette as
       // the legend / the old glow overlay), not a generic accent -- falls back to
       // accent only if the sport-color index wasn't published for this id.
@@ -1315,12 +1326,18 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
           });
         }
       } else {
-        // Terrain is on but no activity is selected (or it has no geometry) --
-        // clear any stale route left over from a previously-viewed activity
-        // while staying in terrain mode (e.g. the user clicked back to "All").
+        // An activity is selected but has no geometry -- clear any stale route
+        // left over from a previously-viewed activity (e.g. the user clicked
+        // back to "All").
         if(map.getLayer(ROUTE_LAYER)) map.removeLayer(ROUTE_LAYER);
         if(map.getSource(ROUTE_SRC)) map.removeSource(ROUTE_SRC);
       }
+    } else {
+      if(map.getLayer(ROUTE_LAYER)) map.removeLayer(ROUTE_LAYER);
+      if(map.getSource(ROUTE_SRC)) map.removeSource(ROUTE_SRC);
+    }
+
+    if(wantTerrain){
       if(!terrainActive){
         // Only tilt on our own if no framing move owns the camera: frameBounds()
         // folds TERRAIN_PITCH into its fitBounds, and easeTo() here would call
@@ -1334,9 +1351,6 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         terrainActive = true;
       }
     } else if(terrainActive){
-      map.setTerrain(null);
-      if(map.getLayer(ROUTE_LAYER)) map.removeLayer(ROUTE_LAYER);
-      if(map.getSource(ROUTE_SRC)) map.removeSource(ROUTE_SRC);
       map.easeTo({pitch: 0, bearing: 0, duration: 500});
       map.dragRotate.disable();
       if(map.touchZoomRotate) map.touchZoomRotate.disableRotation();
