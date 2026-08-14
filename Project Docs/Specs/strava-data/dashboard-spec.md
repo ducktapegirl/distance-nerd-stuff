@@ -1193,6 +1193,28 @@ beside a single morning run. Restraint over completeness.
   | 5 | `Jay Peak` | `Jay Peak · VT` | `Jay Peak Spring Riding` | — |
   | 6 | `Whaleback` | `Upper Valley · VT/NH` | `Whaleback & Hanover holiday` | — |
 
+  - **`sig` selects the signature activity ONLY — it must never filter the trip's route set.**
+    The hero route line for a stamp draws **every member of the cluster**, one `LineString`
+    Feature per activity (`PC[slot].days = [{c:[lng,lat,…], s:sportBucket}, …]`), each colored by
+    **its own** sport via a `['match', ['get','sci'], …]` expression off the `TH.route` palette —
+    a trip roams sports, so Stanley Park's bike cruise draws MTB amber next to its runs' teal.
+    Separate Features (not one `MultiLineString`) also prevent a jump line stitching day N's end
+    to day N+1's start. Regression history: `97addbf` filtered `days` by `sig`, which only worked
+    for Maine Hut (whose activities are literally named "…Day 1/2/3"); every other trip drew a
+    subset of the ground its own camera box claimed — Whitney 1 day of 3, Stanley Park 2 of 6.
+    Guarded by `qa.py::check_multiday_trip_day_counts`.
+  - **The `fly` box comes from the DRAWN GEOMETRY, not activity start points.** A start point is
+    one END of a route, so a start-point box can clip the trip's own line (Whitney's route reaches
+    −118.2970°W; its start-point box stopped at −118.2903°W). `_days_bbox()` unions every day's
+    coords, falling back to start points only when no member had a readable stream. Guarded by
+    `qa.py::check_trip_fly_box_contains_route`.
+  - **Passport and peaks collide in `window.placesFlyTargets`** (Mt. Whitney is both a 3-day trip
+    and two peak rows; San Jacinto is a brief stop and a peak row). Each `PC` entry carries
+    **`flypri`** — trip `2` > brief stop `1` > peak row `0` — and the publish loop keeps the
+    highest, so the surviving box always contains every line the hero draws for that id. Peaks is
+    emitted second (`page.py`), so under the old last-writer-wins a `?a=<whitney>` deep link framed
+    the summit day alone and left the trip's other days drawn but off-screen. Guarded by
+    `qa.py::check_peaks_do_not_clobber_trip_fly_box`.
   - **Date span** and **sport tags** are computed LIVE from the cluster (`run ×3`, `nordic ski ×3`,
     `snowboard · alpine ski`, …). Dates format `Mon d–d · YYYY` (or cross-month `Mon d – Mon d · YYYY`).
   - **Badge FACTS are the pinned superlatives, not re-derived** — northernmost is **Vancouver
@@ -1270,7 +1292,9 @@ by id. Titles may contain emoji (`Snow Snake 🐍`) — fine in HTML; Python `pr
 - **No new palette hex** (blue/slate/amber/violet are existing tokens). **No new data files.**
 
 ### Build prints (ASCII only)
-`[places] passport: featured=7 brief=4 states=7 provinces=1 geom_aids=11 json_kb=~22`
+`[places] passport: featured=7 brief=4 states=7 provinces=1 geom_aids=7 json_kb=~57`
+(`geom_aids`/`json_kb` track data growth — `json_kb` covers every day of every trip, so it rises
+as trips gain activities; only `featured`/`brief` are pinned.)
 `[places] peaks: rows=6 highest=14507ft`
 Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches zero clusters
 (a retitle/refetch surfaced) — never a hard assert (deploy must not break on data growth).
