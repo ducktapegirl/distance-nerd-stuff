@@ -1294,18 +1294,41 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         for(var i=0; i<flat.length; i+=2){ line.push([flat[i], flat[i+1]]); }
         return line;
       }
-      // Multi-day trips (e.g. "Maine Hut Trail -- Days 1-3") publish one flat
-      // coords array per day into placesRouteDays; render as a MultiLineString so
-      // each day is its own segment (no spurious jump-line stitching day N's end
-      // to day N+1's start). Everything else (peaks, brief stops, single-day
-      // trips) only has placesRouteCoords -- a single LineString, as before.
+      // A trip publishes one {c:[lng,lat,...], s:sportIdx} per day into
+      // placesRouteDays; render each day as its OWN Feature (not one
+      // MultiLineString) so line-color can be data-driven off the day's sport --
+      // a trip roams sports, and painting the Stanley Park bike cruise in running
+      // teal misreads the legend. Separate features also keep the property the
+      // MultiLineString was introduced for: no jump-line stitching day N's end to
+      // day N+1's start. Everything else (peaks, brief stops) only has
+      // placesRouteCoords -- a single LineString in one flat color, as before.
       var dayGroups = window.placesRouteDays && window.placesRouteDays[curActivity];
       var coords = window.placesRouteCoords && window.placesRouteCoords[curActivity];
-      var geojson = null;
+      var geojson = null, lineColor = routeColor;
       if(dayGroups && dayGroups.length){
-        var lines = dayGroups.map(toLine).filter(function(l){ return l.length >= 2; });
-        if(lines.length) geojson = {type:'Feature', properties:{},
-                                     geometry:{type:'MultiLineString', coordinates: lines}};
+        var feats = [];
+        dayGroups.forEach(function(d){
+          var line = toLine((d && d.c) || []);
+          if(line.length >= 2){
+            feats.push({type:'Feature',
+                        properties:{sci: (d && typeof d.s === 'number') ? d.s : -1},
+                        geometry:{type:'LineString', coordinates: line}});
+          }
+        });
+        if(feats.length){
+          geojson = {type:'FeatureCollection', features: feats};
+          // ['match', ['get','sci'], 0,'rgb(..)', 1,'rgb(..)', ..., routeColor].
+          // Built from the same TH.route palette the legend and glow use, so the
+          // theme toggle's retint() picks up new colors for free. `match` needs at
+          // least one label/output pair -- with no palette, stay on the scalar.
+          if(TH && TH.route && TH.route.length){
+            var expr = ['match', ['get','sci']];
+            TH.route.forEach(function(rgb, i){
+              if(rgb){ expr.push(i, 'rgb(' + rgb.join(',') + ')'); }
+            });
+            if(expr.length > 2){ expr.push(routeColor); lineColor = expr; }
+          }
+        }
       } else if(coords && coords.length >= 4){
         geojson = {type:'Feature', properties:{},
                    geometry:{type:'LineString', coordinates: toLine(coords)}};
@@ -1314,15 +1337,17 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
         var src = map.getSource(ROUTE_SRC);
         if(src){
           src.setData(geojson);
-          // Reused across an activity switch (no style reload) -- the sport
-          // color can differ from whatever the layer was created with.
-          if(map.getLayer(ROUTE_LAYER)) map.setPaintProperty(ROUTE_LAYER, 'line-color', routeColor);
+          // Reused across an activity switch (no style reload) -- the sport color
+          // can differ from whatever the layer was created with, and a scalar may
+          // need to become a per-day `match` expression (or back). setPaintProperty
+          // accepts either.
+          if(map.getLayer(ROUTE_LAYER)) map.setPaintProperty(ROUTE_LAYER, 'line-color', lineColor);
         } else {
           map.addSource(ROUTE_SRC, {type:'geojson', data: geojson});
           map.addLayer({
             id: ROUTE_LAYER, type: 'line', source: ROUTE_SRC,
             layout: {'line-cap':'round', 'line-join':'round'},
-            paint: {'line-color': routeColor, 'line-width': 4, 'line-opacity': 0.95}
+            paint: {'line-color': lineColor, 'line-width': 4, 'line-opacity': 0.95}
           });
         }
       } else {
@@ -2034,15 +2059,43 @@ def _fly_box(lat0, lat1, lng0, lng1, pad=0.05):
 
 
 def _trip_days_coords(members):
-    """Per-day route coords for a multi-day trip's hero line (one flat [lng,lat,...]
-    list per activity, chronological). Skips activities with no/unreadable stream --
-    same defensive pattern as every other _load_trip_geo caller."""
+    """Per-day route geometry for a trip's hero line, chronological -- one
+    {"c": flat [lng,lat,...], "s": sport-bucket index} per activity. "s" lets the
+    hero color each day by its OWN sport (a trip roams sports: Stanley Park is
+    hike + run + ride), rather than painting every day the signature activity's
+    color. Skips activities with no/unreadable stream -- same defensive pattern as
+    every other _load_trip_geo caller."""
     days = []
     for r in members:
         geo = _load_trip_geo(r["id"])
         if geo and geo.get("coords"):
-            days.append(geo["coords"])
+            days.append({"c": geo["coords"], "s": _bucket(r.get("sport_type", ""))})
     return days
+
+
+def _days_bbox(days, start_latlngs):
+    """(lat0, lat1, lng0, lng1) covering every rendered day of a trip.
+
+    The camera box MUST be derived from the drawn geometry, not from activity
+    START points alone: a start point is one end of a route, so a start-point box
+    can (and did) clip the trip's own line -- Whitney's route reaches -118.2970
+    while its start-point box stopped at -118.2903.
+
+    `start_latlngs` (every cluster member's start) is UNIONED in, not used only as
+    a fallback. For an activity with a stream this is a no-op -- RDP keeps the
+    endpoints, so its start is already in `days` -- but it keeps a member whose
+    stream is missing/unreadable inside the frame instead of silently dropping it,
+    and guarantees a non-empty box for a cluster with no readable geometry at all."""
+    lats, lngs = [], []
+    for d in days:
+        c = d["c"]
+        for i in range(0, len(c), 2):
+            lngs.append(c[i])
+            lats.append(c[i + 1])
+    for lat, lng in start_latlngs:
+        lats.append(lat)
+        lngs.append(lng)
+    return min(lats), max(lats), min(lngs), max(lngs)
 
 
 def _away_clusters(rows):
@@ -2139,19 +2192,23 @@ def _passport_data(rows):
             sigact = sig_members[0]
             used.add(ci)
             d0, d1 = c[0][0], c[-1][0]
-            lats = [ll[0] for _, ll, _ in c]
-            lngs = [ll[1] for _, ll, _ in c]
             slot = "t%d" % len(featured)
             geo = _load_trip_geo(sigact["id"]) or {}
-            # days: only the cluster members matching THIS trip's sig, not the whole
-            # cluster -- some clusters span multiple unrelated trips/legs merged by
-            # _away_clusters' day-gap rule (e.g. Stanley Park's cluster also holds a
-            # Bellevue/Seattle leg that isn't part of the "Stanley Park" stamp).
+            # days = the WHOLE cluster. `sig` picks the signature activity (the
+            # thumbnail's GPS) and nothing else -- it must NOT filter the route set.
+            # The cluster IS the trip: the spec pins geography-ignored day-gap
+            # clustering ("the Pacific-NW trip roams Seattle->Vancouver and MUST
+            # stay one trip"), and this stamp's own date span, sport tags and fly
+            # box are all computed from c. Filtering days by sig (97addbf) left
+            # every trip whose days aren't named after it -- all but Maine Hut --
+            # framed on ground it never drew: Whitney drew 1 day of 3.
+            days = _trip_days_coords([r for _, _, r in c])
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
                         "elev": geo.get("elev", []), "coords": geo.get("coords", []),
-                        "days": _trip_days_coords(sig_members),
+                        "days": days,
                         "id": sigact["id"], "sci": _bucket(sigact.get("sport_type", "")),
-                        "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
+                        "flypri": 2,
+                        "fly": _fly_box(*_days_bbox(days, [ll for _, ll, _ in c]))}
             featured.append({
                 "slot": slot, "region": spec["region"], "caption": spec["caption"],
                 "dates": _date_span(d0, d1),
@@ -2178,24 +2235,23 @@ def _passport_data(rows):
                 la0, la1, ln0, ln1 = ll[0], ll[0], ll[1], ll[1]
             pc[slot] = {"fly": _fly_box(la0, la1, ln0, ln1), "id": r["id"],
                         "coords": (geo or {}).get("coords", []),
+                        "flypri": 1,
                         "sci": _bucket(r.get("sport_type", ""))}
             brief.append({"slot": slot, "title": r.get("name") or "",
                           "date": "%s %d" % (_MONTHS[d0.month], d0.year)})
         else:
-            lats = [ll[0] for _, ll, _ in c]
-            lngs = [ll[1] for _, ll, _ in c]
             sigact = max(c, key=lambda x: (mf(x[2].get("total_elevation_gain_m")) or 0,
                                            mf(x[2].get("distance_km")) or 0))[2]
             slot = "t%d" % len(featured)
             geo = _load_trip_geo(sigact["id"]) or {}
-            # No curated sig to filter by here (unlike the featured-trip loop above)
-            # -- the whole cluster IS the trip, same as this branch's existing
-            # whole-cluster fly box, so days covers every member.
+            # Whole cluster, same as the curated loop above.
+            days = _trip_days_coords([r for _, _, r in c])
             pc[slot] = {"path": geo.get("path", []), "grade": geo.get("grade", []),
                         "elev": geo.get("elev", []), "coords": geo.get("coords", []),
-                        "days": _trip_days_coords([r for _, _, r in c]),
+                        "days": days,
                         "id": sigact["id"], "sci": _bucket(sigact.get("sport_type", "")),
-                        "fly": _fly_box(min(lats), max(lats), min(lngs), max(lngs))}
+                        "flypri": 2,
+                        "fly": _fly_box(*_days_bbox(days, [ll for _, ll, _ in c]))}
             featured.append({
                 "slot": slot, "region": "", "caption": sigact.get("name") or "",
                 "dates": _date_span(d0, d1),
@@ -2234,12 +2290,19 @@ def _peaks_data(rows):
                 coord = "%.2f°N  %.2f°W" % (ll[0], -ll[1])
             if geo:
                 la0, la1, ln0, ln1 = geo["bbox"]
+                # flypri 0: a peak row is ONE activity, so its box is a subset of
+                # the trip box the passport publishes for the same id (Whitney and
+                # San Jacinto are in both payloads). Peaks is emitted second, so
+                # before flypri existed it silently overwrote placesFlyTargets and
+                # a '?a=<whitney>' deep link framed the summit day only -- leaving
+                # the trip's other days drawn but off-screen. See the publish loop.
                 pc[slot] = {"elev": geo["elev"], "id": act["id"],
                             "coords": geo.get("coords", []),
                             "sci": _bucket(act.get("sport_type", "")),
+                            "flypri": 0,
                             "fly": _fly_box(la0, la1, ln0, ln1)}
             elif ll:
-                pc[slot] = {"elev": [], "id": act["id"],
+                pc[slot] = {"elev": [], "id": act["id"], "flypri": 0,
                             "fly": _fly_box(ll[0], ll[0], ll[1], ll[1])}
         peaks.append({"slot": slot, "overline": spec["overline"],
                       "value": spec["value"], "title": title, "coord": coord})
@@ -2506,14 +2569,26 @@ __CHIPS__
   // Publish each target's fly box under its stable Strava activity id so the hero
   // can resolve a '#places?a=<id>' deep link on load (merged with the peaks payload).
   window.placesFlyTargets = window.placesFlyTargets || {};
+  window.placesFlyPri = window.placesFlyPri || {};
   window.placesRouteCoords = window.placesRouteCoords || {};
   window.placesRouteColorIdx = window.placesRouteColorIdx || {};
   window.placesRouteDays = window.placesRouteDays || {};
   Object.keys(PC).forEach(function(s){
-    var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
-    if(e && e.id && e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
-    if(e && e.id && typeof e.sci === 'number'){ window.placesRouteColorIdx[e.id] = e.sci; }
-    if(e && e.id && e.days && e.days.length){ window.placesRouteDays[e.id] = e.days; }
+    var e = PC[s]; if(!e || !e.id) return;
+    // These two payloads DO collide on id (Mt. Whitney and San Jacinto are each a
+    // passport trip AND a peaks row). Highest flypri wins -- trip (2) > brief stop
+    // (1) > single-activity peak row (0) -- so the surviving box is always the one
+    // containing every line the hero draws for that id, regardless of which script
+    // is emitted last. Before this, peaks (emitted second) silently won and framed
+    // a multi-day trip on its summit day, stranding the other days off-screen.
+    var pri = (typeof e.flypri === 'number') ? e.flypri : 0;
+    if(e.fly && (!(e.id in window.placesFlyTargets) || pri >= window.placesFlyPri[e.id])){
+      window.placesFlyTargets[e.id] = e.fly;
+      window.placesFlyPri[e.id] = pri;
+    }
+    if(e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
+    if(typeof e.sci === 'number'){ window.placesRouteColorIdx[e.id] = e.sci; }
+    if(e.days && e.days.length){ window.placesRouteDays[e.id] = e.days; }
   });
 
   // grade -> color (cool descent blue, flat slate, warm climb amber) -- reuses
@@ -2695,14 +2770,26 @@ __ROWS__
   // Publish each target's fly box under its stable Strava activity id so the hero
   // can resolve a '#places?a=<id>' deep link on load (merged with the passport payload).
   window.placesFlyTargets = window.placesFlyTargets || {};
+  window.placesFlyPri = window.placesFlyPri || {};
   window.placesRouteCoords = window.placesRouteCoords || {};
   window.placesRouteColorIdx = window.placesRouteColorIdx || {};
   window.placesRouteDays = window.placesRouteDays || {};
   Object.keys(PC).forEach(function(s){
-    var e = PC[s]; if(e && e.id && e.fly){ window.placesFlyTargets[e.id] = e.fly; }
-    if(e && e.id && e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
-    if(e && e.id && typeof e.sci === 'number'){ window.placesRouteColorIdx[e.id] = e.sci; }
-    if(e && e.id && e.days && e.days.length){ window.placesRouteDays[e.id] = e.days; }
+    var e = PC[s]; if(!e || !e.id) return;
+    // These two payloads DO collide on id (Mt. Whitney and San Jacinto are each a
+    // passport trip AND a peaks row). Highest flypri wins -- trip (2) > brief stop
+    // (1) > single-activity peak row (0) -- so the surviving box is always the one
+    // containing every line the hero draws for that id, regardless of which script
+    // is emitted last. Before this, peaks (emitted second) silently won and framed
+    // a multi-day trip on its summit day, stranding the other days off-screen.
+    var pri = (typeof e.flypri === 'number') ? e.flypri : 0;
+    if(e.fly && (!(e.id in window.placesFlyTargets) || pri >= window.placesFlyPri[e.id])){
+      window.placesFlyTargets[e.id] = e.fly;
+      window.placesFlyPri[e.id] = pri;
+    }
+    if(e.coords && e.coords.length){ window.placesRouteCoords[e.id] = e.coords; }
+    if(typeof e.sci === 'number'){ window.placesRouteColorIdx[e.id] = e.sci; }
+    if(e.days && e.days.length){ window.placesRouteDays[e.id] = e.days; }
   });
 
   function drawSpark(cv){
