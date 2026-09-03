@@ -33,3 +33,6 @@ tools/preview-output/
 *.asv
 *.autosave
 Untitled.*
+
+# Natural Earth download cache for tools/eink_route_maps.py / gen_routes.py
+strava-data/assets/cache/
