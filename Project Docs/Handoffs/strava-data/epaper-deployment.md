@@ -15,15 +15,19 @@ that density is why the cards enforce a 26 px text floor and a 3 px stroke floor
 
 ## What gets published
 
-All four land in `running-log/` — already the GitHub Pages publish root — and all are **gitignored**
-like the dashboards' HTML. They are built from data + Python by the deploy workflow, never committed.
+All of it lands in `running-log/` — already the GitHub Pages publish root — and all of it is
+**gitignored** like the dashboards' HTML. Built from data + Python by the deploy workflow, never
+committed.
 
 | File | Who reads it |
 |---|---|
 | `epaper.html` | The panel, via SenseCraft's **Web** function. One card, exactly 800×480, no JS. |
 | `feed.xml` | The panel, via SenseCraft's **RSS** function. One item per card, plain text. |
+| `epaper/<id>.html` | The panel, if you want **one fixed card** instead of the rotation — see below. |
 | `epaper-all.html` | You. The proof sheet — every card at real size, grouped by family. |
 | `feed.json` | Escape hatch for HMI Canvas or anything else later. |
+
+64 cards build; 17 of them rotate.
 
 Base URL: `https://ducktapegirl.github.io/distance-nerd-stuff/`
 
@@ -63,6 +67,27 @@ with it, and the panel will show whatever it cached.
 For checking the *design* rather than the device, no tunnel is needed — open
 `http://127.0.0.1:8765/epaper-all.html` in a browser.
 
+### Verify locally before merging
+
+Before either route, run the automated pass. It is far better than squinting at the proof sheet at
+the wrong scale, because it measures the two things that decide whether a card is readable on the
+actual panel:
+
+```bash
+uv run python strava-data/build_feed.py
+uv run python tools/epaper_check.py
+```
+
+It checks `feed.xml` (well-formed, at least 17 items, unique GUIDs, no metric units) and then every
+page at exactly 800×480: nothing scrolls, one `<svg>`, no text under 26 px, no effective stroke
+under 3 px, no two text boxes overlapping, nothing drawn off-panel, clean console. Exit 1 on any
+failure, and a screenshot of each card under `tools/preview-output/epaper/`.
+
+The overlap check is the one that earns its keep: the cards are hand-placed at absolute user units
+with no reflow, so a longer activity name or an extra row prints one label straight through another
+without changing any font size. It needs Playwright (`uv add --dev playwright && uv run playwright
+install chromium`); `--probe` reports whether it can run here.
+
 ---
 
 ## Step 1 — firmware
@@ -94,7 +119,9 @@ Needs a **2.4 GHz** network.
 - **Web function** → `https://ducktapegirl.github.io/distance-nerd-stuff/epaper.html`
   This is the main event: the card of the day at exactly 800×480.
 - **RSS function** → `https://ducktapegirl.github.io/distance-nerd-stuff/feed.xml`
-  All 57 cards as one-line text items — useful as a second page or a fallback.
+  All 64 cards as one-line text items — useful as a second page or a fallback.
+- **To pin one card instead**, point the Web function at
+  `…/epaper/<id>.html` (e.g. `…/epaper/haiku.html`) rather than `…/epaper.html`.
 
 ---
 
@@ -142,8 +169,13 @@ count would describe the cron schedule rather than the athlete.
 ## Changing what shows
 
 - **Which cards rotate:** `ROTATION` in `strava-data/feed/cards.py` — a list of card ids. Currently
-  11, so the cycle is 11 days. Every other card still builds and still ships in `feed.xml` and on
-  the proof sheet; promoting one is a one-line edit.
+  17, so the cycle is 17 days. Every other card still builds and still ships in `feed.xml`, on the
+  proof sheet, and at its own `epaper/<id>.html`; promoting one is a one-line edit.
+- **Pinning one card instead of the rotation:** point the Web function at
+  `…/epaper/<id>.html` — e.g. `…/epaper/journey-run.html` — instead of `…/epaper.html`. Same page
+  renderer, same 800×480, but it never changes. Card ids are the `id` field in `feed.json` and the
+  filenames in `running-log/epaper/`. There is no `?card=` query and there cannot be one: the panel
+  runs no JavaScript, so the choice has to be made at build time or in the URL.
 - **Where the Journey cards go:** `CORRIDORS` in `strava-data/tools/gen_journey.py`, then re-run
   that tool. Not `feed/journey.py` — that only reads the generated asset.
 - **A new card:** a `@card(idea, family, recipe)` function in `cards.py` composed from

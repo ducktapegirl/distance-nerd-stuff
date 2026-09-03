@@ -1,7 +1,20 @@
 # E-paper feed — merged build plan
 
-**Status:** merged plan, not yet executed · **Created:** 2026-09-03 · **Owner:** unassigned
-**Branch to execute on:** `claude/strava-rss-display-brainstorm-z26d8r` (this branch)
+**Status:** **built** 2026-09-03 · **Created:** 2026-09-03 · **Owner:** unassigned
+**Branch executed on:** `claude/strava-rss-display-brainstorm-z26d8r` (this branch)
+
+**Two places the build diverged from this plan, both deliberate:**
+
+1. **64 cards, not 63.** The plan's arithmetic treated the existing build as 56 cards; it was
+   already 57, because catalogue idea 19 builds both `journey-run` and `journey-bike`. Seven net
+   new cards (eight added, `animals` removed in favour of `wildlife`) makes 64. The rotation is 17
+   as planned.
+2. **Step 5's verification script grew an overlap check.** The planned checks (text >= 26 px,
+   stroke >= 3 px, 800x480, one `<svg>`, no console errors) all pass on a card whose labels are
+   printed on top of each other, which is the failure mode these hand-placed absolute layouts
+   actually have. `tools/epaper_check.py` therefore also compares every pair of text boxes and
+   flags anything drawn off-panel. It found four real collisions in the new cards and one
+   pre-existing one in `record-book`, whose kicker was printing through a 110 px headline.
 
 Supersedes `Project Docs/Plans/strava-data/eink-feed-plan.md` on branch
 `claude/strava-rss-feed-display-uoiv93` (commit `7984afd`). That branch stays unmerged as a
