@@ -25,7 +25,7 @@ Human-facing documents (not agent-facing config) live under **`Project Docs/`**,
 
 ```
 strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
-                    build_feed.py + feed/ → ../running-log/{feed.xml, epaper.html, epaper-all.html, feed.json} (e-paper output)
+                    build_feed.py + feed/ → ../running-log/{feed.xml, epaper.html, epaper-all.html, feed.json, epaper/<id>.html} (e-paper output)
 running-log/        index.html, running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
 Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
   Plans/              proposed/future work + cross-cutting
@@ -82,12 +82,21 @@ A **second, independent output target** alongside the dashboard, for a reTermina
 panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and Web functions.
 `strava-data/build_feed.py` is a thin entrypoint; the work lives in `strava-data/feed/`
 (`config.py`, `metrics.py`, `journey.py`, `geo.py`, `places.py`, `stats.py`, `svg.py`,
-`layouts.py`, `cards.py`, `rss.py`, `page.py`). All 56 catalogued ideas are built. **Add a new card as a
+`layouts.py`, `cards.py`, `fmt.py`, `rss.py`, `page.py`). All catalogued ideas are built —
+**64 cards**, since ideas 3 and 19 each build more than one. **Add a new card as a
 `@card(idea, family, recipe)`-decorated function in `cards.py` composed from `layouts.py`** — not
-in the entrypoint, and not as a bespoke layout: the eight layouts exist so 56 cards cannot drift
+in the entrypoint, and not as a bespoke layout: the eleven layouts exist so 64 cards cannot drift
 apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignored** like the
 dashboards' HTML. `epaper-all.html` is the proof sheet — every card at real size, grouped by
-family — and `cards.ROTATION` is the 11-card subset the device actually cycles daily.
+family; `epaper/<id>.html` is one card on its own, so a single card can be pinned by URL in
+SenseCraft or checked locally; and `cards.ROTATION` is the 17-card subset the device cycles daily.
+
+**Never use `strftime("%-d")` or `"%-H"`** — they are glibc extensions and raise `ValueError` on
+Windows, which is where this is developed. Use `fmt.day(d, "%d %b %Y")` and `fmt.hm(t)`.
+
+Inputs are `strava-data/data/` **and** `running-log/running_log.csv` — the paper-era 2003–2007
+log, which is the other dashboard's *input*, not its output, so the feed reads a checked-in CSV
+rather than depending on that build. It has a BOM; read it `utf-8-sig`.
 
 `feed/` deliberately imports nothing from `dashboard/`: those modules pull in plotly and a
 MapTiler key. The price is that `places.py` **duplicates** the dashboard's state boxes, home boxes
@@ -108,8 +117,20 @@ Getting it onto the panel — pairing, URLs, and the three refresh clocks:
 **`deploy.yml` has a daily `schedule` trigger and it is not redundant.** `card_of_the_day` is
 chosen at *build* time — the panel runs no JS — so `epaper.html` holds one fixed card until the
 site rebuilds. The daily run re-renders committed data (no Strava API calls) so the rotation
-actually advances. `cards.ROTATION` is the 11 cards the device cycles; the other 46 still build
-and still ship in `feed.xml` and the proof sheet.
+actually advances. `cards.ROTATION` is the 17 cards the device cycles; the other 47 still build
+and still ship in `feed.xml`, the proof sheet and their own `epaper/<id>.html`.
+
+**`metrics.load()` treats the last day with data as "today", and `anniversary` is the one
+deliberate exception.** That card looks for a race in the paper log near the *build* date, because
+an anniversary that arrived while the fetch cron was asleep is still an anniversary. Its recipe
+string says so; don't "fix" it to use `asof`.
+
+**Verify rendered cards with `uv run python tools/epaper_check.py`** (dev-only, needs Playwright,
+`--probe` reports usability). It checks `feed.xml` and then every page at 800×480 for text below
+26 px, effective strokes below 3 px, overlapping text, and anything drawn off-panel — the cards
+are hand-placed at absolute user units with no reflow, so a longer name silently prints one label
+on top of another and no other check will catch it. It is **not** in CI, for the same reason the
+mobile pass isn't: `uv sync --no-dev` excludes Playwright.
 
 Panel rules — these are constraints, not preferences, and `svg.py` enforces the first two:
 - **Text below 26 px raises**; strokes below 3 px are clamped. At 235 PPI the whole screen is
@@ -129,8 +150,15 @@ define preview servers. Otherwise run
 manually — both dashboards' HTML lives under `running-log/`:
 
 ```bash
-uv run python -m http.server 8765 --directory "running-log" # open index.html or strava.html
+uv run python -m http.server 8765 --directory "running-log"
 ```
+
+| Page | What it is |
+|---|---|
+| `/index.html`, `/strava.html` | the two dashboards |
+| `/epaper-all.html` | proof sheet — every card at real panel size |
+| `/epaper.html` | exactly what the panel gets today |
+| `/epaper/<id>.html` | one card on its own |
 
 When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy MapTiler API restrictions.
 
@@ -192,7 +220,7 @@ Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manua
 
 ## CI on pull requests
 
-`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy): `uv sync --no-dev` → build both dashboards → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `index.html` as text.
+`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy): `uv sync --no-dev` → build both dashboards → build the e-paper feed → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `index.html` as text.
 
 Two things it deliberately does **not** do, and shouldn't be "fixed" to do:
 - **It uses `pull_request`, never `pull_request_target`.** The repo is public; `pull_request_target` would run fork-authored code with secrets and a write token.

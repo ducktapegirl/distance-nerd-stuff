@@ -1,6 +1,7 @@
 # Strava on e-paper: display ideas for the reTerminal Sticky
 
-**Status:** all 56 ideas built (11 in the device rotation) · **Created:** 2026-09-03 · **Owner:** unassigned
+**Status:** all 62 ideas built as 64 cards (17 in the device rotation) · **Created:** 2026-09-03 ·
+**Updated:** 2026-09-03 (merged the `uoiv93` plan: entries 57-62 added, 52 rewritten) · **Owner:** unassigned
 
 Companion to the code in `strava-data/feed/` and the entrypoint `strava-data/build_feed.py`.
 This document is the idea catalogue; the code is the subset that already runs.
@@ -90,10 +91,11 @@ budget (there is no text measurement at build time, so widths are approximated a
 
 ## The catalogue
 
-56 ideas, **all of them now built** as real `card_*` functions. **[ROTATION]** marks the eleven the
-device cycles through daily, hand-picked 2026-09-03; **[CATALOGUE]** ones exist, render, and ship in
-`feed.xml` and on the proof sheet, but are held back from the panel. Every recipe was checked against the real data; the numbers
-quoted are live as of the 2026-08-30 fetch.
+62 ideas, **all of them now built** as 64 real `card_*` functions — ideas 3 and 19 each build more
+than one. **[ROTATION]** marks the sixteen ideas (seventeen cards) the device cycles through daily,
+hand-picked 2026-09-03; **[CATALOGUE]** ones exist, render, and ship in `feed.xml`, on the proof
+sheet and at their own `epaper/<id>.html`, but are held back from the panel. Every recipe was checked
+against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 
 ### A · Right now — state you would glance at
 
@@ -105,11 +107,16 @@ quoted are live as of the 2026-08-30 fetch.
    the readout.
 2. **[CATALOGUE]** **Days since last activity** — one enormous numeral; the whole screen is the number. Trivial off
    `streaks()["days_since"]`.
-3. **[CATALOGUE]** **Last activity card** — sport glyph, name, distance, pace, elevation. The dashboard's
-   `_activity_detail_json` already emits exactly these fields, pre-formatted.
+3. **[ROTATION]** **Last activity** — three cards off one idea. `last` is the words (name and
+   description, typographically); `last-route` is the shape alone; **`latest` is both** — the GPS
+   track across the top with a 4x2 grid of its own numbers beneath, and it is the one that rotates.
+   On a fridge magnet the map and the numbers want to arrive together. The dashboard's
+   `_activity_detail_json` already emits these fields, pre-formatted.
 4. **[CATALOGUE]** **Rolling 7-day totals** — miles + hours + feet as three big numbers. `totals(window(acts, 7))`.
-5. **[ROTATION]** **Fresh / cooked** — a single word from ACWR + days-since, with a face-glyph. The most
-   "fridge magnet" idea in the list.
+5. **[CATALOGUE]** **Fresh / cooked** — a single word from ACWR + days-since, with a face-glyph. The most
+   "fridge magnet" idea in the list, and **demoted out of the rotation** when the merged plan landed:
+   a readiness verdict computed from data that is at most a fortnight fresh describes the fetch cron
+   as much as the athlete. The companion "rest nudge" card was cut for the same reason.
 6. **[CATALOGUE]** **Last activity's route** — as #36 but pinned to the most recent GPS activity rather than rotating.
 
 ### B · Streaks and consistency
@@ -161,6 +168,11 @@ quoted are live as of the 2026-08-30 fetch.
 29. **[CATALOGUE]** **The crossover fact** — reuse `chart_seg_grade_vs_time`: the grade at which running overtakes
     mountain biking. A one-sentence card, no chart.
 
+57. **[ROTATION]** **Segment of the month** — whichever segment saw the most efforts in the last 30
+    days (ties break on lifetime efforts), with best / latest / trend, and a sparkline of the last
+    24 effort times **plotted inverted** so a rising line means getting faster. *Darkwood Lite,
+    4x in 30 days, best 2:44, +10% slower lately.* Ported from the `uoiv93` prototype.
+
 ### E · Gear — the most actionable category
 
 30. **[CATALOGUE]** **Shoe mileage bars** — one row per non-retired shoe: data-glyph, name, filled bar,
@@ -204,6 +216,12 @@ quoted are live as of the 2026-08-30 fetch.
     time-of-day resolved, not a daily max (a 07:34 run reads 0.1).
 43. **[CATALOGUE]** **Dark o'clock** — *22 starts before 8 a.m., earliest 03:17.* A moon/sun split glyph.
 
+59. **[ROTATION]** **UV this week** — sum of `uv_index x moving hours` over the ISO week, as a
+    seven-cell day strip under one big number, with a sunscreen tube that fills toward 20 UV-hours.
+    Only 339 of 374 activities carry a UV value; the rest are excluded rather than counted as zero,
+    which would quietly understate every week that had an indoor session in it. Pairs with #42,
+    which is a lifetime max rather than a dose.
+
 ### H · Records and superlatives
 
 44. **[CATALOGUE]** **Record book** — the six pinned `_PEAKS_DEF` rows, one per rotation day, each a full-screen fact.
@@ -217,6 +235,16 @@ quoted are live as of the 2026-08-30 fetch.
 48. **[CATALOGUE]** **A year ago this week** — a wider, far more reliable window than #47. Prefer this one.
 49. **[CATALOGUE]** **First ever** — the first activity in the dataset, framed as an origin story.
 
+60. **[ROTATION]** **This week in 2004** — the same ISO week in the paper-era log against this one:
+    miles, average pace, and up to four workouts with a race flag, the old log in a shaded band
+    behind the present. The CSV's `week_of_year` is already the ISO week, so it joins straight onto
+    `date.isocalendar()`. Ported from the `uoiv93` prototype.
+61. **[ROTATION]** **Race anniversary** — a race from the 2003-07 log whose calendar date falls within
+    +/-7 days of today (else the next one coming up): "21 years ago today", the distance, the finish
+    time as the headline, and what she wrote about it afterwards. **The one card keyed to the wall
+    clock** rather than to the last day with data — an anniversary that arrived while the fetch cron
+    was asleep is still an anniversary.
+
 ### J · Voice and whimsy
 
 50. **[CATALOGUE]** **The joggernaut byline** — the Strava bio (*"I'm the joggernaut, bitch"*) as a masthead.
@@ -225,9 +253,24 @@ quoted are live as of the 2026-08-30 fetch.
     daily. Picks only from activities that *have* a description (291 of 374). Zero charts, maximum
     charm — the titles are genuinely funny ("Oooh, clockwise!", "🦌", "Saw a massive coyote, hazed
     it, then almost fell into a small ravine while looking at it sideways and running forwards").
-52. **[ROTATION]** **Wildlife index** — titles and descriptions matched against an animal word list. *29
-    activities, led by coyote ×7.* Silly, cheap, and yours.
+52. **[ROTATION]** **Wildlife scoreboard** (`wildlife`, was `animals`) — titles and descriptions matched
+    against an animal word list, as a two-column board of icon + bar + count. *24 activities, 27
+    mentions across 10 species, led by coyote ×7.* Matching is now **whole-word with an optional
+    plural**, ported from the `uoiv93` prototype along with its animal silhouettes: the original
+    substring test counted "slowly" as an owl and "sealed" as a seal, which is where the old
+    "29 activities" came from. Silly, cheap, and yours.
 53. **[CATALOGUE]** **Emoji-title census** — how many activity names are pure emoji.
+
+58. **[ROTATION]** **Activity-name hall of fame** — five of the 242 activities that got a real name
+    rather than "Morning Run", scored on punctuation, length, kudos and emoji, in a window that
+    moves by ISO week. Names wrap to two lines rather than truncating: the names *are* the card.
+    Ported from the `uoiv93` prototype.
+62. **[ROTATION]** **Daily haiku** — a 5-7-5 assembled from the newest activity's own numbers, with no
+    model and no network: a fixed vocabulary, ~18 templates per line, and a vowel-group syllable
+    counter that decides which of them scan today. Seeded by the activity id, so the same ride
+    always writes the same poem. Templates naming an animal drop out unless that activity actually
+    recorded a sighting, and templates counting miles drop out for a zero-distance session — the
+    card should not invent a hawk it did not see.
 
 ### K · Meta and data-nerd
 
@@ -311,13 +354,27 @@ from what ships.
 `strava-data/feed/` — `config.py` (panel constants, tone ramp), `metrics.py` (pure computation),
 `journey.py` (the destination ladders), `places.py` (region clustering, home boxes, the record
 book), `stats.py` (OLS and coefficient of variation), `svg.py` (primitives, dither, glyphs, the
-`Card` container), `layouts.py` (eight composable card layouts), `cards.py` (57 builders — 56 ideas,
-with the Journey ladder counted twice for running and riding), `rss.py`, `page.py`. Entrypoint
-`strava-data/build_feed.py`, wired into `deploy.yml` after the two existing builds.
+`Card` container), `layouts.py` (eleven composable card layouts), `fmt.py` (portable date
+formatting — `%-d` is a glibc extension and raises on Windows), `cards.py` (64 builders — 62 ideas,
+with idea 3 building three cards and the Journey ladder two), `rss.py`, `page.py`. Entrypoint
+`strava-data/build_feed.py`, wired into `deploy.yml` and `pr-checks.yml` after the two existing
+builds. Inputs are `strava-data/data/` **and** `running-log/running_log.csv`, the paper-era log,
+which entries 60 and 61 read.
 
-**Layouts came first, on purpose.** Fifty-six hand-laid-out cards would have drifted apart within a
-week; eight layouts (`hero_number`, `stat_trio`, `bar_rows`, `two_up`, `text_card`, `spark`,
-`cell_grid`, `dial`, `route_card`) carry the shared structure so `cards.py` is mostly data binding.
+Every card also ships as its own page at `running-log/epaper/<id>.html`, so one card can be pinned
+on the device by URL. There is no `?card=` query and there cannot be one: the panel runs no
+JavaScript, so the choice is made at build time or in the URL.
+
+**Layouts came first, on purpose.** Sixty-four hand-laid-out cards would have drifted apart within a
+week; eleven layouts (`hero_number`, `stat_trio`, `bar_rows`, `bar_grid`, `two_up`, `text_card`,
+`spark`, `cell_grid`, `dial`, `route_card`, `route_stats`, `then_now`) carry the shared structure so
+`cards.py` is mostly data binding.
+
+**Verification is `tools/epaper_check.py`**, not a squint at the proof sheet. It measures every card
+at 800x480 for text under 26 px, effective strokes under 3 px, overlapping text and off-panel
+drawing. The overlap check earns its keep: hand-placed absolute layouts with no reflow mean a longer
+activity name prints one label straight through another while every other check still passes — which
+is exactly how it found a pre-existing bug in the record-book card.
 
 **`feed/` deliberately does not import from `dashboard/`.** `geometry_stats.py` and
 `charts_places.py` hold equivalent maths, but both pull in plotly and `dashboard/config.py` (which
