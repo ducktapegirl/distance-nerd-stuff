@@ -14,7 +14,7 @@ import json
 import os
 from datetime import date
 
-from feed.cards import build_cards, card_of_the_day
+from feed.cards import FAMILIES, ROTATION, build_cards, card_of_the_day
 from feed.config import OUT_JSON, OUT_PAGE, OUT_RSS, OUT_SHEET, SITE
 from feed.metrics import load
 from feed.page import render_contact_sheet, render_page
@@ -34,13 +34,17 @@ def main():
     outputs = {
         OUT_RSS: build_rss(cards, asof, bundle["athlete"]),
         OUT_PAGE: render_page(today_card, asof),
-        OUT_SHEET: render_contact_sheet(cards, asof),
+        OUT_SHEET: render_contact_sheet(cards, asof, ROTATION, FAMILIES),
         OUT_JSON: json.dumps({
             "as_of": asof.isoformat(),
             "built": today.isoformat(),
             "site": SITE,
             "card_of_the_day": today_card.id,
-            "cards": [{"id": c.id, "title": c.title, "summary": c.summary} for c in cards],
+            "rotation": list(ROTATION),
+            "cards": [{"id": c.id, "idea": c.idea, "family": c.family,
+                       "title": c.title, "summary": c.summary,
+                       "recipe": c.recipe, "in_rotation": c.id in set(ROTATION)}
+                      for c in cards],
         }, indent=2) + "\n",
     }
 

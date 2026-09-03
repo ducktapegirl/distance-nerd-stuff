@@ -96,16 +96,23 @@ def arc(cx, cy, r, a0, a1, stroke=BLACK, sw=MIN_STROKE, cap="butt"):
             f'stroke-linecap="{cap}"/>')
 
 
-def fit_text(s, size, max_w, min_size=MIN_TEXT, ratio=0.55):
+def fit_text(s, size, max_w, min_size=MIN_TEXT, ratio=0.55, tracking=0):
     """Shrink ``size`` until ``s`` fits ``max_w``, then ellipsize if it still won't.
 
     ``ratio`` is an average glyph-width-to-font-size factor for a humanist
-    sans - close enough to keep long segment names inside the card without
-    measuring text, which we cannot do at build time.
+    sans - close enough to keep long names inside a card without measuring
+    text, which we cannot do at build time. ``tracking`` must be passed
+    whenever the caller sets letter-spacing: at 26 px with tracking 4 it adds
+    a sixth to every advance, which is the difference between fitting and
+    running off the edge.
     """
-    while size > min_size and len(s) * size * ratio > max_w:
+    def width(txt, sz):
+        return len(txt) * (sz * ratio + tracking)
+
+    while size > min_size and width(s, size) > max_w:
         size -= 1
-    budget = int(max_w / (size * ratio))
+    per = size * ratio + tracking
+    budget = int(max_w / per) if per else len(s)
     if len(s) > budget:
         s = s[: max(1, budget - 1)].rstrip() + "…"
     return s, size
@@ -196,10 +203,13 @@ GLYPHS = {"run": glyph_runner, "bike": glyph_bike,
 class Card:
     """One 800x480 e-paper screen."""
 
-    def __init__(self, cid, title, summary):
+    def __init__(self, cid, title, summary, idea=None, family=None, recipe=None):
         self.id = cid
         self.title = title        # RSS <title> - the fact itself
         self.summary = summary    # RSS <description> - one sentence of context
+        self.idea = idea          # catalogue number, for the contact sheet
+        self.family = family      # catalogue family letter
+        self.recipe = recipe      # one line on where the numbers come from
         self.parts = []
 
     def add(self, *markup):
