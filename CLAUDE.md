@@ -81,9 +81,17 @@ uv run python strava-data/build_feed.py   # writes running-log/{feed.xml,epaper.
 A **second, independent output target** alongside the dashboard, for a reTerminal Sticky ePaper
 panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and Web functions.
 `strava-data/build_feed.py` is a thin entrypoint; the work lives in `strava-data/feed/`
-(`config.py`, `metrics.py`, `journey.py`, `svg.py`, `cards.py`, `rss.py`, `page.py`) — add new
-cards as `card_*` functions in `cards.py`, not in the entrypoint. Outputs go to `running-log/`
-(the Pages publish root) and are **gitignored** like the dashboards' HTML.
+(`config.py`, `metrics.py`, `journey.py`, `places.py`, `stats.py`, `svg.py`, `layouts.py`,
+`cards.py`, `rss.py`, `page.py`). All 56 catalogued ideas are built. **Add a new card as a
+`@card(idea, family, recipe)`-decorated function in `cards.py` composed from `layouts.py`** — not
+in the entrypoint, and not as a bespoke layout: the eight layouts exist so 56 cards cannot drift
+apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignored** like the
+dashboards' HTML. `epaper-all.html` is the proof sheet — every card at real size, grouped by
+family — and `cards.ROTATION` is the curated subset the device actually cycles daily.
+
+`feed/` deliberately imports nothing from `dashboard/`: those modules pull in plotly and a
+MapTiler key. The price is that `places.py` **duplicates** the dashboard's state boxes, home boxes
+and peaks record book — change one, change both.
 
 Idea catalogue and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-brainstorm.md`](Project%20Docs/Plans/strava-data/epaper-feed-brainstorm.md).
 
