@@ -25,6 +25,7 @@ Human-facing documents (not agent-facing config) live under **`Project Docs/`**,
 
 ```
 strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
+                    build_feed.py + feed/ → ../running-log/{feed.xml, epaper.html, epaper-all.html, feed.json} (e-paper output)
 running-log/        index.html, running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
 Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
   Plans/              proposed/future work + cross-cutting
@@ -70,6 +71,32 @@ uv run python "running-log/parse_log.py"
 # Regenerate index.html:
 uv run python "running-log/visualize_log.py"
 ```
+
+## Build the e-paper feed (reTerminal Sticky / SenseCraft HMI)
+
+```bash
+uv run python strava-data/build_feed.py   # writes running-log/{feed.xml,epaper.html,epaper-all.html,feed.json}
+```
+
+A **second, independent output target** alongside the dashboard, for a reTerminal Sticky ePaper
+panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and Web functions.
+`strava-data/build_feed.py` is a thin entrypoint; the work lives in `strava-data/feed/`
+(`config.py`, `metrics.py`, `journey.py`, `svg.py`, `cards.py`, `rss.py`, `page.py`) — add new
+cards as `card_*` functions in `cards.py`, not in the entrypoint. Outputs go to `running-log/`
+(the Pages publish root) and are **gitignored** like the dashboards' HTML.
+
+Idea catalogue and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-brainstorm.md`](Project%20Docs/Plans/strava-data/epaper-feed-brainstorm.md).
+
+Panel rules — these are constraints, not preferences, and `svg.py` enforces the first two:
+- **Text below 26 px raises**; strokes below 3 px are clamped. At 235 PPI the whole screen is
+  ~3.4"×2.0" (1 mm ≈ 9.3 px), so a 12 px label is physically invisible.
+- **Four tones only** (`#000`/`#555`/`#AAA`/`#FFF`) plus three dither patterns — use `svg.tone()`.
+  Encode categories by shape and pattern, quantity by tone. The dashboard's `SPORT_COLORS`
+  teal/amber mapping means nothing here.
+- **No Plotly, no JavaScript, no CDN, no webfonts.** Cards are whole-card SVG at exact user units.
+- Display units follow the same policy as the dashboard: miles, feet, min/mi, mph, °F.
+- `metrics.load()` treats **the last day with data** as "today", not the wall clock — the fetch
+  cron runs twice a month, so a wall-clock "days since" would describe the schedule, not the athlete.
 
 ## Preview
 
