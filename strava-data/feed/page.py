@@ -9,6 +9,7 @@ a real screen, showing every card in the catalogue at once.
 
 from collections import OrderedDict
 
+from . import fmt as F
 from .config import H, W, WHITE
 from .svg import esc
 
@@ -173,7 +174,7 @@ def render_contact_sheet(cards, asof, rotation=(), families=None):
     <div><dt>In rotation</dt><dd>{n_rot}</dd></div>
     <div><dt>Panel</dt><dd>3.97″ · 235 PPI</dd></div>
     <div><dt>Physical size</dt><dd>3.4″ × 2.0″</dd></div>
-    <div><dt>Data as of</dt><dd>{asof.strftime('%-d %b %Y')}</dd></div>
+    <div><dt>Data as of</dt><dd>{F.day(asof)}</dd></div>
   </dl>
   <div class="ramp"><span style="background:var(--tone-3)"></span>
     <span style="background:var(--tone-2)"></span>

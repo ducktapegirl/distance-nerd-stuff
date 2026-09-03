@@ -16,6 +16,7 @@ from datetime import date
 
 from nerd_common.format import mmss
 
+from . import fmt as F
 from . import layouts as L
 from . import metrics as M
 from . import places as P
@@ -86,7 +87,7 @@ def c02_days_since(b, o):
             f"The last recorded activity was {n} day{'s' if n != 1 else ''} ago.",
             "days since", b, 2, "A", "asof date minus the last active date")
     L.hero_number(c, n, sub="days since an activity" if n != 1 else "day since an activity")
-    return L.footer(c, f"last out: {b['acts'][-1]['_date'].strftime('%A %-d %B')}")
+    return L.footer(c, "last out: " + F.day(b["acts"][-1]["_date"], "%A %d %B"))
 
 
 @card(3, "A", "the newest row of activities.csv, unit-converted")
@@ -94,14 +95,14 @@ def c03_last_activity(b, o):
     a = b["acts"][-1]
     c = _mk("last", f"Last out — {a['name']}",
             f"{a['_mi']:.1f} mi of {a['sport_type']} with {a['_ft']:.0f} ft of climbing on "
-            f"{a['_date'].strftime('%-d %b %Y')}.",
+            f"{F.day(a['_date'])}.",
             "last activity", b, 3, "A", "the newest row of activities.csv, unit-converted")
     L.text_card(c, a["name"], a.get("description") or None,
                 tag=f"{a['_mi']:.1f} mi · {a['_ft']:.0f} ft · {a['sport_type']}")
     g = _sport_glyph(a["sport_type"])
     if g:
         c.add(g(W - PAD - 92, 92, 92))
-    return L.footer(c, a["_date"].strftime("%A %-d %B %Y"))
+    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
 
 @card(4, "A", "sum over the 7-day window ending at the last data day")
@@ -150,14 +151,14 @@ def c06_last_route(b, o):
         return None
     c = _mk("last-route", f"Last route — {a['name']}",
             f"The most recent GPS track: {a['_mi']:.1f} mi on "
-            f"{a['_date'].strftime('%-d %b %Y')}.",
+            f"{F.day(a['_date'])}.",
             "last route", b, 6, "A",
             "GPS stream of the most recent activity, cosine-corrected")
     L.route_card(c, r["path"], r["w"], r["h"], [
         (a["name"], 38, "bold", BLACK), (f"{a['_mi']:.1f} mi", 54, "bold", BLACK),
         (f"{a['_ft']:.0f} ft climbed", 28, "normal", DARK),
     ])
-    return L.footer(c, a["_date"].strftime("%A %-d %B %Y"))
+    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
 
 # ══ B · Streaks & consistency ═══════════════════════════════════════════
@@ -541,7 +542,7 @@ def c22_pr(b, o):
     c.add(S.text(PAD, 138, name, size, "bold"),
           S.text(PAD, 234, mmss(pr["best_s"]), 92, "bold"),
           S.text(PAD + 250, 234, f"on effort {pr['efforts']}", 30, fill=DARK),
-          S.text(PAD + 250, 196, pr["date"].strftime("%-d %b %Y").upper(), 26,
+          S.text(PAD + 250, 196, F.day(pr["date"]).upper(), 26,
                  fill=DARK, tracking=2))
     # Five-bar gates, capped so a 36x segment does not run off the card.
     x, y = PAD, 300
@@ -862,7 +863,7 @@ def c36_route(b, o):
     a = r["act"]
     c = _mk("route", f"Route of the day — {a['name']}",
             f"{a['_mi']:.1f} mi, {a['_ft']:.0f} ft of climbing, "
-            f"{a['_date'].strftime('%-d %b %Y')}.",
+            f"{F.day(a['_date'])}.",
             "route of the day", b, 36, "F",
             "one GPS stream chosen by date ordinal, aspect-fitted")
     L.route_card(c, r["path"], r["w"], r["h"], [
@@ -870,7 +871,7 @@ def c36_route(b, o):
         (f"{a['_ft']:.0f} ft climbed", 28, "normal", DARK),
         (a["sport_type"], 28, "normal", DARK),
     ])
-    return L.footer(c, a["_date"].strftime("%A %-d %B %Y"))
+    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
 
 @card(37, "F", "every GPS track, simplified to 64 points, tiled")
@@ -1046,9 +1047,9 @@ def c43_dark(b, o):
     early = sum(n for h, n in hours if h < 8)
     first = min(r["_dt"].time() for r in b["acts"])
     peak = max(n for _, n in hours) or 1
-    c = _mk("dark", f"{early} starts before 8am, earliest {first.strftime('%-H:%M')}",
+    c = _mk("dark", f"{early} starts before 8am, earliest {F.hm(first)}",
             f"{early} activities began before 8am; the earliest start on record is "
-            f"{first.strftime('%-H:%M')}.",
+            f"{F.hm(first)}.",
             "when she goes out", b, 43, "G",
             "start-hour histogram; count of pre-8am starts")
     bw = (W - 2 * PAD) / 24
@@ -1062,7 +1063,7 @@ def c43_dark(b, o):
         c.add(S.text(PAD + h * bw + 2, base + 34, f"{h:02d}", 26, fill=DARK))
     c.add(S.text(PAD, 172, f"{early}", 84, "bold"),
           S.text(PAD + 130, 172, "BEFORE 8AM", 30, "bold", fill=DARK, tracking=3))
-    return L.footer(c, f"earliest ever {first.strftime('%-H:%M')} · dark bars are pre-8am")
+    return L.footer(c, f"earliest ever {F.hm(first)} · dark bars are pre-8am")
 
 
 # ══ H · Records ═════════════════════════════════════════════════════════
@@ -1106,7 +1107,7 @@ def c46_kudos(b, o):
             "peak kudos", b, 46, "H", "max kudos_count in activities.csv")
     L.text_card(c, a["name"], a.get("description") or None,
                 tag=f"{a['kudos_count']} KUDOS · {a['_mi']:.1f} MI · {a['sport_type'].upper()}")
-    return L.footer(c, a["_date"].strftime("%A %-d %B %Y"))
+    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
 
 # ══ I · Memory ══════════════════════════════════════════════════════════
@@ -1159,10 +1160,10 @@ def c49_first(b, o):
     a = b["acts"][0]
     c = _mk("first", f"It started with “{a['name']}”",
             f"The first activity in the log: {a['_mi']:.1f} mi of {a['sport_type']} on "
-            f"{a['_date'].strftime('%-d %B %Y')}.",
+            f"{F.day(a['_date'], '%d %B %Y')}.",
             "where it began", b, 49, "I", "the oldest row in activities.csv")
     L.text_card(c, a["name"], a.get("description") or None,
-                tag=f"{a['_date'].strftime('%-d %B %Y').upper()} · {a['_mi']:.1f} MI")
+                tag=f"{F.day(a['_date'], '%d %B %Y').upper()} · {a['_mi']:.1f} MI")
     days = (b["asof"] - a["_date"]).days
     c.add(S.text(W - PAD, 158, f"{days}", 76, "bold", anchor="end"),
           S.text(W - PAD, 196, "DAYS AGO", 26, "bold", anchor="end", fill=DARK, tracking=3))
@@ -1195,12 +1196,12 @@ def c51_logbook(b, o):
     desc = (a.get("description") or "").strip()
     c = _mk("title", f"“{a['name']}”",
             desc or f"{a['_mi']:.1f} mi of {a['sport_type']} on "
-                    f"{a['_date'].strftime('%-d %b %Y')}.",
+                    f"{F.day(a['_date'])}.",
             "from the logbook", b, 51, "J",
             "an activity with a description, picked by date ordinal")
     L.text_card(c, a["name"], desc,
                 tag=f"{a['_mi']:.1f} MI · {a['sport_type'].upper()}")
-    return L.footer(c, a["_date"].strftime("%A %-d %B %Y"))
+    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
 
 @card(52, "J", "titles and descriptions matched against an animal word list")
@@ -1217,7 +1218,7 @@ def c52_animals(b, o):
             "titles and descriptions matched against an animal word list")
     L.bar_rows(c, [(a, str(n), n / top[0][1]) for a, n in top], label_w=280, value_w=90,
                note=f"{z['n']} activities mention an animal")
-    return L.footer(c, f"latest: {act['_date'].strftime('%-d %b %Y')} — "
+    return L.footer(c, f"latest: {F.day(act['_date'])} — "
                        f"{', '.join(found)}")
 
 
@@ -1282,7 +1283,7 @@ def c56_laps(b, o):
     peak = max(r[2] for r in rows) or 1
     c = _mk("laps", f"Lap splits — {a['name']}",
             f"{len(laps)} laps on \"{a['name']}\", "
-            f"{a['_date'].strftime('%-d %b %Y')}.",
+            f"{F.day(a['_date'])}.",
             "lap splits", b, 56, "K",
             "laps/{id}.csv for the newest activity with more than one lap")
     L.bar_rows(c, [(n, v, s / peak) for n, v, s in rows], label_w=200, value_w=250,
