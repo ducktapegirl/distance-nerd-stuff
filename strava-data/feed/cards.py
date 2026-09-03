@@ -1,4 +1,4 @@
-"""One function per catalogued idea, all 56 of them.
+"""One function per catalogued idea, all 63 of them.
 
 A card is a whole 800x480 screen carrying *one* idea - the Sticky is a fridge
 magnet glanced at in passing, not a dashboard you sit in front of. The RSS
@@ -22,7 +22,7 @@ from . import metrics as M
 from . import places as P
 from . import stats as St
 from . import svg as S
-from .config import BLACK, DARK, H, LIGHT, PAD, W, WHITE
+from .config import BLACK, DARK, H, KM_TO_MI, LIGHT, PAD, W, WHITE
 from . import geo
 from . import journey
 
@@ -1074,8 +1074,10 @@ def c44_record_book(b, o):
     c = _mk("record-book", f"{kicker.title()} — {value}",
             f"{kicker.title()}: {value}, {place}.",
             "the record book", b, 44, "H", "one pinned record-book row per rotation day")
-    c.add(S.text(PAD, 148, kicker, 30, "bold", fill=DARK, tracking=4))
-    L.text_card(c, value, place, headline_size=110)
+    # The kicker rides in text_card's tag slot. Drawn as its own line above,
+    # it lands inside a 110 px headline's cap height and prints straight
+    # through it - which is what it did until the overlap check caught it.
+    L.text_card(c, value, place, tag=kicker, headline_size=110)
     return L.footer(c, "one of five, rotating daily")
 
 
@@ -1204,24 +1206,6 @@ def c51_logbook(b, o):
     return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
 
-@card(52, "J", "titles and descriptions matched against an animal word list")
-def c52_animals(b, o):
-    z = M.animal_sightings(b["acts"])
-    if not z["hits"]:
-        return None
-    act, found = z["hits"][0]
-    top = z["counts"][:5]
-    c = _mk("animals", f"{z['n']} wildlife sightings — latest: {', '.join(found)}",
-            f"{z['n']} activities mention wildlife. Most common: "
-            f"{', '.join(f'{a} ×{n}' for a, n in top)}.",
-            "wildlife index", b, 52, "J",
-            "titles and descriptions matched against an animal word list")
-    L.bar_rows(c, [(a, str(n), n / top[0][1]) for a, n in top], label_w=280, value_w=90,
-               note=f"{z['n']} activities mention an animal")
-    return L.footer(c, f"latest: {F.day(act['_date'])} — "
-                       f"{', '.join(found)}")
-
-
 @card(53, "J", "activity names composed entirely of non-ASCII symbols")
 def c53_emoji(b, o):
     rows = M.emoji_titles(b["acts"])
@@ -1291,17 +1275,297 @@ def c56_laps(b, o):
     return L.footer(c, "the first use of the fetched-but-unread laps/ data")
 
 
+# ══ merged-in cards (57-62) ═════════════════════════════════════════════
+# Ported or newly built when this branch merged the other e-paper plan. They
+# sit at the end of the registry rather than beside their family's other
+# cards, so the catalogue numbers stay stable and the proof sheet still groups
+# them by family.
+
+@card(3, "A", "newest activity: its GPS stream over its own numbers")
+def c57_latest(b, o):
+    """Idea 3, combined. `last` (the words) and `last-route` (the shape) both
+    stay in the catalogue; this is the one that rotates, because on a fridge
+    magnet the map and the numbers want to arrive together."""
+    a = b["acts"][-1]
+    r = M.route_for(a)
+    if not r:
+        return None
+    mi, ft = a["_mi"], a["_ft"]
+    moving = M.mf(a["moving_time_min"]) or 0.0
+    hr = M.mf(a["average_heartrate"])
+    temp_c = M.mf(a["average_temp_c"])
+    suffer = M.mf(a["suffer_score"])
+    bike = M.is_bike(a)
+    speed_kmh = M.mf(a["average_speed_kmh"]) or 0.0
+    if bike:
+        pace = f"{speed_kmh * KM_TO_MI:.1f}", "mph"
+    else:
+        pace = (mmss(60 / (speed_kmh * KM_TO_MI) * 60) if speed_kmh else "—"), "/mi"
+
+    c = _mk("latest", f"Last out — {a['name']}",
+            f"{mi:.1f} mi of {a['sport_type']} in {int(moving // 60)}h {int(moving % 60):02d}m "
+            f"with {ft:,.0f} ft of climbing, on {F.day(a['_date'])}.",
+            "latest activity", b, 3, "A",
+            "newest activity: its GPS stream over its own numbers")
+    L.route_stats(c, r["path"], r["w"], r["h"], [
+        (f"{mi:.1f}", "miles"),
+        (f"{int(moving // 60)}:{int(moving % 60):02d}", "moving"),
+        (pace[0], pace[1]),
+        (f"{ft:,.0f}", "feet up"),
+        (f"{hr:.0f}" if hr else "—", "avg bpm"),
+        (f"{temp_c * 9 / 5 + 32:.0f}°" if temp_c is not None else "—", "degrees f"),
+        (f"{suffer:.0f}" if suffer else "—", "suffer"),
+        (a["kudos_count"] or "0", "kudos"),
+    ])
+    g = _sport_glyph(a["sport_type"])
+    if g:
+        c.add(g(W - PAD - 76, L.TOP_RULE + 8, 76))
+    return L.footer(c, (a.get("description") or "").strip()
+                    or F.day(a["_date"], "%A %d %B %Y"))
+
+
+@card(57, "D", "segment with the most efforts in the last 30 days")
+def c58_segment_month(b, o):
+    s = M.segment_of_month(b["efforts"], b["segs"], b["asof"])
+    if not s or len(s["times"]) < 2:
+        return None
+    arrow = ("▼" if s["trend"] is not None and s["trend"] < -1 else
+             "▲" if s["trend"] is not None and s["trend"] > 1 else "▶")
+    c = _mk("segment-month", f"Segment of the month — {s['name']}",
+            f"{s['n30']} efforts on \"{s['name']}\" in the last 30 days: best {mmss(s['best_s'])}, "
+            f"latest {mmss(s['latest_s'])}, {s['trend_word']}.",
+            "segment of the month", b, 57, "D",
+            "segment with the most efforts in the last 30 days")
+    nt, ns = S.fit_text(s["name"], 30, W - 2 * PAD - 240)
+    c.add(S.text(PAD, 116, nt, ns, "bold"),
+          S.text(W - PAD, 116, f"{s['n30']}× IN 30 DAYS", 26, "bold",
+                 anchor="end", fill=DARK, tracking=2))
+    L.stat_trio(c, [(mmss(s["best_s"]), "best"), (mmss(s["latest_s"]), "latest"),
+                    (f"{s['trend']:+.0f}% {arrow}" if s["trend"] is not None else "—",
+                     # One word: the full phrase reaches the column divider.
+                     s["trend_word"].split()[0])],
+                baseline=202, size=76)
+    # Plotted as negated seconds: effort time falls as you get faster, and on
+    # a card a rising line has to mean improvement.
+    L.spark(c, [-t for t in s["times"][-24:]],
+            labels=(s["first"][:4], "now"), top=308, bottom=368)
+    c.add(S.text(PAD, 296, f"{s['mi']:.2f} MI AT {s['grade']:+.1f}%  ·  "
+                           f"LAST 24 EFFORTS, UP = FASTER", 26, fill=DARK,
+                 tracking=1))
+    hr = f"avg {s['avg_hr']:.0f} bpm · " if s["avg_hr"] else ""
+    return L.footer(c, f"{hr}worst {mmss(s['worst_s'])} · first effort {s['first']} · "
+                       f"{s['total']} all time")
+
+
+@card(58, "J", "best-scoring activity names, a window of five per ISO week")
+def c59_hall_of_fame(b, o):
+    ranked = M.named_activities(b["acts"])
+    if len(ranked) < 5:
+        return None
+    year, week, _ = b["asof"].isocalendar()
+    seed = (year * 53 + week) % 7
+    picks = ranked[seed:seed + 5]
+    default = len(b["acts"]) - len(ranked)
+
+    c = _mk("hall-of-fame", f"Hall of fame — \"{picks[0]['name']}\"",
+            f"Five of the {len(ranked)} activities that got a real name, this week's window "
+            f"of the rotation. {default} kept Strava's default.",
+            "name hall of fame", b, 58, "J",
+            "best-scoring activity names, a window of five per ISO week")
+    pitch = (L.BOT_RULE - L.BODY_TOP) / 5
+    for i, r in enumerate(picks):
+        y = L.BODY_TOP + i * pitch
+        g = _sport_glyph(r["sport_type"])
+        if g:
+            c.add(g(PAD, y + 2, 44))
+        # The names are the whole card, so they wrap to two lines rather than
+        # ellipsizing; the date and distance drop to a second right-hand line
+        # to give them the width.
+        lines = S.wrap_text(r["name"], 28, W - PAD - 190 - (PAD + 58), max_lines=2)
+        for j, line in enumerate(lines):
+            c.add(S.text(PAD + 58, y + 22 + j * 28, line, 28, "bold"))
+        mi = r["_mi"]
+        stat = f"{mi:.1f} mi" if mi > 0.05 else f"{M.mf(r['moving_time_min']) or 0:.0f} min"
+        c.add(S.text(W - PAD, y + 22, F.day(r["_date"]), 26, anchor="end", fill=DARK),
+              S.text(W - PAD, y + 50, stat, 26, anchor="end", fill=DARK))
+        if i < len(picks) - 1:
+            c.add(S.line(PAD, y + pitch - 3, W - PAD, y + pitch - 3,
+                         stroke=LIGHT, sw=3))
+    return L.footer(c, f"{default} kept Strava's default name · "
+                       f"window {seed + 1} of 7, moves weekly")
+
+
+@card(59, "G", "sum of uv_index x moving hours over the ISO week of the last data day")
+def c60_uv_week(b, o):
+    u = M.uv_week(b["acts"], b["asof"])
+    if not u["n"]:
+        return None
+    total = u["total"]
+    # 20 UV-hours in a week is the point where the tube reads full: a fortnight
+    # of ordinary San Diego mornings, not a medical threshold.
+    frac = min(1.0, total / 20.0)
+    c = _mk("uv-week", f"{total:.0f} UV-hours this week",
+            f"UV dose for ISO week {u['week']}: {total:.1f} UV-hours across {u['n']} "
+            f"activities, peaking at UV {u['peak_uv']:.0f}.",
+            "uv dose this week", b, 59, "G",
+            "sum of uv_index x moving hours over the ISO week of the last data day")
+    peak_day = max(u["days"]) or 1.0
+    L.cell_grid(c, [d / peak_day for d in u["days"]], per_row=7, cell=56, gap=14,
+                labels=("mon", "sun"), top=270)
+    # The label follows the numeral rather than sitting at a fixed x: "4" and
+    # "128" are very different widths and there is no text measurement here.
+    num = f"{total:.0f}"
+    lx = PAD + len(num) * 120 * 0.62 + 20
+    c.add(S.text(PAD, 202, num, 120, "bold"),
+          S.text(lx, 176, "UV-HOURS", 30, "bold", fill=DARK, tracking=3),
+          S.text(lx, 212, f"WEEK {u['week']}", 26, fill=DARK, tracking=3))
+    c.add(S.glyph_sunscreen(W - PAD - 130, 106, 130, fill_frac=frac))
+    peak = u["peak_act"]
+    return L.footer(c, f"cells are daily UV-hours · peak UV {u['peak_uv']:.0f} "
+                       f"on \"{peak['name']}\"")
+
+
+@card(52, "J", "whole-word animal names in activity titles and descriptions")
+def c61_wildlife(b, o):
+    z = M.animal_sightings(b["acts"])
+    if not z["counts"]:
+        return None
+    top = z["counts"][:10]
+    peak = top[0][1]
+    latest = max(z["last_seen"].values(), key=lambda r: r["_dt"])
+    latest_species = M.animal_hits(latest)
+
+    c = _mk("wildlife", f"{z['total']} wildlife sightings, {len(z['counts'])} species",
+            f"Animals named in activity titles and descriptions: {z['total']} mentions across "
+            f"{z['n']} outings, led by {top[0][0].lower()} at {top[0][1]}.",
+            "wildlife scoreboard", b, 52, "J",
+            "whole-word animal names in activity titles and descriptions")
+    L.bar_grid(c, [(label, str(n), n / peak) for label, n in top], cols=2,
+               glyphs=[S.ANIMAL_GLYPHS.get(label) for label, _ in top])
+    return L.footer(c, f"latest: {latest_species[0].lower()} on {F.day(latest['_date'])} "
+                       f"— \"{latest['name']}\"")
+
+
+@card(60, "I", "the same ISO week in the 2003-07 paper log, against this one")
+def c62_week_2004(b, o):
+    year, week, _ = b["asof"].isocalendar()
+    then_year = next((y for y in (2004, 2003, 2005, 2006, 2007)
+                      if M.runlog_week(b["runlog"], (y, week))), None)
+    if then_year is None:
+        return None
+    then = M.runlog_week(b["runlog"], (then_year, week))
+    then_mi = sum(r["_mi"] for r in then)
+    then_paces = [r["_pace"] for r in then if r["_pace"]]
+    then_pace = sum(then_paces) / len(then_paces) if then_paces else None
+
+    now = [r for r in b["acts"]
+           if r["_date"].isocalendar()[:2] == (year, week) and M.is_run(r)]
+    now_mi = sum(r["_mi"] for r in now)
+    now_paces = [60 / (M.mf(r["average_speed_kmh"]) * KM_TO_MI)
+                 for r in now if M.mf(r["average_speed_kmh"])]
+    now_pace = sum(now_paces) / len(now_paces) if now_paces else None
+
+    then_lines = []
+    for r in [t for t in then if t["_mi"] > 0][:4]:
+        line = f"{r['day_of_week'][:3]}  {r['workout_type'] or 'run':<12} {r['_mi']:.1f} mi"
+        if r["_race"]:
+            line += f"  · RACE: {r['race_name']}"
+        then_lines.append(line)
+
+    if now:
+        now_lines = [f"{r['_date'].strftime('%a')}  {r['name']}  {r['_mi']:.1f} mi"
+                     for r in sorted(now, key=lambda r: r["_dt"])[:4]]
+    else:
+        lr = M.longest([r for r in b["acts"] if M.is_run(r)], lambda r: True, "_dt")
+        now_lines = ["no runs this ISO week"]
+        if lr:
+            now_lines.append(f"last run: {lr['name']}")
+            now_lines.append(f"{lr['_mi']:.1f} mi on {F.day(lr['_date'])}")
+
+    delta = now_mi - then_mi
+    c = _mk("week-2004", f"Week {week}: {then_mi:.0f} mi in {then_year}, "
+                         f"{now_mi:.0f} mi now",
+            f"The same ISO week, {year - then_year} years apart: {then_mi:.1f} run miles in "
+            f"{then_year} against {now_mi:.1f} now.",
+            f"this week in {then_year}", b, 60, "I",
+            "the same ISO week in the 2003-07 paper log, against this one")
+    L.then_now(c,
+               (str(then_year), f"{then_mi:.0f} mi",
+                f"avg {mmss(then_pace * 60)}/mi" if then_pace else f"{len(then)} days logged",
+                then_lines),
+               (str(year), f"{now_mi:.0f} mi",
+                f"avg {mmss(now_pace * 60)}/mi" if now_pace else "no run pace this week",
+                now_lines))
+    return L.footer(c, f"{abs(delta):.1f} mi {'more' if delta >= 0 else 'less'} than "
+                       f"week {week} of {then_year} · paper log holds {len(b['runlog']):,} days")
+
+
+@card(61, "I", "a race from the 2003-07 log falling near TODAY's calendar date")
+def c63_anniversary(b, o):
+    """The one card keyed to the wall clock rather than to the last day with
+    data. Everything else on the panel says "as of the last activity"; an
+    anniversary that arrived while the fetch cron was asleep is still an
+    anniversary, so this one uses the build date."""
+    today = date.fromordinal(o)
+    a = M.race_anniversary(b["runlog"], today)
+    if not a:
+        return None
+    r = a["race"]
+    head = " · ".join(x for x in (a["distance"].upper(), a["time"]) if x) or a["name"]
+    c = _mk("anniversary", f"{a['when'].capitalize()} — {a['name']}",
+            f"{a['name']}, {F.day(r['_date'])}"
+            + (f": {a['distance']} in {a['time']}." if a["time"] else "."),
+            "race anniversary", b, 61, "I",
+            "a race from the 2003-07 log falling near TODAY's calendar date")
+    L.text_card(c, head, a["comments"] or None,
+                tag=f"{a['name'].upper()} · {F.day(r['_date']).upper()}",
+                headline_size=62)
+    # text_card's headline baseline is fixed at 158, so the "when" line has to
+    # clear a 62 px cap height above it as well as the top rule below.
+    wt, ws = S.fit_text(a["when"].upper(), 30, W - 2 * PAD, tracking=3)
+    c.add(S.text(PAD, 104, wt, ws, "bold", fill=DARK, tracking=3))
+    return L.footer(c, f"from the paper log · dated against {F.day(today)}")
+
+
+@card(62, "J", "5-7-5 assembled from the newest activity's own numbers")
+def c64_haiku(b, o):
+    a = b["acts"][-1]
+    sightings = {str(r["id"]): M.animal_hits(r) for r in b["acts"] if M.animal_hits(r)}
+    h = M.haiku(a, sightings)
+    if not h:
+        return None
+    c = _mk("haiku", " / ".join(h["lines"]),
+            f"Today's five-seven-five, built from \"{a['name']}\" — "
+            f"{a['_mi']:.1f} mi on {F.day(a['_date'])}.",
+            "activity haiku", b, 62, "J",
+            "5-7-5 assembled from the newest activity's own numbers")
+    y = 168
+    for i, line in enumerate(h["lines"]):
+        # Only the first line yields room to the sport glyph. The middle line
+        # is the seven-syllable one and so always the longest; giving it the
+        # same reserve ellipsizes it, and a truncated haiku is not a haiku.
+        avail = W - 2 * PAD - (100 if i == 0 else 0)
+        lt, ls = S.fit_text(line, 48, avail)
+        c.add(S.text(PAD, y, lt, ls, "bold" if i != 1 else "normal",
+                     fill=BLACK if i != 1 else DARK))
+        y += 76
+    g = _sport_glyph(a["sport_type"])
+    if g:
+        c.add(g(W - PAD - 84, 128, 84))
+    nt, ns = S.fit_text(a["name"], 26, 420)
+    return L.footer(c, f"5-7-5 from \"{nt}\", {F.day(a['_date'])}")
+
+
 # ══ assembly ════════════════════════════════════════════════════════════
 
-# The eleven cards the device actually cycles, hand-picked rather than curated
-# by family. Every other card still builds, still ships in feed.xml and still
-# appears on the proof sheet - promoting one is a one-line edit here.
-# Eleven ids means the rotation repeats every eleven days.
+# The seventeen cards the device actually cycles, hand-picked rather than
+# curated by family. Every other card still builds, still ships in feed.xml and
+# still appears on the proof sheet - promoting one is a one-line edit here.
+# Seventeen ids means the rotation repeats every seventeen days.
 #
 # card_of_the_day falls back to the whole catalogue if an id here goes missing,
 # so a typo degrades rather than crashes.
 ROTATION = [
-    "fresh",          # 5  - one word: fresh / ready / spicy / cooked / rusty
     "strip",          # 9  - last 30 days as two rows of cells
     "sparkline",      # 17 - 13 months of volume
     "everest",        # 18 - all-time elevation as stacked Everests
@@ -1311,9 +1575,15 @@ ROTATION = [
     "hours",          # 21 - hours in motion, on a clock face
     "mosaic",         # 37 - 32 route thumbnails
     "heat",           # 38 - San Diego riding density
-    "animals",        # 52 - wildlife index
+    "latest",         # 3  - newest activity: route over its own numbers
+    "segment-month",  # 57 - most-repeated segment of the last 30 days
+    "hall-of-fame",   # 58 - five well-named activities, rotating weekly
+    "uv-week",        # 59 - this week's UV dose
+    "wildlife",       # 52 - wildlife scoreboard
+    "week-2004",      # 60 - the same ISO week in the paper log
+    "anniversary",    # 61 - a race from the paper log near today's date
+    "haiku",          # 62 - 5-7-5 from the newest activity
 ]
-
 
 def build_cards(bundle, today=None):
     """Every card, in catalogue order. Cards that lack data drop out silently."""
