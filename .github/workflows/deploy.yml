@@ -17,6 +17,9 @@ on:
       - "strava-data/dashboard/**"
       - "strava-data/build_feed.py"
       - "strava-data/feed/**"
+      # A re-routed journey_routes.json (or a regenerated basemap) changes the
+      # rendered cards without touching any Python.
+      - "strava-data/assets/**"
       - "running-log/dashboard/**"
       - "running-log/parse_log.py"
       - "running-log/visualize_log.py"
