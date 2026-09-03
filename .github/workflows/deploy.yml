@@ -15,6 +15,8 @@ on:
       - "strava-data/data/**"
       - "strava-data/build_dashboard.py"
       - "strava-data/dashboard/**"
+      - "strava-data/build_feed.py"
+      - "strava-data/feed/**"
       - "running-log/dashboard/**"
       - "running-log/parse_log.py"
       - "running-log/visualize_log.py"
@@ -63,6 +65,12 @@ jobs:
 
       - name: Build Running Log dashboard
         run: uv run python running-log/visualize_log.py
+
+      # E-paper feed for the reTerminal Sticky via SenseCraft HMI. Writes
+      # feed.xml / epaper.html / epaper-all.html / feed.json into running-log/,
+      # which is the Pages publish root uploaded below. Stdlib-only, no network.
+      - name: Build e-paper feed
+        run: uv run python strava-data/build_feed.py
 
       - uses: actions/configure-pages@v4
 
