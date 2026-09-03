@@ -16,7 +16,7 @@ import sys
 from datetime import date
 
 from feed.cards import FAMILIES, ROTATION, build_cards, card_of_the_day
-from feed.config import OUT_JSON, OUT_PAGE, OUT_RSS, OUT_SHEET, SITE
+from feed.config import OUT_CARD_DIR, OUT_JSON, OUT_PAGE, OUT_RSS, OUT_SHEET, SITE
 from feed.metrics import load
 from feed.page import render_contact_sheet, render_page
 from feed.rss import build_rss
@@ -58,6 +58,15 @@ def main():
         with open(path, "w", encoding="utf-8") as f:
             f.write(body)
         print(f"-> {os.path.basename(path):18s} {len(body):>8,} bytes")
+    # One static page per card, so a single card can be pinned in SenseCraft
+    # by URL, or checked locally, without waiting for its turn in the rotation.
+    # The panel runs no JavaScript, so a "?card=" query could never work.
+    os.makedirs(OUT_CARD_DIR, exist_ok=True)
+    for c in cards:
+        with open(os.path.join(OUT_CARD_DIR, f"{c.id}.html"), "w",
+                  encoding="utf-8") as f:
+            f.write(render_page(c, asof))
+    print(f"-> epaper/           {len(cards):>4} card pages")
     print(f"   card of the day: {today_card.id} — {today_card.title}")
 
 

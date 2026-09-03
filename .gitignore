@@ -22,6 +22,7 @@ running-log/feed.xml
 running-log/feed.json
 running-log/epaper.html
 running-log/epaper-all.html
+running-log/epaper/
 
 # Python
 __pycache__/

@@ -67,18 +67,25 @@ def hero_number(c, value, unit=None, sub=None, glyph=None, size=150):
     return c
 
 
-def stat_trio(c, items):
-    """Three numbers across, for 'miles / hours / feet'-shaped payloads."""
+def stat_trio(c, items, baseline=250, size=84):
+    """Three numbers across, for 'miles / hours / feet'-shaped payloads.
+
+    ``baseline`` lifts or drops the whole row, so a card that also carries a
+    sparkline can put the two in different bands instead of on top of each
+    other.
+    """
     n = len(items)
     for i, (value, label) in enumerate(items):
         x = PAD + (W - 2 * PAD) * (i + 0.5) / n
-        vt, vs = S.fit_text(str(value), 84, (W - 2 * PAD) / n - 16)
+        vt, vs = S.fit_text(str(value), size, (W - 2 * PAD) / n - 16)
         lt, ls = S.fit_text(label.upper(), 28, (W - 2 * PAD) / n - 12, tracking=3)
-        c.add(S.text(x, 250, vt, vs, "bold", anchor="middle"),
-              S.text(x, 296, lt, ls, "bold", anchor="middle", fill=DARK, tracking=3))
+        c.add(S.text(x, baseline, vt, vs, "bold", anchor="middle"),
+              S.text(x, baseline + 46, lt, ls, "bold", anchor="middle",
+                     fill=DARK, tracking=3))
         if i:
-            c.add(S.line(PAD + (W - 2 * PAD) * i / n, 180,
-                         PAD + (W - 2 * PAD) * i / n, 320, stroke=LIGHT, sw=3))
+            c.add(S.line(PAD + (W - 2 * PAD) * i / n, baseline - 70,
+                         PAD + (W - 2 * PAD) * i / n, baseline + 70,
+                         stroke=LIGHT, sw=3))
     return c
 
 
@@ -166,13 +173,18 @@ def text_card(c, headline, body=None, tag=None, headline_size=62):
 
 # --- 5. sparkline -------------------------------------------------------
 
-def spark(c, values, labels=None, headline=None, sub=None):
-    """A step line with no axis and a filled dot on the last point."""
+def spark(c, values, labels=None, headline=None, sub=None, top=250, bottom=356):
+    """A step line with no axis and a filled dot on the last point.
+
+    ``top``/``bottom`` bound the plot band; the default is the band every
+    sparkline-only card uses. A card that stacks the spark under something
+    else passes its own.
+    """
     if len(values) < 2:
         return c
     lo, hi = min(values), max(values)
     rng = (hi - lo) or 1.0
-    x0, x1, y0, y1 = PAD + 10, W - PAD - 10, 250, 356
+    x0, x1, y0, y1 = PAD + 10, W - PAD - 10, top, bottom
     pts = [(x0 + (x1 - x0) * i / (len(values) - 1),
             y1 - (y1 - y0) * (v - lo) / rng) for i, v in enumerate(values)]
     c.add(S.line(x0, y1 + 14, x1, y1 + 14, stroke=LIGHT, sw=3))
@@ -184,8 +196,8 @@ def spark(c, values, labels=None, headline=None, sub=None):
         st, ss = S.fit_text(str(sub).upper(), 28, 420, tracking=2)
         c.add(S.text(W - PAD, 172, st, ss, "bold", anchor="end", fill=DARK, tracking=2))
     if labels:
-        c.add(S.text(x0, y1 + 48, str(labels[0]).upper(), 26, fill=DARK, tracking=2),
-              S.text(x1, y1 + 48, str(labels[-1]).upper(), 26, anchor="end",
+        c.add(S.text(x0, y1 + 42, str(labels[0]).upper(), 26, fill=DARK, tracking=2),
+              S.text(x1, y1 + 42, str(labels[-1]).upper(), 26, anchor="end",
                      fill=DARK, tracking=2))
     return c
 
@@ -266,4 +278,110 @@ def route_card(c, path, pw, ph, lines=(), region=None):
         t, s = S.fit_text(str(text), size, rx - PAD - 20)
         c.add(S.text(PAD, y, t, s, weight, fill=fill))
         y += size + 16
+    return c
+
+
+# --- 9. route over a stat grid ------------------------------------------
+
+def route_stats(c, path, pw, ph, stats, note=None):
+    """A route across the top, a 4x2 grid of numbers under it.
+
+    The one card that earns two ideas at once: the shape of the ride and what
+    it cost. ``stats`` are ``(value, label)`` pairs, up to eight.
+
+    The route gets whatever the grid does not need, rather than a fixed height:
+    two rows of numbers plus their labels have to clear ``BOT_RULE``, or the
+    second row's labels land on top of the footer.
+    """
+    stats = list(stats)[:8]
+    rows = 1 if len(stats) <= 4 else 2
+    row_h = 74
+    grid_top = BOT_RULE - rows * row_h
+    ry, rh = TOP_RULE + 12, grid_top - (TOP_RULE + 12) - 14
+
+    k = min((W - 2 * PAD) / (pw or 1e-9), rh / (ph or 1e-9))
+    ox, oy = CX - pw * k / 2, ry + (rh - ph * k) / 2
+    pts = [(ox + x * k, oy + y * k) for x, y in path]
+    c.add(S.polyline(pts, sw=5))
+    c.add(S.circle(pts[0][0], pts[0][1], 10, fill=WHITE, stroke=BLACK, sw=4))
+    c.add(S.rect(pts[-1][0] - 8, pts[-1][1] - 8, 16, 16, fill=BLACK))
+
+    cols = 4
+    cw = (W - 2 * PAD) / cols
+    for i, (value, label) in enumerate(stats):
+        row, col = divmod(i, cols)
+        x = PAD + cw * (col + 0.5)
+        y = grid_top + row * row_h
+        vt, vs = S.fit_text(str(value), 44, cw - 14)
+        lt, ls = S.fit_text(str(label).upper(), 26, cw - 10, tracking=2)
+        c.add(S.text(x, y + 42, vt, vs, "bold", anchor="middle"),
+              S.text(x, y + 68, lt, ls, anchor="middle", fill=DARK, tracking=2))
+    for col in range(1, cols):
+        x = PAD + cw * col
+        c.add(S.line(x, grid_top + 4, x, BOT_RULE - 6, stroke=LIGHT, sw=3))
+    return footer(c, note) if note else c
+
+
+# --- 10. two-column bar rows --------------------------------------------
+
+def bar_grid(c, rows, cols=2, glyphs=None):
+    """``bar_rows`` folded into two columns, so ten short rows fit where five
+    long ones did. ``rows`` are ``(label, value_text, frac)``; ``glyphs`` is an
+    optional parallel list of ``fn(x, y, size)`` drawn at the row's left."""
+    if not rows:
+        return c
+    per_col = math.ceil(len(rows) / cols)
+    cw = (W - 2 * PAD) / cols
+    pitch = min(66, BODY_H / per_col)
+    gw = 56 if glyphs else 0
+    for i, (label, value, frac) in enumerate(rows):
+        col, row = divmod(i, per_col)
+        x0 = PAD + cw * col
+        y = BODY_TOP + row * pitch
+        if glyphs and glyphs[i]:
+            c.add(glyphs[i](x0, y - 4, 52))
+        lt, ls = S.fit_text(str(label), 28, cw - gw - 90)
+        c.add(S.text(x0 + gw, y + 22, lt, ls, "bold"))
+        vt, vs = S.fit_text(str(value), 28, 80)
+        c.add(S.text(x0 + cw - 24, y + 22, vt, vs, "bold", anchor="end", fill=DARK))
+        bw = cw - gw - 40
+        c.add(S.rect(x0 + gw, y + 30, bw, 14, fill=WHITE, stroke=LIGHT, sw=3))
+        c.add(S.rect(x0 + gw + 3, y + 33, max((bw - 6) * max(0.0, min(1.0, frac)), 0),
+                     8, fill=BLACK))
+    return c
+
+
+# --- 11. then & now -----------------------------------------------------
+
+def then_now(c, top, bottom):
+    """A shaded band of the past over an unshaded present.
+
+    ``top``/``bottom`` are ``(era, headline, sub, lines)``. The band is the
+    whole argument of the card: the old log is literally in the background.
+
+    The two halves are sized from ``BOT_RULE`` rather than from a fixed band
+    height, because the lower half has the same four rows to fit and no shaded
+    box to hide in - laid out by eye it runs its subtitle through the footer.
+    """
+    gap = 18
+    avail = BOT_RULE - (TOP_RULE + 8) - gap
+    band_h = int(avail * 0.53)
+    tops = (TOP_RULE + 8, TOP_RULE + 8 + band_h + gap)
+    heights = (band_h, avail - band_h)
+    c.add(S.rect(PAD, tops[0], W - 2 * PAD, band_h, fill=LIGHT))
+    for i, (era, headline, sub, lines) in enumerate((top, bottom)):
+        y0, bh = tops[i], heights[i]
+        c.add(S.text(PAD + 16, y0 + 34, str(era).upper(), 28, "bold", tracking=3))
+        ht, hs = S.fit_text(str(headline), 58, 330)
+        c.add(S.text(PAD + 16, y0 + 92, ht, hs, "bold"))
+        if sub:
+            st, ss = S.fit_text(str(sub), 28, 330)
+            c.add(S.text(PAD + 16, y0 + 124, st, ss, fill=DARK))
+        # However many 36 px rows are left after the era heading.
+        room = max(0, int((bh - 40) // 36))
+        y = y0 + 34
+        for text in list(lines)[:room]:
+            lt, ls = S.fit_text(str(text), 28, W - PAD - 420)
+            c.add(S.text(PAD + 400, y, lt, ls))
+            y += 36
     return c

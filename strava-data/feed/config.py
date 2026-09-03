@@ -24,6 +24,8 @@ OUT_RSS   = os.path.join(_OUT_DIR, "feed.xml")
 OUT_PAGE  = os.path.join(_OUT_DIR, "epaper.html")
 OUT_SHEET = os.path.join(_OUT_DIR, "epaper-all.html")
 OUT_JSON  = os.path.join(_OUT_DIR, "feed.json")
+# One static page per card, for pinning a single card by URL.
+OUT_CARD_DIR = os.path.join(_OUT_DIR, "epaper")
 
 SITE = "https://ducktapegirl.github.io/distance-nerd-stuff"
 
