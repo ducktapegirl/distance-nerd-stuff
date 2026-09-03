@@ -1,11 +1,16 @@
-# E-paper cards — prototype contact sheet
+> **Archived reference — not a build step on this branch.**
+> Copied from branch `claude/strava-rss-feed-display-uoiv93` (`Project Docs/Plans/strava-data/eink-cards/`)
+> so its two overview images survive that branch's deletion. Everything below describes
+> *that* branch's Pillow prototype, including a device ("reTerminal E1005, 800x650") that
+> does not exist — the real panel is the reTerminal Sticky, 800x480. The 17 per-card PNGs,
+> the strip-map mocks and `strava-data/tools/eink_cards.py` were **not** copied; recover them
+> with `git show claude/strava-rss-feed-display-uoiv93:<path>` while that branch survives.
+> The shipped implementation is `strava-data/feed/` — see
+> [`../epaper-feed-plan.md`](../epaper-feed-plan.md) for what was carried across.
 
-> **Provenance (2026-09-03):** copied verbatim from branch `claude/strava-rss-feed-display-uoiv93`
-> (commit `7984afd`, `Project Docs/Plans/strava-data/eink-cards/`) as reference material for
-> [`../epaper-feed-plan.md`](../epaper-feed-plan.md). The text below is historical: the
-> "reTerminal E1005, 800×650" it describes does not exist (the panel is the reTerminal Sticky at
-> 800×480), and `strava-data/tools/eink_cards.py` lives only on that branch. Nothing here is
-> regenerable from this branch; the shipped cards are built by `strava-data/build_feed.py`.
+---
+
+# E-paper cards — prototype contact sheet
 
 Candidate "cards" for a **reTerminal E1005** (3.97", 800×650, 4-level greyscale) fed by
 SenseCraft HMI. This is an **idea picker**, not a build step: every card is rendered from
