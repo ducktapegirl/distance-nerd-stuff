@@ -12,6 +12,11 @@ GEAR_JSON   = os.path.join(DATA_DIR, "gear.json")
 ATHLETE_JSON = os.path.join(DATA_DIR, "athlete.json")
 STREAMS_DIR = os.path.join(DATA_DIR, "streams")
 
+# The 2003-2007 paper-era log, parsed by running-log/parse_log.py. It is the
+# other dashboard's *input*, not its output, so reading it here couples the
+# feed to a checked-in CSV rather than to that build. It carries a BOM.
+RUNLOG_CSV  = os.path.normpath(os.path.join(_HERE, "..", "running-log", "running_log.csv"))
+
 # running-log/ is the GitHub Pages publish root. These three files are
 # gitignored exactly like index.html / strava.html.
 _OUT_DIR  = os.path.normpath(os.path.join(_HERE, "..", "running-log"))

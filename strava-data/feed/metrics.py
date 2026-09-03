@@ -10,6 +10,7 @@ Data files stay metric; conversion happens here, once.
 import csv
 import json
 import os
+import re
 from collections import Counter
 from datetime import date, datetime, timedelta
 
@@ -17,7 +18,7 @@ from nerd_common.format import maybe_float as mf
 
 from .config import (
     ACT_CSV, ATHLETE_JSON, BIKE_TYPES, GEAR_JSON, KM_TO_MI, M_TO_FT,
-    RUN_TYPES, SEG_CSV, SEG_EFF_CSV, STREAMS_DIR,
+    RUN_TYPES, RUNLOG_CSV, SEG_CSV, SEG_EFF_CSV, STREAMS_DIR,
 )
 
 # A shoe with no notification_distance set still deserves a replacement bar.
@@ -29,6 +30,30 @@ DEFAULT_SHOE_LIMIT_MI = 400.0
 def _read_csv(path):
     with open(path, encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
+
+
+def _read_runlog():
+    """The 2003-2007 paper-era log, typed and dated. Empty if the CSV is gone.
+
+    ``week_of_year`` in the file is already the ISO week, so ``(year, week)``
+    joins straight onto ``date.isocalendar()`` for the then-and-now cards.
+    """
+    if not os.path.exists(RUNLOG_CSV):
+        return []
+    rows = _read_csv(RUNLOG_CSV)
+    out = []
+    for r in rows:
+        try:
+            r["_date"] = datetime.strptime(r["date"], "%Y-%m-%d").date()
+        except (KeyError, ValueError):
+            continue
+        r["_mi"] = mf(r.get("miles")) or 0.0
+        r["_pace"] = mf(r.get("pace_min_per_mile"))
+        r["_week"] = (int(r["year"]), int(r["week_of_year"]))
+        r["_race"] = r.get("is_race") == "1"
+        out.append(r)
+    out.sort(key=lambda r: r["_date"])
+    return out
 
 
 def load():
@@ -43,6 +68,7 @@ def load():
 
     segs = _read_csv(SEG_CSV) if os.path.exists(SEG_CSV) else []
     efforts = _read_csv(SEG_EFF_CSV) if os.path.exists(SEG_EFF_CSV) else []
+    runlog = _read_runlog()
 
     with open(GEAR_JSON, encoding="utf-8") as f:
         gear = json.load(f)
@@ -53,6 +79,7 @@ def load():
         "acts": acts,
         "segs": segs,
         "efforts": efforts,
+        "runlog": runlog,
         "gear": gear,
         "athlete": athlete,
         # "Today" is the last day with data, not the wall clock: the fetch runs
@@ -415,21 +442,58 @@ def year_ago_week(acts, asof):
     return sorted([r for r in acts if lo <= r["_date"] <= hi], key=lambda r: r["_dt"])
 
 
-ANIMALS = ("coyote", "deer", "rabbit", "bunny", "snake", "rattler", "hawk",
-           "lizard", "tarantula", "bobcat", "skunk", "owl", "heron", "seal",
-           "dolphin", "whale", "turkey", "fox", "mule deer")
+# (pattern, label). Matched whole-word with an optional plural, not as a
+# substring: "owl" is inside "slowly" and "seal" inside "sealed", and the
+# substring test that shipped first counted both as sightings. Order fixes the
+# label a multi-word pattern reports under.
+ANIMALS = [
+    (r"coyote", "Coyote"),
+    (r"snake|rattler", "Snake"),
+    (r"owl", "Owl"),
+    (r"mule deer|deer", "Deer"),
+    (r"quail", "Quail"),
+    (r"lizard", "Lizard"),
+    (r"hawk", "Hawk"),
+    (r"bobcat", "Bobcat"),
+    (r"roadrunner", "Roadrunner"),
+    (r"turkey", "Turkey"),
+    (r"rabbit|bunny", "Rabbit"),
+    (r"tarantula", "Tarantula"),
+    (r"skunk", "Skunk"),
+    (r"heron", "Heron"),
+    (r"seal", "Seal"),
+    (r"dolphin", "Dolphin"),
+    (r"whale", "Whale"),
+    (r"fox", "Fox"),
+]
+
+_ANIMAL_RX = [(re.compile(rf"\b(?:{rx})s?\b", re.I), label) for rx, label in ANIMALS]
+
+
+def animal_hits(r):
+    """Species labels mentioned in one activity's name or description."""
+    blob = f"{r.get('name', '')} {r.get('description', '')}"
+    return [label for rx, label in _ANIMAL_RX if rx.search(blob)]
 
 
 def animal_sightings(acts):
-    """Descriptions and titles mentioning wildlife, newest first."""
+    """Activities mentioning wildlife, newest first, plus a species tally.
+
+    ``last_seen`` keeps the most recent activity per species, which is what
+    the scoreboard's footer reports.
+    """
     hits = []
-    for r in acts:
-        blob = f"{r.get('name', '')} {r.get('description', '')}".lower()
-        found = sorted({a for a in ANIMALS if a in blob})
+    last_seen = {}
+    for r in acts:                      # acts arrive oldest-first
+        found = animal_hits(r)
         if found:
             hits.append((r, found))
+            for label in found:
+                last_seen[label] = r
     counts = Counter(a for _, found in hits for a in found)
-    return {"hits": list(reversed(hits)), "counts": counts.most_common(), "n": len(hits)}
+    return {"hits": list(reversed(hits)), "counts": counts.most_common(),
+            "n": len(hits), "last_seen": last_seen,
+            "total": sum(counts.values())}
 
 
 def emoji_titles(acts):
@@ -526,3 +590,331 @@ def segment_pace_by_grade(efforts, act_by_id):
             ys.append(mean_s / 60.0 / dist_mi)
         out[group] = (xs, ys)
     return out
+
+
+# --- metrics added for the merged card set -------------------------------
+
+def segment_of_month(efforts, segs, asof, days=30):
+    """The segment ridden/run most in the ``days`` before ``asof``.
+
+    Ties break on total lifetime efforts, so a segment done twice this month
+    and two hundred times overall beats one done twice ever.
+    """
+    by_id = {s["segment_id"]: s for s in segs}
+    cutoff = (asof - timedelta(days=days - 1)).isoformat()
+    recent = Counter(e["segment_id"] for e in efforts
+                     if e["start_date_local"][:10] >= cutoff and e["segment_id"] in by_id)
+    if not recent:
+        return None
+    sid, n30 = max(recent.items(),
+                   key=lambda kv: (kv[1], int(by_id[kv[0]].get("effort_count") or 0)))
+    seg = by_id[sid]
+
+    mine = sorted((e for e in efforts if e["segment_id"] == sid),
+                  key=lambda e: e["start_date_local"])
+    times = [mf(e["elapsed_time_s"]) for e in mine]
+    times = [t for t in times if t]
+    if not times:
+        return None
+    trend = mf(seg.get("recent_trend"))
+    return {
+        "seg": seg,
+        "name": seg["segment_name"].strip(),
+        "n30": n30,
+        "efforts": mine,
+        "times": times,
+        "best_s": min(times),
+        "latest_s": times[-1],
+        "worst_s": max(times),
+        "trend": trend,
+        # recent_trend is a percentage and negative is faster.
+        "trend_word": ("faster lately" if trend is not None and trend < -1 else
+                       "slower lately" if trend is not None and trend > 1 else
+                       "holding steady"),
+        "sport": mine[-1]["sport_type"],
+        "mi": (mf(seg["segment_distance_m"]) or 0.0) / 1000.0 * KM_TO_MI,
+        "grade": mf(seg["segment_avg_grade"]) or 0.0,
+        "where": ", ".join(x for x in (seg.get("segment_city"), seg.get("segment_state")) if x),
+        "total": int(seg.get("effort_count") or 0),
+        "avg_hr": mf(seg.get("avg_heartrate")),
+        "first": (seg.get("first_effort") or "")[:10],
+    }
+
+
+# Strava's own auto-generated names: "Morning Run", "Evening Mountain Bike
+# Ride". A hall of fame of those would be a hall of fame of nothing.
+DEFAULT_NAME = re.compile(
+    r"^(Morning|Afternoon|Lunch|Evening|Night)\s+"
+    r"(Run|Ride|Mountain Bike Ride|Pickleball|Weight Training|Rock Climb|Hike|"
+    r"Walk|Workout|.*Ski|Ice Skate|Snowboard|Pilates)$")
+
+_PUNCT = re.compile(r"[!?,'\"]")
+_NON_ASCII = re.compile(r"[^\x00-\x7f]")
+
+
+def name_score(r):
+    """How much personality an activity title has. Punctuation and emoji are
+    the tell: a named run is a story, a default one is a timestamp."""
+    n = r.get("name") or ""
+    return (len(_PUNCT.findall(n)) * 3
+            + min(len(n), 40) / 8
+            + (int(r["kudos_count"]) if (r.get("kudos_count") or "").isdigit() else 0) / 2
+            + (2 if _NON_ASCII.search(n) else 0))
+
+
+def named_activities(acts):
+    """Activities the athlete actually named, best-scoring first."""
+    named = [r for r in acts
+             if (r.get("name") or "").strip()
+             and not DEFAULT_NAME.match(r["name"].strip())
+             and r["name"].strip() != "Warm Up"]
+    return sorted(named, key=name_score, reverse=True)
+
+
+def uv_week(acts, asof):
+    """UV dose for the ISO week of ``asof``: sum of uv_index x moving hours.
+
+    Only 339 of 374 activities carry a UV value; the rest are indoor or
+    predate the field, and are excluded rather than counted as zero.
+    """
+    year, week, _ = asof.isocalendar()
+    monday = asof - timedelta(days=asof.weekday())
+    days = [0.0] * 7
+    rows = []
+    for r in acts:
+        if r["_date"].isocalendar()[:2] != (year, week):
+            continue
+        uv = mf(r.get("uv_index"))
+        if uv is None:
+            continue
+        hours = (mf(r["moving_time_min"]) or 0.0) / 60.0
+        days[r["_date"].weekday()] += uv * hours
+        rows.append((uv, r))
+    peak = max(rows, key=lambda p: p[0]) if rows else None
+    return {"days": days, "total": sum(days), "n": len(rows),
+            "monday": monday, "week": week, "year": year,
+            "peak_uv": peak[0] if peak else None,
+            "peak_act": peak[1] if peak else None}
+
+
+def runlog_week(runlog, iso_week):
+    """Paper-era log rows for one ``(year, week)``, in date order."""
+    return [r for r in runlog if r["_week"] == iso_week]
+
+
+def race_anniversary(runlog, today):
+    """A race from the old log falling near ``today``'s calendar date.
+
+    Deliberately keyed to the **build date**, not to ``asof``: an anniversary
+    that arrived while the fetch cron was asleep is still an anniversary. Picks
+    the nearest race within +/-7 days, else the next one coming up.
+    """
+    races = [r for r in runlog if r["_race"] and (r.get("race_name") or "").strip()]
+    if not races:
+        return None
+
+    def offset(r):
+        """Days from today to this race's month-day, wrapped into -182..183."""
+        d = r["_date"]
+        try:
+            this_year = date(today.year, d.month, d.day)
+        except ValueError:                      # 29 February in a common year
+            this_year = date(today.year, d.month, 28)
+        n = (this_year - today).days
+        return n - 365 if n > 183 else n + 365 if n < -182 else n
+
+    near = [(offset(r), r) for r in races]
+    within = [p for p in near if abs(p[0]) <= 7]
+    if within:
+        # Nearest first; a race on the day itself wins over one three days out.
+        delta, race = min(within, key=lambda p: (abs(p[0]), p[0]))
+    else:
+        upcoming = [p for p in near if p[0] > 0] or near
+        delta, race = min(upcoming, key=lambda p: p[0])
+
+    years = today.year - race["_date"].year
+    if delta == 0:
+        when = f"{years} years ago today" if years else "today"
+    elif delta > 0:
+        when = f"in {delta} day{'s' if delta != 1 else ''}"
+    else:
+        n = -delta
+        when = f"{n} day{'s' if n != 1 else ''} ago"
+    return {"race": race, "delta": delta, "years": years, "when": when,
+            "name": race["race_name"].strip(),
+            "distance": (race.get("race_distance") or "").strip(),
+            "time": (race.get("race_time") or "").strip(),
+            "comments": (race.get("comments") or "").strip()}
+
+
+# --- haiku ---------------------------------------------------------------
+# Five-seven-five from the newest activity's own numbers. No model, no
+# network: a fixed vocabulary, a dozen templates per line, and a syllable
+# count that decides which of them are legal today. Seeded by the activity id,
+# so the same ride always writes the same poem.
+
+_NUMBER_WORDS = [
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+    "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+    "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
+]
+
+_VOWEL_RUN = re.compile(r"[aeiouy]+")
+_VOWELS = "aeiouy"
+
+# Words the vowel-group rule below gets wrong. Small on purpose: the card's
+# vocabulary is fixed, so the exceptions are enumerable rather than guessed at.
+_SYLLABLE_LEXICON = {
+    "thirteen": 2, "fourteen": 2, "fifteen": 2, "sixteen": 2, "seventeen": 3,
+    "eighteen": 2, "nineteen": 2, "going": 2, "being": 2, "doing": 2,
+    "hour": 1, "quail": 1, "coyote": 3, "roadrunner": 3,
+}
+
+
+def _syllables_word(word):
+    w = word.lower().strip("'")
+    if not w:
+        return 0
+    if w in _SYLLABLE_LEXICON:
+        return _SYLLABLE_LEXICON[w]
+    # "-es" after a sibilant is its own syllable ("watches"); elsewhere it is
+    # just a plural and the "e" is silent ("miles").
+    extra = 0
+    if w.endswith(("ses", "zes", "xes", "ges", "ches", "shes")):
+        w, extra = w[:-2], 1
+    elif w.endswith("es") and not w.endswith("ies"):
+        w = w[:-1]
+    elif w.endswith("s") and not w.endswith(("ss", "us", "is")):
+        w = w[:-1]
+    # Silent "-ed": "logged", "moved" -- but not "wanted", "faded".
+    if w.endswith("ed") and len(w) > 3 and w[-3] not in "td":
+        w = w[:-2] or w
+    n = len(_VOWEL_RUN.findall(w))
+    if w.endswith("e") and n > 1:
+        # "-le" is a syllable of its own after a consonant ("little") but not
+        # after a vowel ("mile").
+        syllabic_le = w.endswith("le") and len(w) > 2 and w[-3] not in _VOWELS
+        if not (syllabic_le or w.endswith(("ee", "ye", "oe"))):
+            n -= 1
+    return max(n, 1) + extra
+
+
+def syllables(text):
+    """Vowel-group syllable count, the standard cheap English approximation.
+
+    Verified against every word in the card's own vocabulary; the lexicon
+    above carries the handful it would otherwise miss. Good enough that a
+    5-7-5 assembled from that vocabulary actually scans when read aloud,
+    which is the whole bar here.
+    """
+    return sum(_syllables_word(w) for w in re.findall(r"[a-z']+", text.lower()))
+
+
+def _number_word(x):
+    n = int(round(x))
+    return _NUMBER_WORDS[n] if 0 <= n < len(_NUMBER_WORDS) else str(n)
+
+
+def _temp_word(f):
+    if f is None:
+        return None
+    if f < 45:
+        return "cold"
+    if f < 60:
+        return "cool"
+    if f < 75:
+        return "mild"
+    if f < 88:
+        return "warm"
+    return "hot"
+
+
+_SUFFER_WORDS = [(30, "easy"), (60, "steady"), (100, "hard"), (150, "brutal"),
+                 (10 ** 9, "savage")]
+
+# Three banks of templates. Each is written at several fixed-word lengths on
+# purpose: the substituted words vary from one to four syllables ("hot" vs
+# "savage", "six" vs "seventeen", "owl" vs "tarantula"), so a bank of one
+# phrasing per idea would collapse onto the two or three that happen to scan
+# today. Several in each bank use no variable at all and always fit.
+_LINE1 = [
+    "{Temp} light on the trail", "{Temp} air, moving legs", "{Temp} wind, and the dust",
+    "{Temp} morning, and dust", "{Temp} sun on the road", "The trail is {suffer}",
+    "The {sport} was {suffer}", "The {suffer} {sport} ends", "A {suffer} {sport} home",
+    "{Number} miles before dawn", "{Number} miles of {sport}", "{Number} miles in the {temp}",
+    "{Number} {sport} miles logged", "Out for {number} miles now",
+    "The {sport} begins now", "{Sport}, and nothing else",
+    "The {noun} in the brush", "A {noun} on the road",
+]
+_LINE2 = [
+    "{temp} wind and the sound of breath", "a {temp} wind, and the long road",
+    "the {temp} air, the same old road", "the road, the {temp} wind, the light",
+    "{temp} morning, then the long climb", "nothing but the {temp} wind now",
+    "the light goes gold on the hills", "the hills give nothing away",
+    "the legs remember the climb", "one long shadow on the road",
+    "breathing, and the road, and dust", "{number} miles of {suffer} breathing",
+    "{number} miles under {temp} skies", "{number} miles, and the {temp} wind",
+    "{number} miles, and the legs held on", "a {suffer} hour, and nothing more",
+    "a {suffer} {sport}, honestly logged", "the {sport} was {suffer} today",
+    "the {noun} watches from the brush", "a {noun} crossed the road ahead",
+]
+_LINE3 = [
+    "The legs remember", "Nothing else to say", "The trail keeps its own",
+    "Home before the heat", "Log it and move on", "Breathing, and the road",
+    "Enough for today", "Nothing to prove here", "The road, and then home",
+    "{Temp} air, then coffee", "{Temp} wind at the door", "{Temp} light, and the dust",
+    "A {suffer} good day", "The {sport} was enough", "{Number} miles, all of them",
+    "The {noun} is still there", "The {noun}, and the dust",
+]
+
+
+def _article(line):
+    """Fix "a easy run" -> "an easy run". Both are one syllable, so this can
+    run after the templates are chosen without disturbing the count."""
+    return re.sub(r"\b([Aa]) (?=[aeiouAEIOU])", lambda m: m.group(1) + "n ", line)
+
+
+def haiku(act, sightings=None):
+    """A 5-7-5 built from one activity, chosen deterministically by its id.
+
+    ``sightings`` is the wildlife tally, so a run that saw a coyote can say so.
+    """
+    if not act:
+        return None
+    mi = act["_mi"]
+    temp_c = mf(act.get("average_temp_c"))
+    temp = _temp_word(temp_c * 9 / 5 + 32 if temp_c is not None else None) or "still"
+    suffer = mf(act.get("suffer_score"))
+    suffer_word = next(w for lim, w in _SUFFER_WORDS if (suffer or 0) < lim)
+    sport = ("trail run" if act["sport_type"] == "TrailRun" else
+             "ride" if act["sport_type"] in BIKE_TYPES else "run")
+    # Only this activity's own sightings. With none, the {noun} templates drop
+    # out entirely rather than defaulting to a plausible animal: the card would
+    # otherwise claim a hawk that nobody saw.
+    nouns = (sightings or {}).get(str(act["id"])) or []
+
+    seed = int(act["id"]) if str(act["id"]).isdigit() else abs(hash(act["id"]))
+    ctx = {"sport": sport, "Sport": sport.capitalize(),
+           "temp": temp, "Temp": temp.capitalize(),
+           "suffer": suffer_word,
+           "number": _number_word(mi), "Number": _number_word(mi).capitalize(),
+           "noun": nouns[seed % len(nouns)].lower() if nouns else ""}
+
+    lines = []
+    for i, (bank, target) in enumerate(((_LINE1, 5), (_LINE2, 7), (_LINE3, 5))):
+        usable = [t for t in bank
+                  if (nouns or "{noun}" not in t)
+                  # A gym session has no miles; "Zero run miles logged" is a
+                  # worse line than simply not counting them.
+                  and (mi >= 0.5 or "{number}" not in t.lower())]
+        rendered = [_article(t.format(**ctx)) for t in usable]
+        # Rotate the bank by the seed, then take the first line that scans.
+        # A different offset per line keeps the three from moving in lockstep.
+        off = (seed // (10 ** i)) % len(usable)
+        order = rendered[off:] + rendered[:off]
+        fits = [s for s in order if syllables(s) == target]
+        lines.append(fits[0] if fits else
+                     min(order, key=lambda s: abs(syllables(s) - target)))
+    return {"lines": lines, "act": act,
+            "counts": [syllables(s) for s in lines],
+            "exact": all(syllables(s) == t for s, t in zip(lines, (5, 7, 5)))}
