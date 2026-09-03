@@ -12,6 +12,7 @@ never collides with committed data.
 
 import json
 import os
+import sys
 from datetime import date
 
 from feed.cards import FAMILIES, ROTATION, build_cards, card_of_the_day
@@ -22,6 +23,10 @@ from feed.rss import build_rss
 
 
 def main():
+    # Card titles carry em dashes; a cp1252 Windows console raises
+    # UnicodeEncodeError on the first print without this.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     bundle = load()
     asof = bundle["asof"]
     today = date.today()

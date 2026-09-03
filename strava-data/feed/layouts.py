@@ -11,6 +11,7 @@ layout and then ``.add()`` extra marks on top.
 
 import math
 
+from . import fmt as F
 from . import svg as S
 from .config import BLACK, DARK, H, LIGHT, MIN_TEXT, PAD, W, WHITE
 
@@ -30,7 +31,7 @@ def base(cid, title, summary, kicker, asof):
                               tracking=3)
     c.add(
         S.text(PAD, 46, ktext, ksize, "bold", tracking=3),
-        S.text(W - PAD, 46, asof.strftime("%-d %b %Y").upper(), 26,
+        S.text(W - PAD, 46, F.day(asof).upper(), 26,
                anchor="end", fill=DARK, tracking=2),
         S.line(PAD, TOP_RULE, W - PAD, TOP_RULE, sw=4),
         S.line(PAD, BOT_RULE, W - PAD, BOT_RULE, stroke=LIGHT, sw=3),
