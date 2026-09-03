@@ -236,56 +236,65 @@ quoted are live as of the 2026-08-30 fetch.
 
 ---
 
-## The Journey ladder (idea 19), expanded
+## The Journey (idea 19), expanded
 
-Cumulative mileage as a road trip out of **92129**: an escalating ladder of real destinations at
-their approximate driving distance. The card auto-selects the leg you are on — early on it talks
-about Los Angeles, and at 2,000 mi it talks about New York. **One ladder for running, one for
-biking**, with separate destination lists so the two cards never show the same city.
+Cumulative mileage as a road trip out of **92129**, following **real interstate geometry**.
+Running heads east on I-8 → I-10 → I-40 to **Boston** (3,009 mi); riding heads southeast on
+I-8 → I-10 to **Austin** (1,345 mi). The two corridors share **1.1 %** of their geometry, so the
+cards read as genuinely different journeys rather than the same picture twice.
 
-**Where the data actually sits today** (all-time totals — a journey must never run backwards, so
-this uses the monotonic all-time figure, not a rolling window):
+**Where the data sits today** (all-time totals — a journey must never run backwards, so this uses
+the monotonic all-time figure, not a rolling window):
 
-| | total | behind you | ahead | to go | leg progress |
+| | total | past | next | to go | of the route |
 |---|---:|---|---|---:|---:|
-| **Running** (`Run` + `TrailRun`) | 880.1 mi | Salt Lake City (750) | **Portland, Oregon** (1,100) | 220 mi | 37 % |
-| **Biking** (`MountainBikeRide` + `Ride` + `EBikeRide`) | 549.0 mi | San Francisco (500) | **Salt Lake City** (750) | 201 mi | 20 % |
+| **Running** (`Run` + `TrailRun`) | 880 mi | Albuquerque (854) | **Amarillo** (1,138) | 258 mi | 29 % |
+| **Biking** (`MountainBikeRide` + `Ride` + `EBikeRide`) | 549 mi | Phoenix (343) | **Las Cruces** (695) | 146 mi | 41 % |
 
-**Recipe** (`strava-data/feed/journey.py`). Walk a sorted `(city, road_mi)` table: the last rung
-`<= total` is behind you, the first rung `> total` is ahead, and leg progress is
-`(total - behind) / (ahead - behind)`. Two edge cases are handled explicitly: below the first rung
-there is nothing behind you and the leg starts at 0 mi; past the last rung the journey **laps**
-(`total / final_mi`) rather than breaking.
+**How the route is built.** `strava-data/tools/gen_journey.py` pulls Natural Earth's
+`ne_10m_roads` (~50 MB, never committed — the same treatment `gen_basemap.py` gives its sources),
+keeps the 2,015 US major-highway segments, welds their endpoints into a routable graph, and
+shortest-paths from 92129 to each destination. It writes
+`strava-data/assets/journey_routes.json` (25.7 KB): the routed polyline, its cumulative mileage,
+and the cities the road passes. **The dashboard build does no routing and no network I/O** — it
+reads that asset.
 
-**Destinations** are hardcoded — the build makes no network calls, a repo rule — and curated so the
-rungs are roughly geometric, keeping "the next city" meaningful for years rather than parking on one
-leg for a decade. They are approximations, good to roughly ±5 %, which is invisible in a
-"37 % of the way to Portland" framing. Edit the tables in `journey.py`; nothing else reads them.
+Two things the graph build gets wrong if you are not careful, both of which cost a debugging pass:
 
-| Running ladder | mi | | Biking ladder | mi |
-|---|---:|---|---|---:|
-| Los Angeles | 125 | | Palm Springs | 140 |
-| Las Vegas | 330 | | Phoenix | 355 |
-| Grand Canyon, South Rim | 490 | | San Francisco | 500 |
-| Salt Lake City | 750 | | Salt Lake City | 750 |
-| Portland, Oregon | 1,100 | | Denver | 1,090 |
-| Seattle | 1,255 | | Austin | 1,320 |
-| Vancouver, BC | 1,400 | | Chicago | 2,080 |
-| Chicago | 2,080 | | New York City | 2,780 |
-| New York City | 2,780 | | **Boston** | 3,000 |
-| **Boston** | 3,000 | | Anchorage | 3,300 |
+- **Plain grid-rounding does not weld the network.** Natural Earth is a cartographic layer, not a
+  routing one: segment endpoints are near-coincident rather than identical. Rounding coordinates to
+  a grid leaves two endpoints 1 km apart in different cells, which shattered the network into 229
+  components and made obviously reachable cities unroutable. The fix is a spatial hash that
+  searches the 3×3 cell neighbourhood (`Welder`, 0.02° tolerance).
+- **Snap only to the largest component.** Even welded, a few hundred orphan clusters remain. Salt
+  Lake City and Austin both snapped into one and returned a silent "no route".
 
-**Both ladders end at Boston on purpose.** The dashboard's Places section already tells a two-homes
-story (San Diego 782 mi / Boston 530 mi), so "running home" is the long arc this card quietly builds
-toward.
+**The measured distances validate the old guesses.** The previous version of this card used a
+hand-maintained ladder of estimated road distances. Routed against real highways: Boston 3,009 vs
+the guessed 3,000, Chicago 2,059 vs 2,080, New York 2,804 vs 2,780, Salt Lake City 757 vs 750 —
+thirteen of fifteen within ±7 %. The outliers were Los Angeles (−15 %) and Phoenix (+17 %), where
+Natural Earth's coarse geometry cuts corners. The ladder is gone; mileposts are now whatever cities
+the road actually passes, at measured distance, so nothing is hand-maintained. To send a journey
+somewhere else, edit `CORRIDORS` in `gen_journey.py` and re-run it.
 
-**Layout.** Headline mileage top-left, sport glyph top-right. A thin **whole-route** bar with a tick
-per rung, filled to `total / final`, so the leg below has context. Then the **leg ribbon**: travelled
-solid black, road ahead dashed, a filled dot behind and a hollow dot ahead, and the sport glyph
-riding the line at the leg fraction — the runner *is* the progress indicator. Footer:
-`220 MI TO PORTLAND, OREGON · 37% OF THIS LEG`.
+**Layout — the map + milepost hybrid.** Headline mileage and "N MI TO ⟨city⟩" in the left column;
+a small orientation map top-right with the travelled portion solid and the road ahead dashed, and a
+dot at the current position; a full-width milepost strip beneath with filled (passed) and hollow
+(ahead) stations and the sport glyph riding the line. Two registers: the map answers *where*, the
+strip answers *how far*.
 
----
+Three details that are load-bearing rather than cosmetic:
+
+- **Both maps frame on a fixed continental extent** (`geo.CONUS`), not on their own route's
+  bounding box. The bike corridor is a thin east-west band, so a tight frame renders an
+  unrecognisable sliver. The map is for orientation only, so a consistent, recognisable silhouette
+  beats filling the box.
+- **Basemap strokes are solid greys, never `svg.tone()`.** A dither pattern used as a *stroke*
+  renders as a dotted chain and turns a coastline into noise.
+- **`svg.polyline` gained a `dash` argument** for the road ahead.
+
+**Anchorage was dropped.** It sat outside the basemap's clip box (61°N against a clip at 55°N), and
+the bike corridor now ends at Austin regardless.
 
 ## The proof sheet
 

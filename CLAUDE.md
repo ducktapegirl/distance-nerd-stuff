@@ -81,8 +81,8 @@ uv run python strava-data/build_feed.py   # writes running-log/{feed.xml,epaper.
 A **second, independent output target** alongside the dashboard, for a reTerminal Sticky ePaper
 panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and Web functions.
 `strava-data/build_feed.py` is a thin entrypoint; the work lives in `strava-data/feed/`
-(`config.py`, `metrics.py`, `journey.py`, `places.py`, `stats.py`, `svg.py`, `layouts.py`,
-`cards.py`, `rss.py`, `page.py`). All 56 catalogued ideas are built. **Add a new card as a
+(`config.py`, `metrics.py`, `journey.py`, `geo.py`, `places.py`, `stats.py`, `svg.py`,
+`layouts.py`, `cards.py`, `rss.py`, `page.py`). All 56 catalogued ideas are built. **Add a new card as a
 `@card(idea, family, recipe)`-decorated function in `cards.py` composed from `layouts.py`** — not
 in the entrypoint, and not as a bespoke layout: the eight layouts exist so 56 cards cannot drift
 apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignored** like the
@@ -91,7 +91,15 @@ family — and `cards.ROTATION` is the curated subset the device actually cycles
 
 `feed/` deliberately imports nothing from `dashboard/`: those modules pull in plotly and a
 MapTiler key. The price is that `places.py` **duplicates** the dashboard's state boxes, home boxes
-and peaks record book — change one, change both.
+and peaks record book — change one, change both. It does read two checked-in *assets*:
+`assets/basemap.json` (shared with the Places hero — **never regenerate it from the feed side**)
+and `assets/journey_routes.json`.
+
+The Journey cards follow real interstates. `strava-data/tools/gen_journey.py` pulls Natural Earth
+`ne_10m_roads` (~50 MB, never committed), welds it into a routable graph and shortest-paths from
+92129, writing `assets/journey_routes.json` (25 KB). **Re-run it only when the corridors change** —
+the dashboard build does no routing and no network I/O. To send a journey somewhere else, edit
+`CORRIDORS` there, not in `feed/journey.py`.
 
 Idea catalogue and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-brainstorm.md`](Project%20Docs/Plans/strava-data/epaper-feed-brainstorm.md).
 
