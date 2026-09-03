@@ -72,11 +72,12 @@ def circle(cx, cy, r, fill=BLACK, stroke=None, sw=MIN_STROKE):
     return f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="{fill}"{st}/>'
 
 
-def polyline(pts, stroke=BLACK, sw=MIN_STROKE, fill="none"):
+def polyline(pts, stroke=BLACK, sw=MIN_STROKE, fill="none", dash=None):
     d = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+    da = f' stroke-dasharray="{dash}"' if dash else ""
     return (f'<polyline points="{d}" fill="{fill}" stroke="{stroke}" '
             f'stroke-width="{max(sw, MIN_STROKE)}" stroke-linejoin="round" '
-            f'stroke-linecap="round"/>')
+            f'stroke-linecap="round"{da}/>')
 
 
 def polygon(pts, fill=BLACK, stroke=None, sw=MIN_STROKE):

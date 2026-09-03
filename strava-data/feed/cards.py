@@ -22,7 +22,8 @@ from . import places as P
 from . import stats as St
 from . import svg as S
 from .config import BLACK, DARK, H, LIGHT, PAD, W, WHITE
-from .journey import BIKE_LADDER, RUN_LADDER, leg
+from . import geo
+from . import journey
 
 FAMILIES = {
     "A": "Right now", "B": "Streaks & consistency", "C": "Volume & progress",
@@ -389,65 +390,90 @@ def c18_everest(b, o):
 
 
 def _journey(b, group):
+    """The map + milepost hybrid: an orientation map above, precise strip below.
+
+    The route is real interstate geometry, shortest-pathed offline by
+    tools/gen_journey.py; the mileages are measured along that road.
+    """
     if group == "run":
         total = M.totals(b["acts"], M.is_run)["mi"]
-        ladder, glyph, label = RUN_LADDER, S.glyph_runner, "running"
+        glyph, verb = S.glyph_runner, "run"
     else:
         total = M.totals(b["acts"], M.is_bike)["mi"]
-        ladder, glyph, label = BIKE_LADDER, S.glyph_bike, "riding"
-    j = leg(total, ladder)
-    ahead_city = j["ahead"][0]
-    behind_city = j["behind"][0] if j["behind"] else "home (92129)"
+        glyph, verb = S.glyph_bike, "ridden"
+
+    j = journey.position(total, group)
+    cor = j["corridor"]
+    label, dest = cor["label"], cor["destination"]
+    ahead = j["ahead"]["name"]
+    behind = j["behind"]["name"] if j["behind"] else "home"
+    short = ahead.split(",")[0]
 
     if j["lapped"]:
-        title = f"{label.title()} · {total:,.0f} mi — {j['laps']:.1f}× the road to {ahead_city}"
-        summary = (f"{total:,.0f} miles of {label} is {j['laps']:.1f} times the driving "
-                   f"distance from 92129 to {ahead_city}.")
+        title = (f"{label.title()} · {total:,.0f} mi — {j['laps']:.1f}× the road to {dest}")
+        summary = (f"{total:,.0f} miles {verb} is {j['laps']:.1f} times the "
+                   f"{cor['total_mi']:,.0f}-mile interstate route from 92129 to {dest}.")
     else:
-        title = (f"{label.title()} · {total:,.0f} mi — {j['remaining_mi']:,.0f} mi short "
-                 f"of {ahead_city}")
-        summary = (f"Measured as a road trip out of 92129, {total:,.0f} miles of {label} puts "
-                   f"you past {behind_city} and {j['frac'] * 100:.0f}% of the way on to "
-                   f"{ahead_city} — {j['remaining_mi']:,.0f} miles to go.")
+        title = (f"{label.title()} · {total:,.0f} mi — {j['remaining_mi']:,.0f} mi "
+                 f"to {short}")
+        summary = (f"Measured along {cor['road']} out of 92129, {total:,.0f} miles {verb} puts "
+                   f"you past {behind} with {j['remaining_mi']:,.0f} miles to {ahead} — "
+                   f"{j['route_frac'] * 100:.0f}% of the {cor['total_mi']:,.0f}-mile road to "
+                   f"{dest}.")
 
-    c = _mk(f"journey-{group}", title, summary, f"{label} · out of 92129", b, 19, "C",
-            "cumulative miles located on a hardcoded ladder of road distances")
-    c.add(S.text(PAD, 168, f"{total:,.0f}", 108, "bold"),
-          S.text(PAD + len(f"{total:,.0f}") * 108 * 0.60 + 14, 168, "MI", 44, "bold", fill=DARK),
-          glyph(W - PAD - 106, 74, 106))
+    c = _mk(f"journey-{group}", title, summary, f"{label} · road to {dest}", b, 19, "C",
+            "cumulative miles placed on a real interstate route, shortest-pathed offline")
 
-    # The whole route at a glance: every rung a tick, filled to where you are.
-    final_city, final_mi = ladder[-1]
-    bx0, bx1, by = PAD + 12, W - PAD - 12, 236
-    span = bx1 - bx0
-    c.add(S.text(bx0, by - 14, "THE WHOLE ROUTE", 26, "bold", fill=DARK, tracking=2),
-          S.text(bx1, by - 14, f"{final_city.upper()} · {final_mi:,} MI", 26,
-                 anchor="end", fill=DARK, tracking=2),
-          S.rect(bx0, by, span, 14, fill=WHITE, stroke=DARK, sw=3),
-          S.rect(bx0 + 2, by + 2, max(span * min(1.0, total / final_mi) - 4, 0), 10, fill=BLACK))
-    for _, rung_mi in ladder[:-1]:
-        tx = bx0 + span * (rung_mi / final_mi)
-        c.add(S.line(tx, by - 6, tx, by, stroke=DARK, sw=3))
+    # ── the numbers, left column ──────────────────────────────────────────
+    c.add(S.text(PAD, 158, f"{total:,.0f}", 80, "bold"),
+          S.text(PAD, 194, f"MILES {verb.upper()}", 26, "bold", fill=DARK, tracking=3))
+    if j["lapped"]:
+        c.add(S.text(PAD, 248, f"{j['laps']:.1f}×", 44, "bold"),
+              S.text(PAD, 282, f"THE ROAD TO {dest.upper()}", 26, "bold",
+                     fill=DARK, tracking=2))
+    else:
+        lbl, lsz = S.fit_text(f"TO {short.upper()}", 26, 280, tracking=2)
+        c.add(S.text(PAD, 248, f"{j['remaining_mi']:,.0f} MI", 44, "bold"),
+              S.text(PAD, 282, lbl, lsz, "bold", fill=DARK, tracking=2))
 
-    # The current leg: travelled solid, road ahead dashed.
-    y, x0, x1 = 322, PAD + 12, W - PAD - 12
-    px = x0 + (x1 - x0) * j["frac"]
-    c.add(S.line(x0, y, px, y, sw=6),
-          S.line(px, y, x1, y, stroke=DARK, sw=5, dash="10 10"),
-          S.circle(x0, y, 12, fill=BLACK),
-          S.circle(x1, y, 12, fill=WHITE, stroke=BLACK, sw=5),
-          glyph(px - 28, y - 62, 56))
-    bname, bsize = S.fit_text(behind_city.upper(), 28, 320)
-    aname, asize = S.fit_text(ahead_city.upper(), 28, 320)
-    c.add(S.text(x0, y + 46, bname, bsize, "bold", tracking=2),
-          S.text(x1, y + 46, aname, asize, "bold", anchor="end", tracking=2))
-    if not j["behind"]:
-        c.add(S.text(x0, y + 78, "START", 26, fill=DARK, tracking=2))
+    # ── orientation map, top right ────────────────────────────────────────
+    path = [tuple(q) for q in cor["path"]]
+    frame = geo.Frame(*geo.CONUS, 330, 92, W - PAD - 330, 198, pad=0.02)
+    geo.draw_basemap(c, frame, S)
+    done = geo.project(frame, path[:j["split"] + 1])
+    todo = geo.project(frame, path[j["split"]:])
+    if len(todo) > 1:
+        c.add(S.polyline(todo, stroke=DARK, sw=4, dash="7 6"))
+    if len(done) > 1:
+        c.add(S.polyline(done, sw=6))
+    hx, hy = frame.xy(*j["here"])
+    c.add(S.circle(hx, hy, 13, fill=WHITE, stroke=BLACK, sw=5),
+          S.circle(hx, hy, 5, fill=BLACK))
 
+    # ── milepost strip, full width ────────────────────────────────────────
+    x0, x1, y = PAD, W - PAD, 356
+    mx = x0 + (x1 - x0) * j["route_frac"]
+    c.add(S.line(x0, y, x1, y, stroke=LIGHT, sw=6),
+          S.line(x0, y, mx, y, sw=6))
+    for post in cor["mileposts"]:
+        px = x0 + (x1 - x0) * post["mi"] / cor["total_mi"]
+        passed = post["mi"] <= total
+        c.add(S.circle(px, y, 9, fill=BLACK if passed else WHITE,
+                       stroke=None if passed else BLACK, sw=4))
+    c.add(S.circle(mx, y, 24, fill=WHITE, stroke=BLACK, sw=5),
+          glyph(mx - 17, y - 18, 35))
+    c.add(S.text(x0, y + 40, "SAN DIEGO", 26, "bold", fill=DARK, tracking=2),
+          S.text(x1, y + 40, f"{dest.upper()} {cor['total_mi']:,.0f}", 26, "bold",
+                 anchor="end", fill=DARK, tracking=2))
+
+    return _footer_or(c, j, behind, cor)
+
+
+def _footer_or(c, j, behind, cor):
     if j["lapped"]:
         return L.footer(c, f"{j['laps']:.1f} laps of the full route")
-    return L.footer(c, f"{j['remaining_mi']:,.0f} MI TO {ahead_city.upper()} · "
-                       f"{j['frac'] * 100:.0f}% OF THIS LEG")
+    return L.footer(c, f"{cor['road']} · {j['route_frac'] * 100:.0f}% of "
+                       f"{cor['total_mi']:,.0f} mi")
 
 
 @card(19, "C", "cumulative running miles on the road-distance ladder from 92129")
