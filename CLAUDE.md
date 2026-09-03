@@ -87,7 +87,7 @@ panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and We
 in the entrypoint, and not as a bespoke layout: the eight layouts exist so 56 cards cannot drift
 apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignored** like the
 dashboards' HTML. `epaper-all.html` is the proof sheet — every card at real size, grouped by
-family — and `cards.ROTATION` is the curated subset the device actually cycles daily.
+family — and `cards.ROTATION` is the 11-card subset the device actually cycles daily.
 
 `feed/` deliberately imports nothing from `dashboard/`: those modules pull in plotly and a
 MapTiler key. The price is that `places.py` **duplicates** the dashboard's state boxes, home boxes
@@ -102,6 +102,14 @@ the dashboard build does no routing and no network I/O. To send a journey somewh
 `CORRIDORS` there, not in `feed/journey.py`.
 
 Idea catalogue and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-brainstorm.md`](Project%20Docs/Plans/strava-data/epaper-feed-brainstorm.md).
+Getting it onto the panel — pairing, URLs, and the three refresh clocks:
+[`Project Docs/Handoffs/strava-data/epaper-deployment.md`](Project%20Docs/Handoffs/strava-data/epaper-deployment.md).
+
+**`deploy.yml` has a daily `schedule` trigger and it is not redundant.** `card_of_the_day` is
+chosen at *build* time — the panel runs no JS — so `epaper.html` holds one fixed card until the
+site rebuilds. The daily run re-renders committed data (no Strava API calls) so the rotation
+actually advances. `cards.ROTATION` is the 11 cards the device cycles; the other 46 still build
+and still ship in `feed.xml` and the proof sheet.
 
 Panel rules — these are constraints, not preferences, and `svg.py` enforces the first two:
 - **Text below 26 px raises**; strokes below 3 px are clamped. At 235 PPI the whole screen is

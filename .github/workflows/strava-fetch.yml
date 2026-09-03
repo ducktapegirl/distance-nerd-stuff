@@ -2,7 +2,10 @@ name: Strava Data Fetch
 
 on:
   schedule:
-    - cron: "0 6 1,15 * *"   # 6 AM UTC on the 1st and 15th of each month (~every 2 weeks)
+    # 6 AM UTC every third day. Day-of-month stepping restarts each month, so
+    # this fires on the 1st, 4th, 7th ... 31st and then the 1st again - a 1-day
+    # gap at some month boundaries rather than 3. Harmless, just surprising.
+    - cron: "0 6 */3 * *"
   workflow_dispatch:
     inputs:
       limit:
