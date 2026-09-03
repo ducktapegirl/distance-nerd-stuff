@@ -1,6 +1,6 @@
 # Strava on e-paper: display ideas for the reTerminal Sticky
 
-**Status:** all 56 ideas built (23 in the device rotation) · **Created:** 2026-09-03 · **Owner:** unassigned
+**Status:** all 56 ideas built (11 in the device rotation) · **Created:** 2026-09-03 · **Owner:** unassigned
 
 Companion to the code in `strava-data/feed/` and the entrypoint `strava-data/build_feed.py`.
 This document is the idea catalogue; the code is the subset that already runs.
@@ -21,15 +21,15 @@ ESP32-S3, magnetic mount, ~7-day standby.
 
 Three facts drive every design decision below:
 
-1. **[ROTATION]** **It is dense, not coarse.** 800×480 across 3.97" means the whole screen is about **3.4" × 2.0"**,
+1. **It is dense, not coarse.** 800×480 across 3.97" means the whole screen is about **3.4" × 2.0"**,
    so **1 mm ≈ 9.3 px**. A 12 px label is 1.3 mm tall — invisible. This is the opposite of the usual
    "small screen = low resolution" intuition, and it is the single most important constraint.
    Working floors: **text ≥ 26 px, strokes ≥ 3 px, headline numerals 84–110 px**.
-2. **[CATALOGUE]** **It is a fridge magnet, not a monitor.** The Sticky's premise is a magnetic note board glanced
+2. **It is a fridge magnet, not a monitor.** The Sticky's premise is a magnetic note board glanced
    at in passing. That argues for **one idea per screen** and against porting any multi-panel
    dashboard layout. With ~7-day standby the refresh cadence is hourly at best, so content should
    rotate on a **daily** clock, not a live one.
-3. **[ROTATION]** **Four tones, no colour.** White / light / dark / black, plus ordered dithering for the steps
+3. **Four tones, no colour.** White / light / dark / black, plus ordered dithering for the steps
    between. Enough for a real sequential ramp; nowhere near enough for the dashboard's teal/amber
    `SPORT_COLORS`, which must be re-tabled as **tone + pattern + shape**.
 
@@ -90,14 +90,14 @@ budget (there is no text measurement at build time, so widths are approximated a
 
 ## The catalogue
 
-56 ideas, **all of them now built** as real `card_*` functions. **[ROTATION]** marks the ones the
-device cycles through daily; **[CATALOGUE]** ones exist and render but are held back, mostly because
-they duplicate a stronger sibling. Every recipe was checked against the real data; the numbers
+56 ideas, **all of them now built** as real `card_*` functions. **[ROTATION]** marks the eleven the
+device cycles through daily, hand-picked 2026-09-03; **[CATALOGUE]** ones exist, render, and ship in
+`feed.xml` and on the proof sheet, but are held back from the panel. Every recipe was checked against the real data; the numbers
 quoted are live as of the 2026-08-30 fetch.
 
 ### A · Right now — state you would glance at
 
-1. **[ROTATION]** **Load gauge** — ACWR (7-day ÷ 28-day mean daily suffer score) on a four-band dial:
+1. **[CATALOGUE]** **Load gauge** — ACWR (7-day ÷ 28-day mean daily suffer score) on a four-band dial:
    `<0.8` detrained, `0.8–1.3` steady, `1.3–1.5` spiking, `>1.5` danger. Same quantity the
    dashboard's V8 chart plots, reduced to the one number you would actually glance at.
    *Today: **1.37**, spiking.* Bands get monotonically more ink as risk rises, so the ramp reads as
@@ -105,10 +105,10 @@ quoted are live as of the 2026-08-30 fetch.
    the readout.
 2. **[CATALOGUE]** **Days since last activity** — one enormous numeral; the whole screen is the number. Trivial off
    `streaks()["days_since"]`.
-3. **[ROTATION]** **Last activity card** — sport glyph, name, distance, pace, elevation. The dashboard's
+3. **[CATALOGUE]** **Last activity card** — sport glyph, name, distance, pace, elevation. The dashboard's
    `_activity_detail_json` already emits exactly these fields, pre-formatted.
 4. **[CATALOGUE]** **Rolling 7-day totals** — miles + hours + feet as three big numbers. `totals(window(acts, 7))`.
-5. **[CATALOGUE]** **Fresh / cooked** — a single word from ACWR + days-since, with a face-glyph. The most
+5. **[ROTATION]** **Fresh / cooked** — a single word from ACWR + days-since, with a face-glyph. The most
    "fridge magnet" idea in the list.
 6. **[CATALOGUE]** **Last activity's route** — as #36 but pinned to the most recent GPS activity rather than rotating.
 
@@ -120,17 +120,17 @@ quoted are live as of the 2026-08-30 fetch.
 9. **[ROTATION]** **Last-30-days strip** — 30 cells, filled = active. *17 of 30.* Rendered as **two rows of
    15**, not one row of 30: at 800 px a single row forces 20 px cells (~2 mm) that vanish at arm's
    length.
-10. **[ROTATION]** **Week-shape bars** — 7 bars Mon–Sun, this week's miles against the 8-week median as a ghost outline.
+10. **[CATALOGUE]** **Week-shape bars** — 7 bars Mon–Sun, this week's miles against the 8-week median as a ghost outline.
 11. **[CATALOGUE]** **Consistency ratio** — active ÷ elapsed days, all-time (355/687 = 52 %) as a split disc.
-12. **[ROTATION]** **Day-of-week fingerprint** — 7 bars. *Sunday 70, Wednesday 55, Saturday 43.* Counterintuitive
+12. **[CATALOGUE]** **Day-of-week fingerprint** — 7 bars. *Sunday 70, Wednesday 55, Saturday 43.* Counterintuitive
     (Saturday is the **least** active day) and therefore worth a card.
 13. **[CATALOGUE]** **Longest streak vs current** — two bars racing. Only interesting when the gap is small.
 
 ### C · Volume and progress
 
-14. **[ROTATION]** **YTD vs the same date last year** — *536 mi vs 489 mi.* Two bars plus a delta pill.
+14. **[CATALOGUE]** **YTD vs the same date last year** — *536 mi vs 489 mi.* Two bars plus a delta pill.
 15. **[CATALOGUE]** **This month vs the 12-month median** — a thermometer that fills. *Aug 58 mi against a ~70 mi median.*
-16. **[ROTATION]** **Rolling 12-month odometer** — *880 mi*, digits in mechanical odometer boxes,
+16. **[CATALOGUE]** **Rolling 12-month odometer** — *880 mi*, digits in mechanical odometer boxes,
     `MILES · LAST 365 DAYS` beneath. Footer carries activities / feet / moving hours.
 17. **[ROTATION]** **Monthly sparkline** — 13 months of miles as a 3 px step line, no axis, a dot on "now".
 18. **[ROTATION]** **Elevation as landmark** — *126,355 ft = 4.4 × Everest*, drawn as four solid peaks plus
@@ -139,18 +139,18 @@ quoted are live as of the 2026-08-30 fetch.
 19. **[ROTATION]** **The Journey ladder** — see the expanded section below.
 20. **[ROTATION]** **Sport split** — last 365 days: *Run 70, MTB 68*, everything else trailing. Worth showing
     precisely because it is a dead heat.
-21. **[CATALOGUE]** **Hours-in-motion clock** — *285.9 moving hours* as a 12-hour dial wound N times round.
+21. **[ROTATION]** **Hours-in-motion clock** — *285.9 moving hours* as a 12-hour dial wound N times round.
 
 ### D · The racing self — segments
 
-22. **[ROTATION]** **Latest PR** — segment name, time, date, effort number, and the effort count as
+22. **[CATALOGUE]** **Latest PR** — segment name, time, date, effort number, and the effort count as
     five-bar tally gates. *"Oops, I crapped my pants on Lenkeit bridge", 0:10 on effort 21.* The
     segment names are half the appeal; `fit_text` exists largely for them.
 23. **[CATALOGUE]** **PR pace** — PRs set in the last 30 / 90 / 365 days as three counters. *30 / 135 / 500.*
     Currently the footer of #22; deserves its own card.
-24. **[ROTATION]** **Home-segment leaderboard** — top 5 by effort count with best times, as a scoreboard.
+24. **[CATALOGUE]** **Home-segment leaderboard** — top 5 by effort count with best times, as a scoreboard.
     *Canyon entrance via Salix ×36, Salix out to PV ×29, Lenkeit bridge ×21.*
-25. **[ROTATION]** **Most-improving segment** — biggest negative `recent_trend` among segments with ≥5 efforts.
+25. **[CATALOGUE]** **Most-improving segment** — biggest negative `recent_trend` among segments with ≥5 efforts.
     *Lex Town Track, −40.7 %.*
 26. **[CATALOGUE]** **Most-declining segment** — the honest inverse. *Tree Y/T 1 split, +48.7 %.* Ships with a
     self-deprecating caption or it is just mean.
@@ -163,7 +163,7 @@ quoted are live as of the 2026-08-30 fetch.
 
 ### E · Gear — the most actionable category
 
-30. **[ROTATION]** **Shoe mileage bars** — one row per non-retired shoe: data-glyph, name, filled bar,
+30. **[CATALOGUE]** **Shoe mileage bars** — one row per non-retired shoe: data-glyph, name, filled bar,
     `mi / limit`. Threshold comes from Strava's own replacement reminder, else 400 mi.
     **Units trap:** `notification_distance` arrives in the athlete's *display* units (400, 450, 0 —
     only coherent as miles against a 470-mile shoe), while `distance` is metres and
@@ -178,33 +178,35 @@ quoted are live as of the 2026-08-30 fetch.
 
 ### F · Places
 
-34. **[ROTATION]** **Passport counter** — *28 regions, 9 states and provinces*, via the dashboard's
+34. **[CATALOGUE]** **Passport counter** — *28 regions, 9 states and provinces*, via the dashboard's
     `_count_regions` (10 km greedy clustering) and `_count_states` (39-box lat/lng table).
 35. **[CATALOGUE]** **Two homes** — *San Diego 782 mi vs Boston 530 mi*, two route thumbnails side by side.
     Reuse `_home_stats` and `_home_thumb_tracks`.
-36. **[ROTATION]** **Route of the day** — one activity's GPS path, chosen deterministically by date so it
+36. **[CATALOGUE]** **Route of the day** — one activity's GPS path, chosen deterministically by date so it
     changes daily with no device-side state. Reads **one** streams file, not the 42 MB directory.
     Latitude degrees are ~1/cos(lat) wider on the ground than longitude degrees, so the path is
     cosine-corrected or it comes out squashed; it is then fitted to the card's **rectangle**,
     preserving aspect — letterboxing a wide, flat route into a square wastes most of the card.
-37. **[CATALOGUE]** **Route mosaic** — 24 thumbnails in a 6×4 grid. Abstract, and dense pixels are exactly what this
-    panel is good at.
-38. **[CATALOGUE]** **Heat-map tile** — home-city route density, dithered rather than glowed.
+37. **[ROTATION]** **Route mosaic** — 32 thumbnails in an 8×4 grid, rotating daily out of all 348 GPS tracks.
+    Abstract, and dense pixels are exactly what this panel is good at.
+38. **[ROTATION]** **Home density** — San Diego route density, dithered rather than glowed. Bins every 15th
+    point of every track (21,666 points) over the extent the data occupies; binning *start* points
+    over the whole home box put every ride in one cell.
 39. **[CATALOGUE]** **Compass extremes** — *northernmost 49.3°N, easternmost 70.2°W, highest 14,507 ft*, from the
     pinned `_PEAKS_DEF` record book.
 
 ### G · Weather and environment
 
-40. **[ROTATION]** **Temperature range** — trained from *−14.5 °C to 32.7 °C* (**6 °F to 91 °F**). A thermometer
+40. **[CATALOGUE]** **Temperature range** — trained from *−14.5 °C to 32.7 °C* (**6 °F to 91 °F**). A thermometer
     with two marks.
-41. **[ROTATION]** **The heat verdict** — reuse V4: pace degrades with heat, heart rate does not. One sentence.
+41. **[CATALOGUE]** **The heat verdict** — reuse V4: pace degrades with heat, heart rate does not. One sentence.
 42. **[CATALOGUE]** **UV exposure** — *max 8.7*; a sun glyph whose ray count is the index. Note `uv_index` is
     time-of-day resolved, not a daily max (a 07:34 run reads 0.1).
 43. **[CATALOGUE]** **Dark o'clock** — *22 starts before 8 a.m., earliest 03:17.* A moon/sun split glyph.
 
 ### H · Records and superlatives
 
-44. **[ROTATION]** **Record book** — the six pinned `_PEAKS_DEF` rows, one per rotation day, each a full-screen fact.
+44. **[CATALOGUE]** **Record book** — the six pinned `_PEAKS_DEF` rows, one per rotation day, each a full-screen fact.
 45. **[CATALOGUE]** **Longest ever** — longest run, longest ride, biggest climb day.
 46. **[CATALOGUE]** **Kudos leaderboard** — *"Snow Snake 🐍", 12 kudos.* Small and human.
 
@@ -212,18 +214,19 @@ quoted are live as of the 2026-08-30 fetch.
 
 47. **[CATALOGUE]** **On this day** — same month/day in prior years. **Sparse**: the dataset only spans 2024–2026,
     so most days have exactly one hit. Must degrade to "nothing on this day — here is the nearest".
-48. **[ROTATION]** **A year ago this week** — a wider, far more reliable window than #47. Prefer this one.
+48. **[CATALOGUE]** **A year ago this week** — a wider, far more reliable window than #47. Prefer this one.
 49. **[CATALOGUE]** **First ever** — the first activity in the dataset, framed as an origin story.
 
 ### J · Voice and whimsy
 
 50. **[CATALOGUE]** **The joggernaut byline** — the Strava bio (*"I'm the joggernaut, bitch"*) as a masthead.
     Already the RSS channel description.
-51. **[ROTATION]** **From the logbook** — an activity title and its description, typographically, rotating
+51. **[CATALOGUE]** **From the logbook** — an activity title and its description, typographically, rotating
     daily. Picks only from activities that *have* a description (291 of 374). Zero charts, maximum
     charm — the titles are genuinely funny ("Oooh, clockwise!", "🦌", "Saw a massive coyote, hazed
     it, then almost fell into a small ravine while looking at it sideways and running forwards").
-52. **[ROTATION]** **Coyote index** — count descriptions matching an animal word list. Silly, cheap, and yours.
+52. **[ROTATION]** **Wildlife index** — titles and descriptions matched against an animal word list. *29
+    activities, led by coyote ×7.* Silly, cheap, and yours.
 53. **[CATALOGUE]** **Emoji-title census** — how many activity names are pure emoji.
 
 ### K · Meta and data-nerd
@@ -346,12 +349,13 @@ track over the extent the data actually occupies.
 
 ## Next steps, in rough order of value
 
-1. **[ROTATION]** **#48 A year ago this week**, **#24 home-segment leaderboard**, **#14 YTD vs last year** — high
+1. **#48 A year ago this week**, **#24 home-segment leaderboard**, **#14 YTD vs last year** — high
    interest, all pure `activities.csv`, no new plumbing.
-2. **[CATALOGUE]** **#56 lap splits** — retires the "fetched but unconsumed" note on `laps/`.
-3. **[ROTATION]** **Bump the fetch cron to daily** if these cards should feel live.
-4. **[CATALOGUE]** **Portrait mode.** The Sticky has an accelerometer. If SenseCraft exposes orientation, a 480×800
+2. **#56 lap splits** — retires the "fetched but unconsumed" note on `laps/`.
+3. ~~Bump the fetch cron~~ — done 2026-09-03: every 3 days, with a daily
+   site rebuild so the card of the day actually advances.
+4. **Portrait mode.** The Sticky has an accelerometer. If SenseCraft exposes orientation, a 480×800
    variant is worth having — but the renderer is currently hardcoded to 800×480 in `config.W/H`, so
    this means making the card layouts size-parametric rather than flipping a constant.
-5. **[CATALOGUE]** **Touch.** Capacitive touch exists and is currently unused; the page is deliberately readable with
+5. **Touch.** Capacitive touch exists and is currently unused; the page is deliberately readable with
    zero interaction. If HMI's Web function passes touch through, "tap for the next card" is cheap.

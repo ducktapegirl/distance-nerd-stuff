@@ -1292,14 +1292,25 @@ def c56_laps(b, o):
 
 # ══ assembly ════════════════════════════════════════════════════════════
 
-# The device's daily pick draws from here; the contact sheet and the feed show
-# everything. Curated because 56 cards is a two-month cycle and several ideas
-# are near-duplicates once drawn.
+# The eleven cards the device actually cycles, hand-picked rather than curated
+# by family. Every other card still builds, still ships in feed.xml and still
+# appears on the proof sheet - promoting one is a one-line edit here.
+# Eleven ids means the rotation repeats every eleven days.
+#
+# card_of_the_day falls back to the whole catalogue if an id here goes missing,
+# so a typo degrades rather than crashes.
 ROTATION = [
-    "journey-run", "journey-bike", "load", "shoes", "odometer", "everest",
-    "strip", "pr", "route", "title", "week-shape", "weekday", "ytd",
-    "sparkline", "split", "leaderboard", "improving", "heat-verdict",
-    "passport", "year-ago", "animals", "record-book", "last", "temp",
+    "fresh",          # 5  - one word: fresh / ready / spicy / cooked / rusty
+    "strip",          # 9  - last 30 days as two rows of cells
+    "sparkline",      # 17 - 13 months of volume
+    "everest",        # 18 - all-time elevation as stacked Everests
+    "journey-run",    # 19 - east on I-8 -> I-10 -> I-40 toward Boston
+    "journey-bike",   # 19 - southeast on I-8 -> I-10 toward Austin
+    "split",          # 20 - last 365 days by sport
+    "hours",          # 21 - hours in motion, on a clock face
+    "mosaic",         # 37 - 32 route thumbnails
+    "heat",           # 38 - San Diego riding density
+    "animals",        # 52 - wildlife index
 ]
 
 
