@@ -117,7 +117,7 @@ Needs a **2.4 GHz** network.
 ## Step 4 — point it at the feed
 
 - **Web function** → `https://ducktapegirl.github.io/distance-nerd-stuff/epaper.html`
-  This is the main event: the card of the day at exactly 800×480.
+  This is the main event: the current card at exactly 800×480, changing hourly.
 - **RSS function** → `https://ducktapegirl.github.io/distance-nerd-stuff/feed.xml`
   All 63 cards as one-line text items — useful as a second page or a fallback.
 - **To pin one card instead**, point the Web function at
@@ -132,14 +132,32 @@ This is the part worth understanding, because a stale panel has three possible c
 | Clock | Where | Cadence | What it controls |
 |---|---|---|---|
 | **Strava fetch** | `.github/workflows/strava-fetch.yml` | every 3 days (`0 6 */3 * *`) | how current the *numbers* are |
-| **Site rebuild** | `.github/workflows/deploy.yml` | daily (`0 7 * * *`) + on any content push | **which card is showing** |
-| **Device poll** | SenseCraft HMI settings | *unverified — see below* | when the panel picks up a change |
+| **Site rebuild** | `.github/workflows/deploy.yml` | hourly (`0 * * * *`) + on any content push | **which card is showing** |
+| **Device poll** | SenseCraft HMI settings | *unverified — see below* | how soon the panel notices a change |
 
-**The daily rebuild is not redundant.** `card_of_the_day` is evaluated at *build* time — the panel
-runs no JavaScript, so `epaper.html` contains one fixed card until the site is rebuilt. Without the
-daily cron the rotation would only advance when the data changed, i.e. every 3 days and not at all
-on a quiet stretch. The scheduled rebuild costs nothing (it re-renders committed data, makes no
-Strava API calls) and is what makes "card of the day" true.
+**Turning up the device's poll interval does not make the cards rotate faster.** This is the single
+most counter-intuitive thing here, so it is worth being blunt about: `card_of_the_day` is evaluated
+at *build* time. The panel runs no JavaScript and cannot choose, so `epaper.html` is a static file
+containing exactly one card until the site is rebuilt. A panel polling every five minutes fetches
+the same file 288 times a day and shows the same card every time.
+
+**The rotation therefore advances only as often as the site rebuilds**, which is why the cron is
+hourly and not daily. Keyed on hours since the epoch in UTC, the 16-card rotation cycles in 16
+hours; on the old daily cron the same rotation took 16 *days*. 24 does not divide evenly by 16, so
+the sequence also shifts by eight slots each day rather than showing the same card at the same time
+every morning.
+
+The rebuild re-renders already-committed data and makes no Strava API calls, so an hourly run costs
+about a runner minute; `concurrency: {group: pages, cancel-in-progress: true}` means an overlapping
+run cancels the older one rather than racing it. Two things to know about scheduled workflows:
+GitHub may delay them under load, and it disables them entirely after 60 days with no repo activity
+— if the panel freezes on one card for days, check that the schedule is still enabled before
+suspecting the device.
+
+**What the device poll *does* control** is latency: how long after a rebuild the panel shows the new
+card. Anything at or under an hour keeps up with the rotation. A slower poll doesn't break anything
+— the panel just skips cards, and since 16 and most poll intervals are coprime it still sees a
+varied sequence.
 
 Day-of-month stepping restarts each month, so `*/3` fires on the 1st, 4th, 7th … 31st and then again
 on the 1st — a 1-day gap at some month boundaries rather than 3. Harmless, just surprising.
@@ -161,15 +179,15 @@ count would describe the cron schedule rather than the athlete.
 |---|---|
 | Panel blank or showing the setup QR | Wi-Fi dropped, or Full Flash cleared pairing. Redo steps 2–3. |
 | Numbers are weeks old | Strava fetch. Check the last green run of `strava-fetch.yml` and that its secrets are still valid. |
-| Same card every day | The daily rebuild. Check `deploy.yml`'s scheduled runs — GitHub disables schedules on repos with no activity for 60 days. |
 | Card changed on the site but not the panel | Device poll interval, or the device is offline. |
+| Card has not changed for many hours | The hourly `deploy.yml` schedule, not the device. Check Actions: scheduled workflows are delayed under load and are auto-disabled after 60 days of repo inactivity. A faster device poll cannot fix this. |
 | Text is tiny / layout is wrong | The panel is being served something other than `epaper.html` — check the Web function URL. `epaper-all.html` is the proof sheet and will look wrong on the device. |
 | 404 at the Pages URL | The branch has not merged to `main`, or the Pages deploy failed. |
 
 ## Changing what shows
 
 - **Which cards rotate:** `ROTATION` in `strava-data/feed/cards.py` — a list of card ids. Currently
-  16, so the cycle is 16 days. Every other card still builds and still ships in `feed.xml`, on the
+  16, and the rebuild is hourly, so the cycle is 16 hours. Every other card still builds and still ships in `feed.xml`, on the
   proof sheet, and at its own `epaper/<id>.html`; promoting one is a one-line edit.
 - **Pinning one card instead of the rotation:** point the Web function at
   `…/epaper/<id>.html` — e.g. `…/epaper/journey-run.html` — instead of `…/epaper.html`. Same page

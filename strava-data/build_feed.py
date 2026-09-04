@@ -13,7 +13,7 @@ never collides with committed data.
 import json
 import os
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 
 from feed.cards import FAMILIES, ROTATION, build_cards, card_of_the_day
 from feed.config import OUT_CARD_DIR, OUT_JSON, OUT_PAGE, OUT_RSS, OUT_SHEET, SITE
@@ -29,13 +29,17 @@ def main():
 
     bundle = load()
     asof = bundle["asof"]
-    today = date.today()
+    # Two clocks on purpose. `today` drives the cards' own daily content
+    # rotation ("route of the day"); `now` drives which card is published,
+    # which steps hourly. Both are UTC so a local build matches the runner.
+    now = datetime.now(timezone.utc)
+    today = now.date()
     print(f"Loaded {len(bundle['acts'])} activities, data as of {asof}")
 
     cards = build_cards(bundle, today)
     print(f"Built {len(cards)} cards")
 
-    today_card = card_of_the_day(cards, today)
+    today_card = card_of_the_day(cards, now)
     outputs = {
         OUT_RSS: build_rss(cards, asof, bundle["athlete"]),
         OUT_PAGE: render_page(today_card, asof),
@@ -43,6 +47,7 @@ def main():
         OUT_JSON: json.dumps({
             "as_of": asof.isoformat(),
             "built": today.isoformat(),
+            "card_chosen_at": now.strftime("%Y-%m-%dT%H:00Z"),
             "site": SITE,
             "card_of_the_day": today_card.id,
             "rotation": list(ROTATION),
@@ -75,7 +80,7 @@ def main():
         os.remove(os.path.join(OUT_CARD_DIR, f))
     print(f"-> epaper/           {len(cards):>4} card pages"
           + (f" ({len(stale)} stale removed)" if stale else ""))
-    print(f"   card of the day: {today_card.id} — {today_card.title}")
+    print(f"   card this hour: {today_card.id} — {today_card.title}")
 
 
 if __name__ == "__main__":

@@ -32,14 +32,17 @@ on:
   workflow_run:
     workflows: ["Strava Data Fetch"]
     types: [completed]
-  # Daily rebuild, an hour after the fetch window. NOT redundant with the
-  # triggers above: the e-paper feed's card_of_the_day is chosen at *build*
-  # time (the panel runs no JavaScript), so epaper.html holds one fixed card
-  # until the site is rebuilt. Without this the rotation would only advance
-  # when the data changed. It re-renders committed data and makes no Strava
-  # API calls.
+  # Hourly rebuild. NOT redundant with the triggers above, and the cadence is
+  # the whole point: the e-paper feed's card_of_the_day is chosen at *build*
+  # time (the panel runs no JavaScript, so it cannot choose), which means the
+  # rotation advances only as often as the site is rebuilt. Turning up the
+  # device's own poll interval does nothing — it would just re-fetch the same
+  # file. At hourly the 16-card rotation cycles in 16 hours instead of 16 days.
+  #
+  # It re-renders already-committed data and makes no Strava API calls, so the
+  # cost is a runner minute; the concurrency group below cancels any overlap.
   schedule:
-    - cron: "0 7 * * *"
+    - cron: "0 * * * *"
   workflow_dispatch: {}
 
 permissions:
