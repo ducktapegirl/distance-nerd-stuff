@@ -94,11 +94,11 @@ def c02_days_since(b, o):
 def c03_last_activity(b, o):
     a = b["acts"][-1]
     c = _mk("last", f"Last out — {a['name']}",
-            f"{a['_mi']:.1f} mi of {a['sport_type']} with {a['_ft']:.0f} ft of climbing on "
+            f"{a['_mi']:.1f} mi of {F.sport_activity(a['sport_type'])} with {a['_ft']:.0f} ft of climbing on "
             f"{F.day(a['_date'])}.",
             "last activity", b, 3, "A", "the newest row of activities.csv, unit-converted")
     L.text_card(c, a["name"], a.get("description") or None,
-                tag=f"{a['_mi']:.1f} mi · {a['_ft']:.0f} ft · {a['sport_type']}")
+                tag=f"{a['_mi']:.1f} mi · {a['_ft']:.0f} ft · {F.sport(a['sport_type'])}")
     g = _sport_glyph(a["sport_type"])
     if g:
         c.add(g(W - PAD - 92, 92, 92))
@@ -491,12 +491,13 @@ def c19b_journey_bike(b, o):
 def c20_split(b, o):
     split = M.sport_split(b["acts"], b["asof"])[:5]
     total = sum(n for _, n in split) or 1
-    c = _mk("split", f"Last year: {split[0][0]} {split[0][1]} vs {split[1][0]} {split[1][1]}",
+    c = _mk("split", f"Last year: {F.sport(split[0][0])} {split[0][1]} vs "
+                     f"{F.sport(split[1][0])} {split[1][1]}",
             "Activity counts by sport over the last 365 days — running and mountain biking "
             "are almost exactly level.",
             "sport split", b, 20, "C",
             "activity counts by sport over the trailing 365 days")
-    L.bar_rows(c, [(name, f"{n}", n / split[0][1]) for name, n in split],
+    L.bar_rows(c, [(F.sport(name), f"{n}", n / split[0][1]) for name, n in split],
                label_w=330, value_w=100)
     return L.footer(c, f"{total} activities in the last 365 days")
 
@@ -869,7 +870,7 @@ def c36_route(b, o):
     L.route_card(c, r["path"], r["w"], r["h"], [
         (a["name"], 38, "bold", BLACK), (f"{a['_mi']:.1f} mi", 54, "bold", BLACK),
         (f"{a['_ft']:.0f} ft climbed", 28, "normal", DARK),
-        (a["sport_type"], 28, "normal", DARK),
+        (F.sport(a["sport_type"]), 28, "normal", DARK),
     ])
     return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
@@ -1108,7 +1109,8 @@ def c46_kudos(b, o):
             f"\"{a['name']}\" drew {a['kudos_count']} kudos, more than any other activity.",
             "peak kudos", b, 46, "H", "max kudos_count in activities.csv")
     L.text_card(c, a["name"], a.get("description") or None,
-                tag=f"{a['kudos_count']} KUDOS · {a['_mi']:.1f} MI · {a['sport_type'].upper()}")
+                tag=f"{a['kudos_count']} KUDOS · {a['_mi']:.1f} MI · "
+                    f"{F.sport(a['sport_type']).upper()}")
     return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
 
@@ -1120,11 +1122,13 @@ def c47_this_day(b, o):
     if hits:
         a = hits[0]
         c = _mk("this-day", f"On this day {a['_dt'].year} — {a['name']}",
-                f"{a['_mi']:.1f} mi of {a['sport_type']} on this date in {a['_dt'].year}.",
+                f"{a['_mi']:.1f} mi of {F.sport_activity(a['sport_type'])} on this date "
+                f"in {a['_dt'].year}.",
                 "on this day", b, 47, "I",
                 "same month and day in prior years; degrades when empty")
         L.text_card(c, a["name"], a.get("description") or None,
-                    tag=f"{a['_dt'].year} · {a['_mi']:.1f} MI · {a['sport_type'].upper()}")
+                    tag=f"{a['_dt'].year} · {a['_mi']:.1f} MI · "
+                        f"{F.sport(a['sport_type']).upper()}")
         return L.footer(c, f"{len(hits)} prior year{'s' if len(hits) != 1 else ''} "
                            f"with an activity on this date")
     # The log only spans 2024-2026, so most calendar days have no prior hit.
@@ -1161,7 +1165,8 @@ def c48_year_ago(b, o):
 def c49_first(b, o):
     a = b["acts"][0]
     c = _mk("first", f"It started with “{a['name']}”",
-            f"The first activity in the log: {a['_mi']:.1f} mi of {a['sport_type']} on "
+            f"The first activity in the log: {a['_mi']:.1f} mi of "
+            f"{F.sport_activity(a['sport_type'])} on "
             f"{F.day(a['_date'], '%d %B %Y')}.",
             "where it began", b, 49, "I", "the oldest row in activities.csv")
     L.text_card(c, a["name"], a.get("description") or None,
@@ -1197,12 +1202,12 @@ def c51_logbook(b, o):
         return None
     desc = (a.get("description") or "").strip()
     c = _mk("title", f"“{a['name']}”",
-            desc or f"{a['_mi']:.1f} mi of {a['sport_type']} on "
+            desc or f"{a['_mi']:.1f} mi of {F.sport_activity(a['sport_type'])} on "
                     f"{F.day(a['_date'])}.",
             "from the logbook", b, 51, "J",
             "an activity with a description, picked by date ordinal")
     L.text_card(c, a["name"], desc,
-                tag=f"{a['_mi']:.1f} MI · {a['sport_type'].upper()}")
+                tag=f"{a['_mi']:.1f} MI · {F.sport(a['sport_type']).upper()}")
     return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
 
 
@@ -1303,7 +1308,8 @@ def c57_latest(b, o):
         pace = (mmss(60 / (speed_kmh * KM_TO_MI) * 60) if speed_kmh else "—"), "/mi"
 
     c = _mk("latest", f"Last out — {a['name']}",
-            f"{mi:.1f} mi of {a['sport_type']} in {int(moving // 60)}h {int(moving % 60):02d}m "
+            f"{mi:.1f} mi of {F.sport_activity(a['sport_type'])} in "
+            f"{int(moving // 60)}h {int(moving % 60):02d}m "
             f"with {ft:,.0f} ft of climbing, on {F.day(a['_date'])}.",
             "latest activity", b, 3, "A",
             "newest activity: its GPS stream over its own numbers")
