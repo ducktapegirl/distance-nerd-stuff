@@ -55,3 +55,36 @@ M_TO_FT  = 3.28084
 
 RUN_TYPES  = ("Run", "TrailRun")
 BIKE_TYPES = ("MountainBikeRide", "Ride", "EBikeRide")
+
+# Strava's sport_type values are API enums - "MountainBikeRide",
+# "WeightTraining" - and printing one on a card leaks a database value onto a
+# fridge magnet. Two forms, because the cards use them in two grammars: a
+# label standing on its own ("Mountain bike" in a row or a tag), and a gerund
+# inside a sentence ("9.9 mi of mountain biking"). Only the entries that need
+# special casing are listed - fmt.sport falls back to splitting the camel
+# case, so a sport Strava adds later still reads sensibly with no edit here.
+SPORT_LABELS = {
+    "TrailRun": "Trail run",
+    "MountainBikeRide": "Mountain bike",
+    "EBikeRide": "E-bike",
+    "StandUpPaddling": "Paddleboard",
+}
+SPORT_ACTIVITY = {
+    "Run": "running",
+    "TrailRun": "trail running",
+    "Walk": "walking",
+    "Hike": "hiking",
+    "Ride": "riding",
+    "MountainBikeRide": "mountain biking",
+    "EBikeRide": "e-biking",
+    "RockClimbing": "rock climbing",
+    "WeightTraining": "weight training",
+    "AlpineSki": "alpine skiing",
+    "NordicSki": "nordic skiing",
+    "Snowboard": "snowboarding",
+    "IceSkate": "ice skating",
+    "StandUpPaddling": "paddleboarding",
+    "Pickleball": "pickleball",
+    "Pilates": "pilates",
+    "Workout": "a workout",
+}
