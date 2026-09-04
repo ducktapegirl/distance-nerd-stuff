@@ -72,11 +72,11 @@ def c01_load(b, o):
              "Not enough recent suffer-score data to compute a load ratio."),
             "training load", b, 1, "A", "ACWR: 7-day mean daily suffer score / 28-day mean")
     if r is None:
-        return L.footer(L.hero_number(c, "—", sub="no data"), "")
+        return L.hero_number(c, "—", sub="no data")
     L.dial(c, r, 2.0,
            [(0.0, 0.8, 0.25), (0.8, 1.3, 0.45), (1.3, 1.5, 0.7), (1.5, 2.0, 1.0)],
            f"{r:.2f}", a["band"], ticks=(0.8, 1.3, 1.5))
-    return L.footer(c, f"7-day {a['acute']:.0f} vs 28-day average {a['chronic']:.0f}")
+    return c
 
 
 @card(2, "A", "asof date minus the last active date")
@@ -87,7 +87,7 @@ def c02_days_since(b, o):
             f"The last recorded activity was {n} day{'s' if n != 1 else ''} ago.",
             "days since", b, 2, "A", "asof date minus the last active date")
     L.hero_number(c, n, sub="days since an activity" if n != 1 else "day since an activity")
-    return L.footer(c, "last out: " + F.day(b["acts"][-1]["_date"], "%A %d %B"))
+    return c
 
 
 @card(3, "A", "the newest row of activities.csv, unit-converted")
@@ -102,7 +102,7 @@ def c03_last_activity(b, o):
     g = _sport_glyph(a["sport_type"])
     if g:
         c.add(g(W - PAD - 92, 92, 92))
-    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
+    return c
 
 
 @card(4, "A", "sum over the 7-day window ending at the last data day")
@@ -114,7 +114,7 @@ def c04_week_totals(b, o):
             "last 7 days", b, 4, "A", "sum over the 7-day window ending at the last data day")
     L.stat_trio(c, [(f"{t['mi']:.0f}", "miles"), (f"{t['hours']:.1f}", "hours"),
                     (f"{t['ft']:,.0f}", "feet")])
-    return L.footer(c, f"{t['n']} activities")
+    return c
 
 
 @card(5, "A", "ACWR band crossed with days-since; a word, not a number")
@@ -138,7 +138,7 @@ def c05_fresh(b, o):
             "state of the athlete", b, 5, "A",
             "ACWR band crossed with days-since; a word, not a number")
     L.hero_number(c, word, sub=note, size=140)
-    return L.footer(c, "one word, updated with the data")
+    return c
 
 
 @card(6, "A", "GPS stream of the most recent activity, cosine-corrected")
@@ -158,7 +158,7 @@ def c06_last_route(b, o):
         (a["name"], 38, "bold", BLACK), (f"{a['_mi']:.1f} mi", 54, "bold", BLACK),
         (f"{a['_ft']:.0f} ft climbed", 28, "normal", DARK),
     ])
-    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
+    return c
 
 
 # ══ B · Streaks & consistency ═══════════════════════════════════════════
@@ -172,8 +172,7 @@ def c07_streak(b, o):
             "active streak", b, 7, "B",
             "consecutive days back from the last data day with an activity")
     L.hero_number(c, st["current"], sub="day active streak")
-    return L.footer(c, f"longest ever {st['longest']} days · "
-                       f"{st['active_days']} active of {st['span_days']}")
+    return c
 
 
 @card(8, "B", "gaps between consecutive active days")
@@ -185,7 +184,7 @@ def c08_rest(b, o):
             "rest days", b, 8, "B", "gaps between consecutive active days")
     L.stat_trio(c, [(r["rest_days"], "rest days"), (r["longest_gap"], "longest gap"),
                     (r["since_rest"], "since a rest")])
-    return L.footer(c, "the inverse framing of the streak card")
+    return c
 
 
 @card(9, "B", "one cell per day, filled if any activity that day")
@@ -201,8 +200,7 @@ def c09_strip(b, o):
     # this panel) that vanish at arm's length.
     L.cell_grid(c, [1.0 if d else 0.0 for d in days], per_row=15,
                 headline=f"{n} / 30", labels=("30 days ago", "today"))
-    return L.footer(c, f"longest streak ever {st['longest']} days · "
-                       f"{st['active_days']} active of {st['span_days']}")
+    return c
 
 
 @card(10, "B", "this week's miles per weekday vs the 8-week median")
@@ -224,7 +222,7 @@ def c10_week_shape(b, o):
         c.add(S.text(x + bw / 2, base + 34, name.upper(), 26, "bold",
                      anchor="middle", fill=DARK, tracking=1))
     c.add(S.line(PAD, base, W - PAD, base, sw=3))
-    return L.footer(c, "solid = this week · outline = 8-week median")
+    return c
 
 
 @card(11, "B", "distinct active days / calendar days spanned")
@@ -247,7 +245,7 @@ def c11_consistency(b, o):
     c.add(S.text(W - PAD, cy - 8, f"{pct:.0f}%", 92, "bold", anchor="end"),
           S.text(W - PAD, cy + 36, "OF ALL DAYS", 28, "bold", anchor="end",
                  fill=DARK, tracking=3))
-    return L.footer(c, f"{st['active_days']} active of {st['span_days']} days")
+    return c
 
 
 @card(12, "B", "activity count grouped by weekday over the whole log")
@@ -272,7 +270,7 @@ def c12_weekday(b, o):
               S.text(x + bw / 2, base + 34, name[:3].upper(), 26, "bold",
                      anchor="middle", fill=DARK, tracking=1))
     c.add(S.line(PAD, base, W - PAD, base, sw=3))
-    return L.footer(c, f"counterintuitive: {low[0]} is the quietest day")
+    return c
 
 
 @card(13, "B", "current streak against the all-time longest")
@@ -284,7 +282,7 @@ def c13_streak_race(b, o):
     L.two_up(c, ("now", st["current"], "days"), ("record", st["longest"], "days"),
              delta=f"{st['longest'] - st['current']} to beat"
              if st["longest"] > st["current"] else "record equalled")
-    return L.footer(c, "only interesting when the gap is small")
+    return c
 
 
 # ══ C · Volume & progress ═══════════════════════════════════════════════
@@ -301,7 +299,7 @@ def c14_ytd(b, o):
     L.two_up(c, (str(y["year"]), f"{y['this']:.0f}", "miles"),
              (str(y["year"] - 1), f"{y['last']:.0f}", "by this date"),
              delta=f"{'+' if d >= 0 else '−'}{abs(d):.0f} mi")
-    return L.footer(c, "same calendar date, like for like")
+    return c
 
 
 @card(15, "C", "this calendar month vs the median of the last 12")
@@ -324,7 +322,7 @@ def c15_month(b, o):
           S.text(mx, y - 32, "MEDIAN", 26, "bold", anchor="middle", fill=DARK, tracking=2))
     c.add(S.text(PAD, 372, f"{cur:.0f} MI", 76, "bold"),
           S.text(W - PAD, 372, months[-1][0], 30, "bold", anchor="end", fill=DARK))
-    return L.footer(c, f"median of the previous 12 months: {med:.0f} mi")
+    return c
 
 
 @card(16, "C", "sum of miles over the trailing 365 days")
@@ -349,8 +347,7 @@ def c16_odometer(b, o):
         x += w + gap
     c.add(S.text(CXD, y + box_h + 52, "MILES · LAST 365 DAYS", 30, "bold",
                  anchor="middle", tracking=4))
-    return L.footer(c, f"{yr['n']} activities · {yr['ft']:,.0f} ft · "
-                       f"{yr['hours']:.0f} moving hours")
+    return c
 
 
 @card(17, "C", "miles per calendar month, last 13 months")
@@ -363,7 +360,7 @@ def c17_sparkline(b, o):
             "monthly volume", b, 17, "C", "miles per calendar month, last 13 months")
     L.spark(c, vals, labels=(months[0][0], months[-1][0]),
             headline=f"{vals[-1]:.0f} mi", sub=f"range {min(vals):.0f}–{max(vals):.0f} mi")
-    return L.footer(c, "no axis on purpose — the shape is the point")
+    return c
 
 
 @card(18, "C", "sum of total_elevation_gain_m, converted, over 29,032 ft")
@@ -386,8 +383,7 @@ def c18_everest(b, o):
     c.add(S.text(PAD, 160, f"{e['ft']:,.0f} FT", 76, "bold"),
           S.text(W - PAD, 160, f"{e['multiple']:.1f}× EVEREST", 34, "bold",
                  anchor="end", tracking=2))
-    return L.footer(c, "Everest is 29,032 ft"
-                    + ("" if whole <= 5 else f" · {whole} summits, 5 drawn"))
+    return c
 
 
 def _journey(b, group):
@@ -472,9 +468,8 @@ def _journey(b, group):
 
 def _footer_or(c, j, behind, cor):
     if j["lapped"]:
-        return L.footer(c, f"{j['laps']:.1f} laps of the full route")
-    return L.footer(c, f"{cor['road']} · {j['route_frac'] * 100:.0f}% of "
-                       f"{cor['total_mi']:,.0f} mi")
+        return c
+    return c
 
 
 @card(19, "C", "cumulative running miles on the road-distance ladder from 92129")
@@ -499,36 +494,32 @@ def c20_split(b, o):
             "activity counts by sport over the trailing 365 days")
     L.bar_rows(c, [(F.sport(name), f"{n}", n / split[0][1]) for name, n in split],
                label_w=330, value_w=100)
-    return L.footer(c, f"{total} activities in the last 365 days")
+    return c
 
 
-@card(21, "C", "sum of moving_time_min across the whole log")
+@card(21, "C", "sum of moving_time_min across the whole log, as 24-hour days")
 def c21_hours(b, o):
     t = M.totals(b["acts"])
+    days = t["hours"] / 24.0
     c = _mk("hours", f"{t['hours']:.0f} hours in motion",
             f"{t['hours']:.0f} moving hours across {t['n']} activities — "
-            f"{t['hours'] / 24:.1f} full days.",
-            "time in motion", b, 21, "C", "sum of moving_time_min across the whole log")
-    # A clock face wound round once per twelve hours.
-    cx, cy, r = CXD, 262, 104
-    c.add(S.circle(cx, cy, r, fill=WHITE, stroke=BLACK, sw=5))
-    for i in range(12):
-        th = math.radians(i * 30 - 90)
-        c.add(S.line(cx + (r - 18) * math.cos(th), cy + (r - 18) * math.sin(th),
-                     cx + (r - 4) * math.cos(th), cy + (r - 4) * math.sin(th), sw=4))
-    frac = (t["hours"] % 12) / 12
-    th = math.radians(frac * 360 - 90)
-    c.add(S.line(cx, cy, cx + r * 0.66 * math.cos(th), cy + r * 0.66 * math.sin(th),
-                 sw=8, cap="round"),
-          S.circle(cx, cy, 11, fill=BLACK))
-    c.add(S.text(W - PAD, cy - 6, f"{t['hours']:.0f}", 92, "bold", anchor="end"),
-          S.text(W - PAD, cy + 38, "MOVING HOURS", 28, "bold", anchor="end",
-                 fill=DARK, tracking=3))
-    return L.footer(c, f"{t['hours'] / 24:.1f} full days · {int(t['hours'] // 12)} times round")
+            f"{days:.1f} full days.",
+            "time in motion", b, 21, "C",
+            "sum of moving_time_min across the whole log, as 24-hour days")
+    # A tally, not a clock face. The clock showed hours modulo twelve, so 286
+    # hours pointed at ten and read as a time of day; the quantity worth
+    # showing is how many whole days of the log were spent moving.
+    c.add(S.text(PAD, 176, f"{t['hours']:.0f}", 110, "bold"),
+          S.text(PAD + len(f"{t['hours']:.0f}") * 110 * 0.62 + 20, 148,
+                 "MOVING HOURS", 30, "bold", fill=DARK, tracking=3),
+          S.text(PAD + len(f"{t['hours']:.0f}") * 110 * 0.62 + 20, 184,
+                 f"{t['n']} ACTIVITIES", 26, fill=DARK, tracking=3))
+    L.tally(c, int(days), partial=days - int(days))
+    dt, ds = S.fit_text(f"{days:.1f} FULL DAYS · ONE MARK PER 24 HOURS", 28,
+                        W - 2 * PAD, tracking=3)
+    c.add(S.text(CXD, 402, dt, ds, "bold", anchor="middle", fill=DARK, tracking=3))
+    return c
 
-
-
-# ══ D · The racing self ═════════════════════════════════════════════════
 
 @card(22, "D", "most recent pr_date in segments_summary.csv")
 def c22_pr(b, o):
@@ -555,8 +546,7 @@ def c22_pr(b, o):
         else:
             c.add(S.line(gx - 4, y + 40, gx + 32, y + 6, sw=4))
     c.add(S.text(PAD, 388, f"{pr['efforts']} EFFORTS", 26, "bold", tracking=2))
-    return L.footer(c, f"{pr['counts'][30]} PRs in 30 days · {pr['counts'][90]} in 90 · "
-                       f"{pr['counts'][365]} in a year")
+    return c
 
 
 @card(23, "D", "count of pr_date values inside trailing windows")
@@ -570,7 +560,7 @@ def c23_pr_pace(b, o):
             f"and {k[365]} over the last year.",
             "pr pace", b, 23, "D", "count of pr_date values inside trailing windows")
     L.stat_trio(c, [(k[30], "in 30 days"), (k[90], "in 90 days"), (k[365], "in a year")])
-    return L.footer(c, "a PR only needs to beat your own past self")
+    return c
 
 
 @card(24, "D", "top segments by effort_count, with best_time_s")
@@ -585,7 +575,7 @@ def c24_leaderboard(b, o):
             "home leaderboard", b, 24, "D", "top segments by effort_count, with best_time_s")
     L.bar_rows(c, [(r["name"], f"{r['n']}× · {mmss(r['best_s'])}", r["n"] / top)
                    for r in rows], label_w=330, value_w=190)
-    return L.footer(c, "bar length is effort count, not speed")
+    return c
 
 
 @card(25, "D", "most negative recent_trend among segments with 5+ efforts")
@@ -602,7 +592,7 @@ def c25_improving(b, o):
     L.text_card(c, s["name"], f"Down {abs(s['trend']):.1f}% across {s['n']} efforts.",
                 tag=f"{s['trend']:.1f}% · {s['n']} EFFORTS", headline_size=54)
     c.add(S.text(W - PAD, 300, f"{s['trend']:.1f}%", 84, "bold", anchor="end"))
-    return L.footer(c, "trend needs 2+ efforts; only 266 of 751 segments have one")
+    return c
 
 
 @card(26, "D", "most positive recent_trend among segments with 5+ efforts")
@@ -620,7 +610,7 @@ def c26_declining(b, o):
                               "Posting it anyway.",
                 tag=f"+{s['trend']:.1f}% · {s['n']} EFFORTS", headline_size=54)
     c.add(S.text(W - PAD, 300, f"+{s['trend']:.1f}%", 84, "bold", anchor="end"))
-    return L.footer(c, "the inverse of the most-improved card, kept honest")
+    return c
 
 
 @card(27, "D", "coefficient of variation of effort times per segment")
@@ -657,7 +647,7 @@ def c27_consistency(b, o):
                  "bold", fill=DARK, tracking=2),
           S.text(x0, y + 46, mmss(lo), 26, fill=DARK),
           S.text(x1, y + 46, mmss(hi), 26, anchor="end", fill=DARK))
-    return L.footer(c, f"least consistent: {worst[1]} at {worst[0] * 100:.0f}%")
+    return c
 
 
 @card(28, "D", "effort_count of the single most-repeated segment, as tallies")
@@ -683,7 +673,7 @@ def c28_repeat(b, o):
         else:
             c.add(S.line(gx - 8, gy + 54, gx + 56, gy + 8, sw=5))
     c.add(S.text(W - PAD, 150, f"{s['n']}×", 76, "bold", anchor="end"))
-    return L.footer(c, f"best {mmss(s['best_s'])}")
+    return c
 
 
 @card(29, "D", "OLS of segment pace vs grade, run and bike, and their crossover")
@@ -729,7 +719,7 @@ def c29_crossover(b, o):
     c.add(S.text(px0, py1 + 52, f"{lo:.0f}% GRADE", 26, fill=DARK, tracking=2),
           S.text(px1, py1 + 52, f"+{hi:.0f}%", 26, anchor="end", fill=DARK, tracking=2),
           S.text(PAD, 156, "SLOWER ↑ · PACE BY GRADE", 28, "bold", fill=DARK, tracking=2))
-    return L.footer(c, f"weak fits: run R²={fit_r[2]:.2f}, ride R²={fit_b[2]:.2f}")
+    return c
 
 
 # ══ E · Gear ════════════════════════════════════════════════════════════
@@ -765,7 +755,7 @@ def c30_shoes(b, o):
             # row height and cannot collide with the shoe below it.
             c.add(S.text(bx + 16, by + 29, "RETIRE ME", 26, "bold", fill=WHITE, tracking=3))
         y += 108
-    return L.footer(c, "threshold: Strava's own reminder, else 400 mi")
+    return c
 
 
 @card(31, "E", "the first shoe past its threshold; absent when none is")
@@ -786,7 +776,7 @@ def c31_retire(b, o):
     w = len(tag) * 28 * 0.62 + 28
     c.add(S.rect(CXD - w / 2, 366, w, 42, fill=BLACK),
           S.text(CXD, 396, tag, 28, "bold", anchor="middle", fill=WHITE, tracking=2))
-    return L.footer(c, f"{s['runs']} activities on this pair")
+    return c
 
 
 @card(32, "E", "gear.json converted_distance for non-retired bikes")
@@ -802,7 +792,7 @@ def c32_bike(b, o):
             "the bike", b, 32, "E", "gear.json converted_distance for non-retired bikes")
     c.add(S.glyph_bike(CXD - 100, 108, 200))
     L.hero_number(c, f"{mi:,.0f}", unit="mi", sub=g["name"], size=96)
-    return L.footer(c, f"{g.get('brand_name', '')} {g.get('model_name', '')}".strip())
+    return c
 
 
 @card(33, "E", "gear.json entries with retired=true, and their descriptions")
@@ -820,7 +810,7 @@ def c33_graveyard(b, o):
     L.text_card(c, g["name"], desc or None,
                 tag=f"RETIRED AT {g.get('converted_distance') or 0:.0f} MI",
                 headline_size=52)
-    return L.footer(c, "the only retired item in the log")
+    return c
 
 
 # ══ F · Places ══════════════════════════════════════════════════════════
@@ -837,8 +827,7 @@ def c34_passport(b, o):
             "start points clustered at a 6 mi radius; box table for states")
     L.stat_trio(c, [(len(pts), "located"), (regions, "regions"), (len(states), "states")])
     c.add(S.text(CXD, 356, " · ".join(states), 30, "bold", anchor="middle", tracking=3))
-    return L.footer(c, f"regions = start points clustered at a 6 mi radius"
-                       + (f" · {unc} uncovered" if unc else ""))
+    return c
 
 
 @card(35, "F", "miles inside the San Diego and Boston bounding boxes")
@@ -853,7 +842,7 @@ def c35_homes(b, o):
     L.two_up(c, ("San Diego", f"{h['sd']['mi']:.0f}", f"{h['sd']['n']} activities"),
              ("Boston", f"{h['bos']['mi']:.0f}", f"{h['bos']['n']} activities"),
              delta="miles, by home")
-    return L.footer(c, "bounding boxes, so a nearby trip counts as home")
+    return c
 
 
 @card(36, "F", "one GPS stream chosen by date ordinal, aspect-fitted")
@@ -872,7 +861,7 @@ def c36_route(b, o):
         (f"{a['_ft']:.0f} ft climbed", 28, "normal", DARK),
         (F.sport(a["sport_type"]), 28, "normal", DARK),
     ])
-    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
+    return c
 
 
 @card(37, "F", "every GPS track, simplified to 64 points, tiled")
@@ -895,48 +884,7 @@ def c37_mosaic(b, o):
         ox = PAD + col * cw + (cw - t["w"] * k) / 2
         oy = L.BODY_TOP + r * ch + (ch - t["h"] * k) / 2
         c.add(S.polyline([(ox + x * k, oy + y * k) for x, y in t["path"]], sw=3))
-    return L.footer(c, "shape only — no scale, no basemap, no labels")
-
-
-@card(38, "F", "start points binned onto a grid spanning where she actually starts")
-def c38_heat(b, o):
-    # Route density, not start density: every 15th point of every track that
-    # falls inside the San Diego box. Binning starts alone puts nearly
-    # everything in one cell, because she leaves from the same place.
-    pts = P.raw_points_in(P.SD_BOX)
-    if len(pts) < 200:
-        return None
-    # The SD box is a whole degree across (~70 miles) but the riding occupies a
-    # corner of it, so span the data instead, trimmed to the 2nd-98th
-    # percentile so one outlying trailhead does not flatten the rest.
-    lats = sorted(p[0] for p in pts)
-    lngs = sorted(p[1] for p in pts)
-    trim = lambda v: (v[max(0, int(len(v) * 0.02))], v[min(len(v) - 1, int(len(v) * 0.98))])
-    lat0, lat1 = trim(lats)
-    lng0, lng1 = trim(lngs)
-    span_lat = max(lat1 - lat0, 1e-4)
-    span_lng = max(lng1 - lng0, 1e-4)
-    n = 12
-    grid = [0] * (n * n)
-    for lat, lng in pts:
-        gx = min(n - 1, max(0, int((lng - lng0) / span_lng * n)))
-        gy = min(n - 1, max(0, int((lat1 - lat) / span_lat * n)))
-        grid[gy * n + gx] += 1
-    peak = max(grid) or 1
-    filled = sum(1 for v in grid if v)
-    width_mi = P.haversine_km((lat0, lng0), (lat0, lng1)) * 0.621371
-    c = _mk("heat", f"San Diego riding, {width_mi:.0f} miles across",
-            f"Where the riding actually happens around San Diego: {len(pts):,} GPS points "
-            f"binned onto a {n}x{n} grid roughly {width_mi:.0f} miles wide, tone by count.",
-            "home density", b, 38, "F",
-            "start points binned onto a grid spanning where she actually starts")
-    # Tone scales with the square root of the count: one trailhead dominates
-    # linearly and everything else washes out to white.
-    L.cell_grid(c, [(v / peak) ** 0.5 for v in grid], per_row=n, cell=21, gap=3,
-                top=124)
-    c.add(S.text(PAD, 112, f"{len(pts):,} GPS POINTS · {filled} OF {n * n} CELLS", 28,
-                 "bold", tracking=2))
-    return L.footer(c, f"~{width_mi:.0f} mi west to east · tone is point count")
+    return c
 
 
 @card(39, "F", "hand-curated superlatives mirroring the dashboard's record book")
@@ -954,7 +902,7 @@ def c39_compass(b, o):
         c.add(S.text(PAD, y + 34, pt, ps, fill=DARK))
         c.add(S.line(PAD, y + 50, W - PAD, y + 50, stroke=LIGHT, sw=3))
         y += 78
-    return L.footer(c, "curated, not computed — see the brainstorm doc")
+    return c
 
 
 # ══ G · Weather & environment ═══════════════════════════════════════════
@@ -982,7 +930,7 @@ def c40_temp(b, o):
           S.text(x + w, y + h + 40, hi, hs, anchor="end", fill=DARK))
     c.add(S.text(CXD, y + h + 92, f"{t['max_f'] - t['min_f']:.0f}° RANGE", 32, "bold",
                  anchor="middle", tracking=4))
-    return L.footer(c, f"{t['n']} activities carry a temperature")
+    return c
 
 
 @card(41, "G", "pace and heart rate against temperature band, runs only")
@@ -1015,8 +963,7 @@ def c41_heat_verdict(b, o):
                     (p - min(r[1] for r in rows)) /
                     ((max(r[1] for r in rows) - min(r[1] for r in rows)) or 1) * 0.9 + 0.1)
                    for name, p, hr, n in rows], label_w=330, value_w=210)
-    return L.footer(c, f"pace {abs(dp):.0f}s/mi slower when hot · "
-                       f"HR only {abs(hot[2] - cool[2]):.0f} bpm apart")
+    return c
 
 
 @card(42, "G", "max uv_index across the log; the value is time-of-day resolved")
@@ -1039,7 +986,7 @@ def c42_uv(b, o):
     c.add(S.text(cx, cy + 18, f"{u['uv']:.1f}", 52, "bold", anchor="middle", fill=WHITE))
     nm, ns = S.fit_text(u["act"]["name"], 34, W - 2 * PAD)
     c.add(S.text(CXD, 380, nm, ns, "bold", anchor="middle"))
-    return L.footer(c, f"one ray per index point · {u['n']} activities carry a UV value")
+    return c
 
 
 @card(43, "G", "start-hour histogram; count of pre-8am starts")
@@ -1064,7 +1011,7 @@ def c43_dark(b, o):
         c.add(S.text(PAD + h * bw + 2, base + 34, f"{h:02d}", 26, fill=DARK))
     c.add(S.text(PAD, 172, f"{early}", 84, "bold"),
           S.text(PAD + 130, 172, "BEFORE 8AM", 30, "bold", fill=DARK, tracking=3))
-    return L.footer(c, f"earliest ever {F.hm(first)} · dark bars are pre-8am")
+    return c
 
 
 # ══ H · Records ═════════════════════════════════════════════════════════
@@ -1079,7 +1026,7 @@ def c44_record_book(b, o):
     # it lands inside a 110 px headline's cap height and prints straight
     # through it - which is what it did until the overlap check caught it.
     L.text_card(c, value, place, tag=kicker, headline_size=110)
-    return L.footer(c, "one of five, rotating daily")
+    return c
 
 
 @card(45, "H", "max distance by sport group, and max single-activity elevation")
@@ -1097,7 +1044,7 @@ def c45_longest(b, o):
             "longest ever", b, 45, "H",
             "max distance by sport group, and max single-activity elevation")
     L.bar_rows(c, rows, label_w=420, value_w=170)
-    return L.footer(c, "bars are not comparable across rows — different units")
+    return c
 
 
 @card(46, "H", "max kudos_count in activities.csv")
@@ -1111,7 +1058,7 @@ def c46_kudos(b, o):
     L.text_card(c, a["name"], a.get("description") or None,
                 tag=f"{a['kudos_count']} KUDOS · {a['_mi']:.1f} MI · "
                     f"{F.sport(a['sport_type']).upper()}")
-    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
+    return c
 
 
 # ══ I · Memory ══════════════════════════════════════════════════════════
@@ -1129,8 +1076,7 @@ def c47_this_day(b, o):
         L.text_card(c, a["name"], a.get("description") or None,
                     tag=f"{a['_dt'].year} · {a['_mi']:.1f} MI · "
                         f"{F.sport(a['sport_type']).upper()}")
-        return L.footer(c, f"{len(hits)} prior year{'s' if len(hits) != 1 else ''} "
-                           f"with an activity on this date")
+        return c
     # The log only spans 2024-2026, so most calendar days have no prior hit.
     # Say so rather than showing an empty card.
     c = _mk("this-day", "Nothing on this day in a previous year",
@@ -1139,7 +1085,7 @@ def c47_this_day(b, o):
             "on this day", b, 47, "I",
             "same month and day in prior years; degrades when empty")
     L.hero_number(c, "—", sub="nothing on this date, any year", size=120)
-    return L.footer(c, "see 'a year ago this week' for a denser window")
+    return c
 
 
 @card(48, "I", "a +/- 3 day window centred 365 days back")
@@ -1158,7 +1104,7 @@ def c48_year_ago(b, o):
                     (f"{sum(r['_ft'] for r in hits):,.0f}", "feet")])
     nm, ns = S.fit_text(f"biggest: {a['name']}", 30, W - 2 * PAD)
     c.add(S.text(CXD, 356, nm, ns, "bold", anchor="middle", fill=DARK))
-    return L.footer(c, "a seven-day window, so it is rarely empty")
+    return c
 
 
 @card(49, "I", "the oldest row in activities.csv")
@@ -1174,7 +1120,7 @@ def c49_first(b, o):
     days = (b["asof"] - a["_date"]).days
     c.add(S.text(W - PAD, 158, f"{days}", 76, "bold", anchor="end"),
           S.text(W - PAD, 196, "DAYS AGO", 26, "bold", anchor="end", fill=DARK, tracking=3))
-    return L.footer(c, f"{len(b['acts'])} activities since")
+    return c
 
 
 # ══ J · Voice & whimsy ══════════════════════════════════════════════════
@@ -1192,7 +1138,7 @@ def c50_byline(b, o):
     c.add(S.text(CXD, 240, bt, bs, "bold", anchor="middle"))
     c.add(S.text(CXD, 316, f"{t['n']} ACTIVITIES · {t['mi']:,.0f} MI · {t['ft']:,.0f} FT",
                  28, "bold", anchor="middle", fill=DARK, tracking=3))
-    return L.footer(c, "straight from the Strava profile")
+    return c
 
 
 @card(51, "J", "an activity with a description, picked by date ordinal")
@@ -1208,7 +1154,7 @@ def c51_logbook(b, o):
             "an activity with a description, picked by date ordinal")
     L.text_card(c, a["name"], desc,
                 tag=f"{a['_mi']:.1f} MI · {F.sport(a['sport_type']).upper()}")
-    return L.footer(c, F.day(a["_date"], "%A %d %B %Y"))
+    return c
 
 
 @card(53, "J", "activity names composed entirely of non-ASCII symbols")
@@ -1224,8 +1170,9 @@ def c53_emoji(b, o):
     L.hero_number(c, len(rows), sub="titles with no letters at all")
     names = "   ".join(r["name"] for r in rows[:6])
     nt, ns = S.fit_text(names, 54, W - 2 * PAD, ratio=1.1)
-    c.add(S.text(CXD, 356, nt, ns, anchor="middle"))
-    return L.footer(c, "rendering depends on the panel's font — may show as boxes")
+    # Clears hero_number's caption, which sits at its y + 66.
+    c.add(S.text(CXD, 412, nt, ns, anchor="middle"))
+    return c
 
 
 # ══ K · Meta ════════════════════════════════════════════════════════════
@@ -1241,7 +1188,7 @@ def c54_dataset(b, o):
             "row counts and on-disk size of the fetched data")
     L.stat_trio(c, [(d["acts"], "activities"), (d["streams"], "gps streams"),
                     (f"{d['mb']:.0f}", "megabytes")])
-    return L.footer(c, "a card about the data, for the nerd on the fridge")
+    return c
 
 
 @card(55, "K", "device_name counts across the log")
@@ -1253,7 +1200,7 @@ def c55_devices(b, o):
             "recorded by", b, 55, "K", "device_name counts across the log")
     L.bar_rows(c, [(name, str(n), n / top) for name, n in dv[:4]],
                label_w=400, value_w=100)
-    return L.footer(c, "a device change is visible in the timeline")
+    return c
 
 
 @card(56, "K", "laps/{id}.csv for the newest activity with more than one lap")
@@ -1277,7 +1224,7 @@ def c56_laps(b, o):
             "laps/{id}.csv for the newest activity with more than one lap")
     L.bar_rows(c, [(n, v, s / peak) for n, v, s in rows], label_w=200, value_w=250,
                note=f"{len(laps)} laps · bar length is elapsed time")
-    return L.footer(c, "the first use of the fetched-but-unread laps/ data")
+    return c
 
 
 # ══ merged-in cards (57-62) ═════════════════════════════════════════════
@@ -1326,8 +1273,7 @@ def c57_latest(b, o):
     g = _sport_glyph(a["sport_type"])
     if g:
         c.add(g(W - PAD - 76, L.TOP_RULE + 8, 76))
-    return L.footer(c, (a.get("description") or "").strip()
-                    or F.day(a["_date"], "%A %d %B %Y"))
+    return c
 
 
 @card(57, "D", "segment with the most efforts in the last 30 days")
@@ -1335,8 +1281,8 @@ def c58_segment_month(b, o):
     s = M.segment_of_month(b["efforts"], b["segs"], b["asof"])
     if not s or len(s["times"]) < 2:
         return None
-    arrow = ("▼" if s["trend"] is not None and s["trend"] < -1 else
-             "▲" if s["trend"] is not None and s["trend"] > 1 else "▶")
+    arrow = ("down" if s["trend"] is not None and s["trend"] < -1 else
+             "up" if s["trend"] is not None and s["trend"] > 1 else "flat")
     c = _mk("segment-month", f"Segment of the month — {s['name']}",
             f"{s['n30']} efforts on \"{s['name']}\" in the last 30 days: best {mmss(s['best_s'])}, "
             f"latest {mmss(s['latest_s'])}, {s['trend_word']}.",
@@ -1347,10 +1293,16 @@ def c58_segment_month(b, o):
           S.text(W - PAD, 116, f"{s['n30']}× IN 30 DAYS", 26, "bold",
                  anchor="end", fill=DARK, tracking=2))
     L.stat_trio(c, [(mmss(s["best_s"]), "best"), (mmss(s["latest_s"]), "latest"),
-                    (f"{s['trend']:+.0f}% {arrow}" if s["trend"] is not None else "—",
+                    (f"{s['trend']:+.0f}%" if s["trend"] is not None else "—",
                      # One word: the full phrase reaches the column divider.
                      s["trend_word"].split()[0])],
-                baseline=202, size=76)
+                baseline=202, size=64)
+    if s["trend"] is not None:
+        # Geometry, not the "▲" character, whose width fit_text cannot
+        # estimate and which may not exist in the panel's font at all. It sits
+        # on the label row rather than beside the numeral: at 64 px "+10%" is
+        # 165 px wide and leaves no room next to it.
+        c.add(S.triangle(W - PAD - 22, 240, 26, arrow))
     # Plotted as negated seconds: effort time falls as you get faster, and on
     # a card a rising line has to mean improvement.
     L.spark(c, [-t for t in s["times"][-24:]],
@@ -1359,8 +1311,7 @@ def c58_segment_month(b, o):
                            f"LAST 24 EFFORTS, UP = FASTER", 26, fill=DARK,
                  tracking=1))
     hr = f"avg {s['avg_hr']:.0f} bpm · " if s["avg_hr"] else ""
-    return L.footer(c, f"{hr}worst {mmss(s['worst_s'])} · first effort {s['first']} · "
-                       f"{s['total']} all time")
+    return c
 
 
 @card(58, "J", "best-scoring activity names, a window of five per ISO week")
@@ -1397,8 +1348,7 @@ def c59_hall_of_fame(b, o):
         if i < len(picks) - 1:
             c.add(S.line(PAD, y + pitch - 3, W - PAD, y + pitch - 3,
                          stroke=LIGHT, sw=3))
-    return L.footer(c, f"{default} kept Strava's default name · "
-                       f"window {seed + 1} of 7, moves weekly")
+    return c
 
 
 @card(59, "G", "sum of uv_index x moving hours over the ISO week of the last data day")
@@ -1409,7 +1359,9 @@ def c60_uv_week(b, o):
     total = u["total"]
     # 20 UV-hours in a week is the point where the tube reads full: a fortnight
     # of ordinary San Diego mornings, not a medical threshold.
-    frac = min(1.0, total / 20.0)
+    # Floor at a visible tone so a near-zero week still reads as a sun rather
+    # than an empty outline.
+    frac = max(0.15, min(1.0, total / 20.0))
     c = _mk("uv-week", f"{total:.0f} UV-hours this week",
             f"UV dose for ISO week {u['week']}: {total:.1f} UV-hours across {u['n']} "
             f"activities, peaking at UV {u['peak_uv']:.0f}.",
@@ -1425,10 +1377,12 @@ def c60_uv_week(b, o):
     c.add(S.text(PAD, 202, num, 120, "bold"),
           S.text(lx, 176, "UV-HOURS", 30, "bold", fill=DARK, tracking=3),
           S.text(lx, 212, f"WEEK {u['week']}", 26, fill=DARK, tracking=3))
-    c.add(S.glyph_sunscreen(W - PAD - 130, 106, 130, fill_frac=frac))
+    # Tone carries the dose: a light sun is a quiet week, a black one a
+    # scorcher. 20 UV-hours reads as full - a fortnight of ordinary San Diego
+    # mornings, not a medical threshold.
+    c.add(S.glyph_sun(W - PAD - 140, 104, 140, level=frac))
     peak = u["peak_act"]
-    return L.footer(c, f"cells are daily UV-hours · peak UV {u['peak_uv']:.0f} "
-                       f"on \"{peak['name']}\"")
+    return c
 
 
 @card(52, "J", "whole-word animal names in activity titles and descriptions")
@@ -1448,8 +1402,7 @@ def c61_wildlife(b, o):
             "whole-word animal names in activity titles and descriptions")
     L.bar_grid(c, [(label, str(n), n / peak) for label, n in top], cols=2,
                glyphs=[S.ANIMAL_GLYPHS.get(label) for label, _ in top])
-    return L.footer(c, f"latest: {latest_species[0].lower()} on {F.day(latest['_date'])} "
-                       f"— \"{latest['name']}\"")
+    return c
 
 
 @card(60, "I", "the same ISO week in the 2003-07 paper log, against this one")
@@ -1502,8 +1455,7 @@ def c62_week_2004(b, o):
                (str(year), f"{now_mi:.0f} mi",
                 f"avg {mmss(now_pace * 60)}/mi" if now_pace else "no run pace this week",
                 now_lines))
-    return L.footer(c, f"{abs(delta):.1f} mi {'more' if delta >= 0 else 'less'} than "
-                       f"week {week} of {then_year} · paper log holds {len(b['runlog']):,} days")
+    return c
 
 
 @card(61, "I", "a race from the 2003-07 log falling near TODAY's calendar date")
@@ -1530,7 +1482,7 @@ def c63_anniversary(b, o):
     # clear a 62 px cap height above it as well as the top rule below.
     wt, ws = S.fit_text(a["when"].upper(), 30, W - 2 * PAD, tracking=3)
     c.add(S.text(PAD, 104, wt, ws, "bold", fill=DARK, tracking=3))
-    return L.footer(c, f"from the paper log · dated against {F.day(today)}")
+    return c
 
 
 @card(62, "J", "5-7-5 assembled from the newest activity's own numbers")
@@ -1559,7 +1511,7 @@ def c64_haiku(b, o):
     if g:
         c.add(g(W - PAD - 84, 128, 84))
     nt, ns = S.fit_text(a["name"], 26, 420)
-    return L.footer(c, f"5-7-5 from \"{nt}\", {F.day(a['_date'])}")
+    return c
 
 
 # ══ assembly ════════════════════════════════════════════════════════════
@@ -1580,7 +1532,6 @@ ROTATION = [
     "split",          # 20 - last 365 days by sport
     "hours",          # 21 - hours in motion, on a clock face
     "mosaic",         # 37 - 32 route thumbnails
-    "heat",           # 38 - San Diego riding density
     "latest",         # 3  - newest activity: route over its own numbers
     "segment-month",  # 57 - most-repeated segment of the last 30 days
     "hall-of-fame",   # 58 - five well-named activities, rotating weekly

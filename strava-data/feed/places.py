@@ -172,23 +172,3 @@ def normalise(pts):
     scale = max(w, h)
     path = [((x - x0) * coslat / scale, (h - (y - y0)) / scale) for x, y in pts]
     return {"path": path, "w": w / scale, "h": h / scale}
-
-
-@lru_cache(maxsize=4)
-def raw_points_in(box, stride=15, max_files=400):
-    """Every ``stride``-th GPS point falling inside ``box``, as (lat, lng).
-
-    Route density, not start density: binning start points puts almost
-    everything in one cell, because she leaves from the same place.
-    """
-    out = []
-    names = sorted(f for f in os.listdir(STREAMS_DIR) if f.endswith(".csv"))
-    for name in names[:max_files]:
-        with open(os.path.join(STREAMS_DIR, name), encoding="utf-8-sig") as f:
-            for i, row in enumerate(csv.DictReader(f)):
-                if i % stride:
-                    continue
-                lat, lng = mf(row.get("lat")), mf(row.get("lng"))
-                if lat is not None and lng is not None and in_box(lat, lng, box):
-                    out.append((lat, lng))
-    return tuple(out)

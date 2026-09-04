@@ -24,10 +24,10 @@ committed.
 | `epaper.html` | The panel, via SenseCraft's **Web** function. One card, exactly 800×480, no JS. |
 | `feed.xml` | The panel, via SenseCraft's **RSS** function. One item per card, plain text. |
 | `epaper/<id>.html` | The panel, if you want **one fixed card** instead of the rotation — see below. |
-| `epaper-all.html` | You. The proof sheet — every card at real size, grouped by family, filterable to the 17 in rotation. |
+| `epaper-all.html` | You. The proof sheet — every card at real size, grouped by family, filterable to the 16 in rotation. |
 | `feed.json` | Escape hatch for HMI Canvas or anything else later. |
 
-64 cards build; 17 of them rotate.
+63 cards build; 16 of them rotate.
 
 Base URL: `https://ducktapegirl.github.io/distance-nerd-stuff/`
 
@@ -119,7 +119,7 @@ Needs a **2.4 GHz** network.
 - **Web function** → `https://ducktapegirl.github.io/distance-nerd-stuff/epaper.html`
   This is the main event: the card of the day at exactly 800×480.
 - **RSS function** → `https://ducktapegirl.github.io/distance-nerd-stuff/feed.xml`
-  All 64 cards as one-line text items — useful as a second page or a fallback.
+  All 63 cards as one-line text items — useful as a second page or a fallback.
 - **To pin one card instead**, point the Web function at
   `…/epaper/<id>.html` (e.g. `…/epaper/haiku.html`) rather than `…/epaper.html`.
 
@@ -169,7 +169,7 @@ count would describe the cron schedule rather than the athlete.
 ## Changing what shows
 
 - **Which cards rotate:** `ROTATION` in `strava-data/feed/cards.py` — a list of card ids. Currently
-  17, so the cycle is 17 days. Every other card still builds and still ships in `feed.xml`, on the
+  16, so the cycle is 16 days. Every other card still builds and still ships in `feed.xml`, on the
   proof sheet, and at its own `epaper/<id>.html`; promoting one is a one-line edit.
 - **Pinning one card instead of the rotation:** point the Web function at
   `…/epaper/<id>.html` — e.g. `…/epaper/journey-run.html` — instead of `…/epaper.html`. Same page

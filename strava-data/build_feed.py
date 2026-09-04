@@ -66,7 +66,15 @@ def main():
         with open(os.path.join(OUT_CARD_DIR, f"{c.id}.html"), "w",
                   encoding="utf-8") as f:
             f.write(render_page(c, asof))
-    print(f"-> epaper/           {len(cards):>4} card pages")
+    # Drop pages for cards that no longer exist. Without this a retired card
+    # stays on disk, stays pinnable by URL, and still gets published.
+    live = {f"{c.id}.html" for c in cards}
+    stale = [f for f in os.listdir(OUT_CARD_DIR)
+             if f.endswith(".html") and f not in live]
+    for f in stale:
+        os.remove(os.path.join(OUT_CARD_DIR, f))
+    print(f"-> epaper/           {len(cards):>4} card pages"
+          + (f" ({len(stale)} stale removed)" if stale else ""))
     print(f"   card of the day: {today_card.id} — {today_card.title}")
 
 
