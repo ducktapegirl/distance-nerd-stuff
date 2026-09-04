@@ -85,7 +85,7 @@ uv run python -m http.server 8765 --directory running-log
 |---|---|
 | `http://127.0.0.1:8765/index.html` | Running Log dashboard |
 | `http://127.0.0.1:8765/strava.html` | Strava dashboard |
-| `http://127.0.0.1:8765/epaper-all.html` | proof sheet — every card at real panel size |
+| `http://127.0.0.1:8765/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
 | `http://127.0.0.1:8765/epaper.html` | exactly what the panel gets today |
 | `http://127.0.0.1:8765/epaper/<id>.html` | one card on its own, e.g. `/epaper/haiku.html` |
 

@@ -88,7 +88,8 @@ panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and We
 in the entrypoint, and not as a bespoke layout: the eleven layouts exist so 64 cards cannot drift
 apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignored** like the
 dashboards' HTML. `epaper-all.html` is the proof sheet — every card at real size, grouped by
-family; `epaper/<id>.html` is one card on its own, so a single card can be pinned by URL in
+family, with a JS filter for the rotation subset (that page is a browsing surface for a person,
+so the no-JavaScript rule does not apply to it — only to the cards and to `epaper.html`); `epaper/<id>.html` is one card on its own, so a single card can be pinned by URL in
 SenseCraft or checked locally; and `cards.ROTATION` is the 17-card subset the device cycles daily.
 
 **Never use `strftime("%-d")` or `"%-H"`** — they are glibc extensions and raise `ValueError` on
@@ -156,7 +157,7 @@ uv run python -m http.server 8765 --directory "running-log"
 | Page | What it is |
 |---|---|
 | `/index.html`, `/strava.html` | the two dashboards |
-| `/epaper-all.html` | proof sheet — every card at real panel size |
+| `/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
 | `/epaper.html` | exactly what the panel gets today |
 | `/epaper/<id>.html` | one card on its own |
 
