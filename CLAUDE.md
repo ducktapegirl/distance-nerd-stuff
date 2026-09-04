@@ -90,7 +90,8 @@ apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignore
 dashboards' HTML. `epaper-all.html` is the proof sheet — every card at real size, grouped by
 family, with a JS filter for the rotation subset (that page is a browsing surface for a person,
 so the no-JavaScript rule does not apply to it — only to the cards and to `epaper.html`); `epaper/<id>.html` is one card on its own, so a single card can be pinned by URL in
-SenseCraft or checked locally; and `cards.ROTATION` is the 16-card subset the device cycles daily.
+SenseCraft or checked locally; and `cards.ROTATION` is the 16-card subset the device cycles, one
+per hour.
 The build prunes `epaper/` pages whose card no longer exists, so a retired card stops being served.
 
 **Never use `strftime("%-d")` or `"%-H"`** — they are glibc extensions and raise `ValueError` on
@@ -116,11 +117,14 @@ Idea catalogue and design rationale: [`Project Docs/Plans/strava-data/epaper-fee
 Getting it onto the panel — pairing, URLs, and the three refresh clocks:
 [`Project Docs/Handoffs/strava-data/epaper-deployment.md`](Project%20Docs/Handoffs/strava-data/epaper-deployment.md).
 
-**`deploy.yml` has a daily `schedule` trigger and it is not redundant.** `card_of_the_day` is
-chosen at *build* time — the panel runs no JS — so `epaper.html` holds one fixed card until the
-site rebuilds. The daily run re-renders committed data (no Strava API calls) so the rotation
-actually advances. `cards.ROTATION` is the 16 cards the device cycles; the other 47 still build
-and still ship in `feed.xml`, the proof sheet and their own `epaper/<id>.html`.
+**`deploy.yml` has an hourly `schedule` trigger and both the trigger and its cadence matter.**
+`card_of_the_day` is chosen at *build* time — the panel runs no JS and cannot choose — so
+`epaper.html` holds one fixed card until the site rebuilds, and **the rotation advances only as
+often as the site is rebuilt**. Turning up the device's own poll interval does nothing; it just
+re-fetches the same file. Keyed on hours since the epoch in UTC, the 16-card rotation cycles in 16
+hours (it was 16 days on the old daily cron). The run re-renders committed data and makes no Strava
+API calls. `cards.ROTATION` is the 16 cards the device cycles; the other 47 still build and still
+ship in `feed.xml`, the proof sheet and their own `epaper/<id>.html`.
 
 **`metrics.load()` treats the last day with data as "today", and `anniversary` is the one
 deliberate exception.** That card looks for a race in the paper log near the *build* date, because

@@ -12,7 +12,7 @@ Numbering matches Project Docs/Plans/strava-data/epaper-feed-brainstorm.md.
 """
 
 import math
-from datetime import date
+from datetime import date, datetime, timezone
 
 from nerd_common.format import mmss
 
@@ -1556,10 +1556,20 @@ def build_cards(bundle, today=None):
     return out
 
 
-def card_of_the_day(cards, today=None):
-    """Deterministic daily rotation over the curated list, with a safe fallback
-    to the whole catalogue if a rotation id ever goes missing."""
-    today = today or date.today()
+def card_of_the_day(cards, now=None):
+    """Deterministic rotation over the curated list, stepping once an hour.
+
+    Keyed on hours since the epoch in **UTC**, not on a local date. The card is
+    chosen at build time - the panel runs no JavaScript and cannot choose - so
+    the rotation can only advance as often as the site is rebuilt. deploy.yml
+    rebuilds hourly to match; at a daily rebuild this simply steps once a day.
+    UTC because the build runs on a UTC runner, so a local key would step at a
+    different moment depending on where the build happened.
+
+    Falls back to the whole catalogue if a rotation id ever goes missing, so a
+    typo in ROTATION degrades rather than crashes.
+    """
+    now = now or datetime.now(timezone.utc)
     by_id = {c.id: c for c in cards}
     pool = [by_id[i] for i in ROTATION if i in by_id] or cards
-    return pool[today.toordinal() % len(pool)]
+    return pool[int(now.timestamp() // 3600) % len(pool)]
