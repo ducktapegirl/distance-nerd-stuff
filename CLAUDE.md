@@ -25,6 +25,7 @@ Human-facing documents (not agent-facing config) live under **`Project Docs/`**,
 
 ```
 strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
+                    build_feed.py + feed/ → ../running-log/{feed.xml, epaper.html, epaper-all.html, feed.json, epaper/<id>.html} (e-paper output)
 running-log/        index.html, running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
 Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
   Plans/              proposed/future work + cross-cutting
@@ -71,6 +72,88 @@ uv run python "running-log/parse_log.py"
 uv run python "running-log/visualize_log.py"
 ```
 
+## Build the e-paper feed (reTerminal Sticky / SenseCraft HMI)
+
+```bash
+uv run python strava-data/build_feed.py   # writes running-log/{feed.xml,epaper.html,epaper-all.html,feed.json}
+```
+
+A **second, independent output target** alongside the dashboard, for a reTerminal Sticky ePaper
+panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and Web functions.
+`strava-data/build_feed.py` is a thin entrypoint; the work lives in `strava-data/feed/`
+(`config.py`, `metrics.py`, `journey.py`, `geo.py`, `places.py`, `stats.py`, `svg.py`,
+`layouts.py`, `cards.py`, `fmt.py`, `rss.py`, `page.py`). All catalogued ideas are built —
+**63 cards**, since ideas 3 and 19 each build more than one. **Add a new card as a
+`@card(idea, family, recipe)`-decorated function in `cards.py` composed from `layouts.py`** — not
+in the entrypoint, and not as a bespoke layout: the twelve layouts exist so 63 cards cannot drift
+apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignored** like the
+dashboards' HTML. `epaper-all.html` is the proof sheet — every card at real size, grouped by
+family, with a JS filter for the rotation subset (that page is a browsing surface for a person,
+so the no-JavaScript rule does not apply to it — only to the cards and to `epaper.html`); `epaper/<id>.html` is one card on its own, so a single card can be pinned by URL in
+SenseCraft or checked locally; and `cards.ROTATION` is the 16-card subset the device cycles, one
+per hour.
+The build prunes `epaper/` pages whose card no longer exists, so a retired card stops being served.
+
+**Never use `strftime("%-d")` or `"%-H"`** — they are glibc extensions and raise `ValueError` on
+Windows, which is where this is developed. Use `fmt.day(d, "%d %b %Y")` and `fmt.hm(t)`.
+
+Inputs are `strava-data/data/` **and** `running-log/running_log.csv` — the paper-era 2003–2007
+log, which is the other dashboard's *input*, not its output, so the feed reads a checked-in CSV
+rather than depending on that build. It has a BOM; read it `utf-8-sig`.
+
+`feed/` deliberately imports nothing from `dashboard/`: those modules pull in plotly and a
+MapTiler key. The price is that `places.py` **duplicates** the dashboard's state boxes, home boxes
+and peaks record book — change one, change both. It does read two checked-in *assets*:
+`assets/basemap.json` (shared with the Places hero — **never regenerate it from the feed side**)
+and `assets/journey_routes.json`.
+
+The Journey cards follow real interstates. `strava-data/tools/gen_journey.py` pulls Natural Earth
+`ne_10m_roads` (~50 MB, never committed), welds it into a routable graph and shortest-paths from
+92129, writing `assets/journey_routes.json` (25 KB). **Re-run it only when the corridors change** —
+the dashboard build does no routing and no network I/O. To send a journey somewhere else, edit
+`CORRIDORS` there, not in `feed/journey.py`.
+
+Idea catalogue and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-brainstorm.md`](Project%20Docs/Plans/strava-data/epaper-feed-brainstorm.md).
+Getting it onto the panel — pairing, URLs, and the three refresh clocks:
+[`Project Docs/Handoffs/strava-data/epaper-deployment.md`](Project%20Docs/Handoffs/strava-data/epaper-deployment.md).
+
+**`deploy.yml` has an hourly `schedule` trigger and both the trigger and its cadence matter.**
+`card_of_the_day` is chosen at *build* time — the panel runs no JS and cannot choose — so
+`epaper.html` holds one fixed card until the site rebuilds, and **the rotation advances only as
+often as the site is rebuilt**. Turning up the device's own poll interval does nothing; it just
+re-fetches the same file. Keyed on hours since the epoch in UTC, the 16-card rotation cycles in 16
+hours (it was 16 days on the old daily cron). The run re-renders committed data and makes no Strava
+API calls. `cards.ROTATION` is the 16 cards the device cycles; the other 47 still build and still
+ship in `feed.xml`, the proof sheet and their own `epaper/<id>.html`.
+
+**`metrics.load()` treats the last day with data as "today", and `anniversary` is the one
+deliberate exception.** That card looks for a race in the paper log near the *build* date, because
+an anniversary that arrived while the fetch cron was asleep is still an anniversary. Its recipe
+string says so; don't "fix" it to use `asof`.
+
+**Verify rendered cards with `uv run python tools/epaper_check.py`** (dev-only, needs Playwright,
+`--probe` reports usability). It checks `feed.xml` and then every page at 800×480 for text below
+26 px, effective strokes below 3 px, overlapping text, and anything drawn off-panel — the cards
+are hand-placed at absolute user units with no reflow, so a longer name silently prints one label
+on top of another and no other check will catch it. It is **not** in CI, for the same reason the
+mobile pass isn't: `uv sync --no-dev` excludes Playwright.
+
+Panel rules — these are constraints, not preferences, and `svg.py` enforces the first two:
+- **Text below 26 px raises**; strokes below 3 px are clamped. At 235 PPI the whole screen is
+  ~3.4"×2.0" (1 mm ≈ 9.3 px), so a 12 px label is physically invisible.
+- **Four tones only** (`#000`/`#555`/`#AAA`/`#FFF`) plus three dither patterns — use `svg.tone()`.
+  Encode categories by shape and pattern, quantity by tone. The dashboard's `SPORT_COLORS`
+  teal/amber mapping means nothing here.
+- **No Plotly, no JavaScript, no CDN, no webfonts.** Cards are whole-card SVG at exact user units.
+- Display units follow the same policy as the dashboard: miles, feet, min/mi, mph, °F.
+- **No card footers.** Cards carry the fact and nothing else; the sentence of context lives in
+  the RSS `<description>` and the provenance in the card's `recipe`, both shown on the proof
+  sheet. `layouts.footer` no longer exists and `BOT_RULE` is now just the body's bottom bound.
+- **Symbols like `▲` are font glyphs**: `fit_text` cannot estimate their width and the panel's
+  font may not have them. Draw shapes (`svg.triangle`, the glyph set), never type them.
+- `metrics.load()` treats **the last day with data** as "today", not the wall clock — the fetch
+  cron runs twice a month, so a wall-clock "days since" would describe the schedule, not the athlete.
+
 ## Preview
 
 A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
@@ -78,8 +161,15 @@ define preview servers. Otherwise run
 manually — both dashboards' HTML lives under `running-log/`:
 
 ```bash
-uv run python -m http.server 8765 --directory "running-log" # open index.html or strava.html
+uv run python -m http.server 8765 --directory "running-log"
 ```
+
+| Page | What it is |
+|---|---|
+| `/index.html`, `/strava.html` | the two dashboards |
+| `/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
+| `/epaper.html` | exactly what the panel gets today |
+| `/epaper/<id>.html` | one card on its own |
 
 When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy MapTiler API restrictions.
 
@@ -141,7 +231,7 @@ Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manua
 
 ## CI on pull requests
 
-`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy): `uv sync --no-dev` → build both dashboards → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `index.html` as text.
+`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy): `uv sync --no-dev` → build both dashboards → build the e-paper feed → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `index.html` as text.
 
 Two things it deliberately does **not** do, and shouldn't be "fixed" to do:
 - **It uses `pull_request`, never `pull_request_target`.** The repo is public; `pull_request_target` would run fork-authored code with secrets and a write token.
