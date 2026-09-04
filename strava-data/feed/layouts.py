@@ -16,7 +16,10 @@ from . import svg as S
 from .config import BLACK, DARK, H, LIGHT, MIN_TEXT, PAD, W, WHITE
 
 TOP_RULE = 74
-BOT_RULE = H - 62
+# Was H - 62, with a rule drawn on it and a line of footer text underneath.
+# The footers are gone, so this is now just the bottom bound of the body and
+# nothing is drawn on it - a rule with nothing under it reads as a mistake.
+BOT_RULE = H - PAD
 CX = W / 2
 BODY_TOP = TOP_RULE + 18
 BODY_H = BOT_RULE - TOP_RULE - 36
@@ -34,16 +37,8 @@ def base(cid, title, summary, kicker, asof):
         S.text(W - PAD, 46, F.day(asof).upper(), 26,
                anchor="end", fill=DARK, tracking=2),
         S.line(PAD, TOP_RULE, W - PAD, TOP_RULE, sw=4),
-        S.line(PAD, BOT_RULE, W - PAD, BOT_RULE, stroke=LIGHT, sw=3),
     )
     return c
-
-
-def footer(c, s, size=26):
-    if not s:
-        return c
-    s, size = S.fit_text(s, size, W - 2 * PAD)
-    return c.add(S.text(PAD, H - 22, s, size, fill=DARK, tracking=1))
 
 
 # --- 1. one huge numeral ------------------------------------------------
@@ -51,7 +46,9 @@ def footer(c, s, size=26):
 def hero_number(c, value, unit=None, sub=None, glyph=None, size=150):
     """A single number carrying the whole card. Centred, with an optional
     unit beside it and a caption beneath."""
-    y = 236 if sub else 262
+    # Centred on the body, which now runs to BOT_RULE rather than stopping
+    # where the footer band began.
+    y = 280 if sub else 300
     c.add(S.text(CX, y, str(value), size, "bold", anchor="middle"))
     if unit:
         # Sits to the right of the numeral, whose advance width we
@@ -67,7 +64,7 @@ def hero_number(c, value, unit=None, sub=None, glyph=None, size=150):
     return c
 
 
-def stat_trio(c, items, baseline=250, size=84):
+def stat_trio(c, items, baseline=269, size=84):
     """Three numbers across, for 'miles / hours / feet'-shaped payloads.
 
     ``baseline`` lifts or drops the whole row, so a card that also carries a
@@ -101,8 +98,10 @@ def bar_rows(c, rows, label_w=250, value_w=180, note=None):
     if not rows:
         return c
     top = BODY_TOP + (14 if note else 0)
-    pitch = min(62, (BODY_H - (14 if note else 0)) / len(rows))
-    bh = min(34, pitch - 22)
+    # The cap tracks BODY_H: five rows should reach the bottom of the body
+    # rather than stopping where the old footer band used to begin.
+    pitch = min(68, (BODY_H - (14 if note else 0)) / len(rows))
+    bh = min(38, pitch - 24)
     bx = PAD + label_w
     bw = W - PAD - value_w - bx
     for i, (label, value, frac) in enumerate(rows):
@@ -283,7 +282,7 @@ def route_card(c, path, pw, ph, lines=(), region=None):
 
 # --- 9. route over a stat grid ------------------------------------------
 
-def route_stats(c, path, pw, ph, stats, note=None):
+def route_stats(c, path, pw, ph, stats):
     """A route across the top, a 4x2 grid of numbers under it.
 
     The one card that earns two ideas at once: the shape of the ride and what
@@ -319,7 +318,7 @@ def route_stats(c, path, pw, ph, stats, note=None):
     for col in range(1, cols):
         x = PAD + cw * col
         c.add(S.line(x, grid_top + 4, x, BOT_RULE - 6, stroke=LIGHT, sw=3))
-    return footer(c, note) if note else c
+    return c
 
 
 # --- 10. two-column bar rows --------------------------------------------
@@ -348,6 +347,47 @@ def bar_grid(c, rows, cols=2, glyphs=None):
         c.add(S.rect(x0 + gw, y + 30, bw, 14, fill=WHITE, stroke=LIGHT, sw=3))
         c.add(S.rect(x0 + gw + 3, y + 33, max((bw - 6) * max(0.0, min(1.0, frac)), 0),
                      8, fill=BLACK))
+    return c
+
+
+# --- 12. tally ------------------------------------------------------------
+
+def tally(c, full, partial=0.0, top=246, mark_h=104, per_group=5):
+    """Gate-five tally marks: four uprights and a diagonal, one per unit.
+
+    A count you read the way you'd read it scratched on a wall - the groups do
+    the arithmetic, so nobody counts eleven separate strokes. ``partial`` draws
+    a final short mark rising from the baseline, which is how a fraction of a
+    unit reads without a legend.
+    """
+    sp, sw, gap = 26, 9, 46
+    groups = []
+    left = int(full)
+    while left > 0:
+        groups.append(min(per_group, left))
+        left -= min(per_group, left)
+
+    def width(k):
+        return (k - 1) * sp if k > 1 else 0
+
+    total = sum(width(k) for k in groups) + gap * max(0, len(groups) - 1)
+    if partial > 0:
+        total += gap
+    x = CX - total / 2
+    for k in groups:
+        for i in range(k):
+            xx = x + i * sp
+            c.add(S.line(xx, top, xx, top + mark_h, sw=sw, cap="round"))
+        if k == per_group:
+            # The diagonal overhangs both ends so the group reads as struck
+            # through rather than as a fifth upright leaning over.
+            c.add(S.line(x - 9, top + mark_h - 14, x + width(k) + 9, top + 14,
+                         sw=sw, cap="round"))
+        x += width(k) + gap
+    if partial > 0:
+        h = mark_h * max(0.12, min(1.0, partial))
+        c.add(S.line(x, top + mark_h - h, x, top + mark_h, sw=sw, stroke=DARK,
+                     cap="round"))
     return c
 
 

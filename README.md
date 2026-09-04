@@ -18,8 +18,8 @@ activities (2024+), and a **Running Log**: my college running log that predated 
 - **Running Log** — my running history going back well before Strava
   existed, parsed out of old hand-kept HTML logs into one browsable,
   searchable page.
-- **An e-paper feed** — the same data cut into 64 single-fact "cards" for a
-  little 800×480 grey-scale panel stuck to the fridge. Seventeen of them
+- **An e-paper feed** — the same data cut into 63 single-fact "cards" for a
+  little 800×480 grey-scale panel stuck to the fridge. Sixteen of them
   rotate, one a day. No colour, no JavaScript, nothing smaller than 26 px,
   because at 235 PPI the whole screen is about the size of a credit card.
 

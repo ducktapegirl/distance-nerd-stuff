@@ -266,6 +266,11 @@ def main() -> int:
     ap.add_argument("--shot-dir", default=SHOT_DIR)
     args = ap.parse_args()
 
+    # Card titles carry em dashes and some carry emoji; a cp1252 Windows
+    # console raises UnicodeEncodeError on the first failing card, which would
+    # look like a crash in the page under test rather than in the report.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:

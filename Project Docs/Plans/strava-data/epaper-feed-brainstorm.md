@@ -1,7 +1,8 @@
 # Strava on e-paper: display ideas for the reTerminal Sticky
 
-**Status:** all 62 ideas built as 64 cards (17 in the device rotation) · **Created:** 2026-09-03 ·
-**Updated:** 2026-09-03 (merged the `uoiv93` plan: entries 57-62 added, 52 rewritten) · **Owner:** unassigned
+**Status:** 61 ideas built as 63 cards (16 in the device rotation) · **Created:** 2026-09-03 ·
+**Updated:** 2026-09-03 (merged the `uoiv93` plan: entries 57-62 added, 52 rewritten; then owner
+review: footers dropped, 38 retired, 21 redesigned, 59's icon replaced) · **Owner:** unassigned
 
 Companion to the code in `strava-data/feed/` and the entrypoint `strava-data/build_feed.py`.
 This document is the idea catalogue; the code is the subset that already runs.
@@ -91,8 +92,8 @@ budget (there is no text measurement at build time, so widths are approximated a
 
 ## The catalogue
 
-62 ideas, **all of them now built** as 64 real `card_*` functions — ideas 3 and 19 each build more
-than one. **[ROTATION]** marks the sixteen ideas (seventeen cards) the device cycles through daily,
+61 ideas, **all of them now built** as 63 real `card_*` functions — ideas 3 and 19 each build more
+than one. **[ROTATION]** marks the fifteen ideas (sixteen cards) the device cycles through daily,
 hand-picked 2026-09-03; **[CATALOGUE]** ones exist, render, and ship in `feed.xml`, on the proof
 sheet and at their own `epaper/<id>.html`, but are held back from the panel. Every recipe was checked
 against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
@@ -146,7 +147,7 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 19. **[ROTATION]** **The Journey ladder** — see the expanded section below.
 20. **[ROTATION]** **Sport split** — last 365 days: *Run 70, MTB 68*, everything else trailing. Worth showing
     precisely because it is a dead heat.
-21. **[ROTATION]** **Hours-in-motion clock** — *285.9 moving hours* as a 12-hour dial wound N times round.
+21. **[ROTATION]** **Hours in motion, as a tally** — *285.9 moving hours* as a 12-hour dial wound N times round.
 
 ### D · The racing self — segments
 
@@ -201,9 +202,13 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
     preserving aspect — letterboxing a wide, flat route into a square wastes most of the card.
 37. **[ROTATION]** **Route mosaic** — 32 thumbnails in an 8×4 grid, rotating daily out of all 348 GPS tracks.
     Abstract, and dense pixels are exactly what this panel is good at.
-38. **[ROTATION]** **Home density** — San Diego route density, dithered rather than glowed. Bins every 15th
+38. **[RETIRED]** **Home density** — San Diego route density, dithered rather than glowed. Bins every 15th
     point of every track (21,666 points) over the extent the data occupies; binning *start* points
-    over the whole home box put every ride in one cell.
+    over the whole home box put every ride in one cell. **Retired on owner review** and removed
+    from the build: a 12x12 grid of 21 px cells has to stay square, so it can never use more than
+    the body's height on a 5:3 panel, and at that size the three dither patterns stop being
+    distinguishable from each other. `places.raw_points_in`, which existed only for this card,
+    went with it.
 39. **[CATALOGUE]** **Compass extremes** — *northernmost 49.3°N, easternmost 70.2°W, highest 14,507 ft*, from the
     pinned `_PEAKS_DEF` record book.
 
@@ -217,7 +222,7 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 43. **[CATALOGUE]** **Dark o'clock** — *22 starts before 8 a.m., earliest 03:17.* A moon/sun split glyph.
 
 59. **[ROTATION]** **UV this week** — sum of `uv_index x moving hours` over the ISO week, as a
-    seven-cell day strip under one big number, with a sunscreen tube that fills toward 20 UV-hours.
+    seven-cell day strip under one big number, beside a sun whose disc darkens toward 20 UV-hours.
     Only 339 of 374 activities carry a UV value; the rest are excluded rather than counted as zero,
     which would quietly understate every week that had an indoor session in it. Pairs with #42,
     which is a lifetime max rather than a dose.
@@ -369,6 +374,13 @@ JavaScript, so the choice is made at build time or in the URL.
 week; eleven layouts (`hero_number`, `stat_trio`, `bar_rows`, `bar_grid`, `two_up`, `text_card`,
 `spark`, `cell_grid`, `dial`, `route_card`, `route_stats`, `then_now`) carry the shared structure so
 `cards.py` is mostly data binding.
+
+**Cards carry no footer.** Every card used to end with a line of context above a hairline rule -
+"no axis on purpose", "11.9 full days · 23 times round". Dropped on owner review: a fridge magnet
+glanced at in passing gets one fact, and the sentence of context already exists in the RSS
+`<description>` with the provenance in the card's `recipe`, both of which the proof sheet shows
+under each proof. `BOT_RULE` survives as the bottom bound of the body and nothing is drawn on it;
+the layouts took back the 32 px.
 
 **Verification is `tools/epaper_check.py`**, not a squint at the proof sheet. It measures every card
 at 800x480 for text under 26 px, effective strokes under 3 px, overlapping text and off-panel

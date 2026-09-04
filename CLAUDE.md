@@ -83,14 +83,15 @@ panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and We
 `strava-data/build_feed.py` is a thin entrypoint; the work lives in `strava-data/feed/`
 (`config.py`, `metrics.py`, `journey.py`, `geo.py`, `places.py`, `stats.py`, `svg.py`,
 `layouts.py`, `cards.py`, `fmt.py`, `rss.py`, `page.py`). All catalogued ideas are built —
-**64 cards**, since ideas 3 and 19 each build more than one. **Add a new card as a
+**63 cards**, since ideas 3 and 19 each build more than one. **Add a new card as a
 `@card(idea, family, recipe)`-decorated function in `cards.py` composed from `layouts.py`** — not
-in the entrypoint, and not as a bespoke layout: the eleven layouts exist so 64 cards cannot drift
+in the entrypoint, and not as a bespoke layout: the twelve layouts exist so 63 cards cannot drift
 apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignored** like the
 dashboards' HTML. `epaper-all.html` is the proof sheet — every card at real size, grouped by
 family, with a JS filter for the rotation subset (that page is a browsing surface for a person,
 so the no-JavaScript rule does not apply to it — only to the cards and to `epaper.html`); `epaper/<id>.html` is one card on its own, so a single card can be pinned by URL in
-SenseCraft or checked locally; and `cards.ROTATION` is the 17-card subset the device cycles daily.
+SenseCraft or checked locally; and `cards.ROTATION` is the 16-card subset the device cycles daily.
+The build prunes `epaper/` pages whose card no longer exists, so a retired card stops being served.
 
 **Never use `strftime("%-d")` or `"%-H"`** — they are glibc extensions and raise `ValueError` on
 Windows, which is where this is developed. Use `fmt.day(d, "%d %b %Y")` and `fmt.hm(t)`.
@@ -118,7 +119,7 @@ Getting it onto the panel — pairing, URLs, and the three refresh clocks:
 **`deploy.yml` has a daily `schedule` trigger and it is not redundant.** `card_of_the_day` is
 chosen at *build* time — the panel runs no JS — so `epaper.html` holds one fixed card until the
 site rebuilds. The daily run re-renders committed data (no Strava API calls) so the rotation
-actually advances. `cards.ROTATION` is the 17 cards the device cycles; the other 47 still build
+actually advances. `cards.ROTATION` is the 16 cards the device cycles; the other 47 still build
 and still ship in `feed.xml`, the proof sheet and their own `epaper/<id>.html`.
 
 **`metrics.load()` treats the last day with data as "today", and `anniversary` is the one
@@ -141,6 +142,11 @@ Panel rules — these are constraints, not preferences, and `svg.py` enforces th
   teal/amber mapping means nothing here.
 - **No Plotly, no JavaScript, no CDN, no webfonts.** Cards are whole-card SVG at exact user units.
 - Display units follow the same policy as the dashboard: miles, feet, min/mi, mph, °F.
+- **No card footers.** Cards carry the fact and nothing else; the sentence of context lives in
+  the RSS `<description>` and the provenance in the card's `recipe`, both shown on the proof
+  sheet. `layouts.footer` no longer exists and `BOT_RULE` is now just the body's bottom bound.
+- **Symbols like `▲` are font glyphs**: `fit_text` cannot estimate their width and the panel's
+  font may not have them. Draw shapes (`svg.triangle`, the glyph set), never type them.
 - `metrics.load()` treats **the last day with data** as "today", not the wall clock — the fetch
   cron runs twice a month, so a wall-clock "days since" would describe the schedule, not the athlete.
 

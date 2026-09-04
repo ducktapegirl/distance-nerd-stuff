@@ -148,6 +148,23 @@ def wrap_text(s, size, max_w, max_lines=2, ratio=0.55):
     return lines
 
 
+def triangle(cx, cy, size, direction="up", fill=BLACK):
+    """A trend arrowhead drawn as geometry, not as a font glyph.
+
+    "▲" is roughly a full em wide where the fallback font has it at all, so
+    fit_text's width estimate is badly wrong for it and it can render as a box
+    on a panel with no webfonts. A polygon is neither.
+    """
+    h = size / 2.0
+    if direction == "up":
+        pts = [(cx, cy - h), (cx + h, cy + h), (cx - h, cy + h)]
+    elif direction == "down":
+        pts = [(cx, cy + h), (cx + h, cy - h), (cx - h, cy - h)]
+    else:                                   # flat: a bar, not an arrowhead
+        return rect(cx - h, cy - size * 0.16, size, size * 0.32, fill=fill)
+    return polygon(pts, fill=fill)
+
+
 # --- glyphs --------------------------------------------------------------
 # Solid silhouettes in a 100x100 box. Interior detail below ~3 px vanishes on
 # e-ink, so these are deliberately chunky: strokes, not outlines.
@@ -455,19 +472,24 @@ ANIMAL_GLYPHS = {
 }
 
 
-def glyph_sunscreen(x, y, size, colour=BLACK, fill_frac=0.0):
-    """A sunscreen tube filling like a dose meter. Squeezed shut at the top,
-    capped at the bottom; the fill is a lighter tone so the outline survives."""
-    body_top, body_bot = 26.0, 92.0
-    top = body_bot - (body_bot - body_top) * max(0.0, min(1.0, fill_frac))
-    clip = f"tube{abs(hash((x, y, size))) % 100000}"
-    outline = f"M28 {body_top} L72 {body_top} L72 {body_bot} L28 {body_bot} Z"
-    return _g(
-        f'<clipPath id="{clip}"><path d="{outline}"/></clipPath>'
-        f'<rect x="20" y="{top:.1f}" width="60" height="{body_bot - top:.1f}" '
-        f'fill="{DARK}" stroke="none" clip-path="url(#{clip})"/>'
-        f'<path d="{outline}" stroke-width="7"/>'
-        '<path d="M36 26 L36 12 L64 12 L64 26" stroke-width="7"/>'
-        '<path d="M30 12 L70 12" stroke-width="7"/>'
-        '<path d="M28 92 L72 92" stroke-width="9"/>',
-        x, y, size, colour)
+def glyph_sun(x, y, size, colour=BLACK, level=0.0, rays=8):
+    """A rayed sun whose disc darkens with ``level`` (0..1).
+
+    Replaces a sunscreen tube that nobody could identify - at this size a tube
+    reads as a jar or a battery, whereas a sun needs no caption and matches
+    the peak-UV card next door, which also draws one. Dose is carried by tone
+    rather than by a fill line: on four grey levels a darkening disc is a
+    clearer quantity than a partial fill inside a circle, and it keeps the
+    silhouette intact.
+    """
+    import math as _m
+    r = 27.0
+    body = [f'<circle cx="50" cy="50" r="{r}" fill="{tone(level)}" '
+            f'stroke="{colour}" stroke-width="6"/>']
+    for i in range(rays):
+        th = _m.radians(i * 360.0 / rays - 90)
+        x0, y0 = 50 + (r + 9) * _m.cos(th), 50 + (r + 9) * _m.sin(th)
+        x1, y1 = 50 + (r + 21) * _m.cos(th), 50 + (r + 21) * _m.sin(th)
+        body.append(f'<line x1="{x0:.1f}" y1="{y0:.1f}" x2="{x1:.1f}" y2="{y1:.1f}" '
+                    f'stroke="{colour}" stroke-width="7" stroke-linecap="round"/>')
+    return _g("".join(body), x, y, size, colour)
