@@ -53,6 +53,10 @@ _SHEET_CSS = """
   --mark:#d4614a; --shadow:rgba(0,0,0,.55);
 }
 *{box-sizing:border-box}
+/* figure sets display:flex below, which outranks the UA's
+   [hidden]{display:none} - without this the filter sets the attribute
+   and every proof stays on screen. */
+[hidden]{display:none!important}
 body{margin:0;background:var(--board);color:var(--ink);
   font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
   font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
@@ -111,6 +115,27 @@ figcaption .recipe{font-family:"DM Mono",ui-monospace,monospace;font-size:11px;
   border-top:1px dashed var(--rule);word-break:break-word}
 figcaption .recipe::before{content:"↳ ";color:var(--mark)}
 
+/* filter - sticky under the masthead, same mono/letterspaced register as
+   the frame numbers so it reads as part of the contact-sheet apparatus */
+.filter{position:sticky;top:0;z-index:3;display:flex;align-items:center;
+  gap:10px;flex-wrap:wrap;background:var(--board);
+  padding:14px 0 12px;border-bottom:1px solid var(--rule)}
+.filter-label,.filter-note{font-family:"DM Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.filter button{font:inherit;font-family:"DM Mono",ui-monospace,monospace;
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:7px;
+  padding:6px 12px;cursor:pointer;color:var(--ink);
+  background:transparent;border:1px solid var(--rule)}
+.filter button b{font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.filter button:hover{border-color:var(--ink)}
+.filter button[aria-pressed="true"]{background:var(--ink);color:var(--proof);
+  border-color:var(--ink)}
+.filter button[aria-pressed="true"] b{color:var(--proof);opacity:.65}
+.filter button:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+/* the roll headers stick too; keep them below the filter bar */
+.roll{top:49px}
+
 .foot{margin-top:56px;padding-top:20px;border-top:1px solid var(--rule);
   font-family:"DM Mono",ui-monospace,monospace;font-size:12px;line-height:1.7;
   color:var(--muted)}
@@ -118,6 +143,57 @@ figcaption .recipe::before{content:"↳ ";color:var(--mark)}
 @media (max-width:520px){.wrap{padding:24px 16px 64px}
   .sheet{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+"""
+
+
+# Progressive enhancement: with JavaScript off the page is exactly what it
+# always was, every proof visible. The proof sheet is a browsing surface for a
+# person on a real screen - the no-JavaScript rule applies to the cards and to
+# epaper.html, which the panel loads, not to this page.
+_SHEET_JS = """
+(function () {
+  var buttons = document.querySelectorAll('.filter button');
+  var note = document.querySelector('.filter-note');
+  var KEY = 'stickyProofFilter';
+
+  function apply(mode, persist) {
+    document.querySelectorAll('figure').forEach(function (fig) {
+      fig.hidden = mode === 'rot' && fig.dataset.rot !== '1';
+    });
+    document.querySelectorAll('.roll-group').forEach(function (group) {
+      var shown = mode === 'rot' ? +group.dataset.rotCount
+                                 : group.querySelectorAll('figure').length;
+      // A family with nothing in the rotation drops out entirely, header and
+      // all, rather than leaving a heading over an empty grid.
+      group.hidden = shown === 0;
+      var count = group.querySelector('.count');
+      count.textContent = shown + (shown === 1 ? ' card' : ' cards');
+    });
+    buttons.forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+    });
+    if (note) note.hidden = mode !== 'rot';
+    if (persist !== false) {
+      try { localStorage.setItem(KEY, mode); } catch (e) { /* private window */ }
+    }
+  }
+
+  buttons.forEach(function (b) {
+    b.addEventListener('click', function () { apply(b.dataset.mode); });
+  });
+
+  var start = 'all';
+  try { start = localStorage.getItem(KEY) || 'all'; } catch (e) { /* ignore */ }
+  // A deep link to a specific proof wins over a remembered filter that would
+  // hide it - landing on #haiku and seeing nothing would just look broken.
+  var target = location.hash && document.querySelector(location.hash);
+  var forced = target && target.dataset && target.dataset.rot !== '1';
+  if (forced) start = 'all';
+  // A deep link overrides the filter for this visit only. Persisting it would
+  // let one link to one proof quietly throw away the preference.
+  apply(start, !forced);
+  if (target) target.scrollIntoView();
+})();
 """
 
 
@@ -132,17 +208,23 @@ def render_contact_sheet(cards, asof, rotation=(), families=None):
 
     n_rot = sum(1 for c in cards if c.id in rot)
     body = []
+    # Each roll is a <section> wrapping its header and its grid, so the filter
+    # can hide a whole family in one go rather than reasoning about siblings.
     for letter, group in rolls.items():
+        in_roll = sum(1 for c in group if c.id in rot)
         body.append(
+            f'<section class="roll-group" data-rot-count="{in_roll}">'
             f'<div class="roll"><span class="letter">{esc(letter)}</span>'
             f"<b>{esc(families.get(letter, 'Other'))}</b>"
-            f'<span class="count">{len(group)} card{"s" if len(group) != 1 else ""}</span>'
+            f'<span class="count" data-all="{len(group)}">'
+            f'{len(group)} card{"s" if len(group) != 1 else ""}</span>'
             "</div><div class=\"sheet\">"
         )
         for c in group:
-            badge = ('<span class="rot">in rotation</span>' if c.id in rot else "")
+            is_rot = c.id in rot
+            badge = ('<span class="rot">in rotation</span>' if is_rot else "")
             body.append(
-                f'<figure id="{esc(c.id)}">'
+                f'<figure id="{esc(c.id)}"{' data-rot="1"' if is_rot else ""}>'
                 f'<div class="frame"><span class="no">{c.idea:02d}</span>'
                 f"<span>{esc(c.id)}</span><span class=\"tick\"></span>{badge}</div>"
                 f'<div class="proof">{c.svg()}</div>'
@@ -151,7 +233,7 @@ def render_contact_sheet(cards, asof, rotation=(), families=None):
                 f'<p class="recipe">{esc(c.recipe or "")}</p></figcaption>'
                 "</figure>"
             )
-        body.append("</div>")
+        body.append("</div></section>")
 
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -181,6 +263,14 @@ def render_contact_sheet(cards, asof, rotation=(), families=None):
     <span style="background:var(--tone-1)"></span>
     <span style="background:var(--tone-0)"></span></div>
 </header>
+<div class="filter" role="group" aria-label="Filter proofs">
+  <span class="filter-label">Show</span>
+  <button type="button" data-mode="all" aria-pressed="true">Every card
+    <b>{len(cards)}</b></button>
+  <button type="button" data-mode="rot" aria-pressed="false">In rotation
+    <b>{n_rot}</b></button>
+  <span class="filter-note" hidden>the {n_rot} cards the device cycles daily</span>
+</div>
 {''.join(body)}
 <p class="foot">
 Built by <code>strava-data/build_feed.py</code> from the live Strava export.
@@ -190,5 +280,7 @@ lightbox, not inverted.<br>
 the rest stay in the catalogue. Numbers are catalogue frames from
 <code>Project&nbsp;Docs/Plans/strava-data/epaper-feed-brainstorm.md</code>.
 </p>
-</div></body></html>
+</div>
+<script>{_SHEET_JS}</script>
+</body></html>
 """

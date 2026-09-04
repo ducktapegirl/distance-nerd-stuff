@@ -24,7 +24,7 @@ committed.
 | `epaper.html` | The panel, via SenseCraft's **Web** function. One card, exactly 800×480, no JS. |
 | `feed.xml` | The panel, via SenseCraft's **RSS** function. One item per card, plain text. |
 | `epaper/<id>.html` | The panel, if you want **one fixed card** instead of the rotation — see below. |
-| `epaper-all.html` | You. The proof sheet — every card at real size, grouped by family. |
+| `epaper-all.html` | You. The proof sheet — every card at real size, grouped by family, filterable to the 17 in rotation. |
 | `feed.json` | Escape hatch for HMI Canvas or anything else later. |
 
 64 cards build; 17 of them rotate.
