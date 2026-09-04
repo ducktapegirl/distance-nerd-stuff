@@ -17,6 +17,12 @@ strava-export/.strava_tokens.json
 # never committed (avoids data-vs-feature merge conflicts on pull).
 running-log/index.html
 running-log/strava.html
+# E-paper feed outputs - same rule, built by strava-data/build_feed.py.
+running-log/feed.xml
+running-log/feed.json
+running-log/epaper.html
+running-log/epaper-all.html
+running-log/epaper/
 
 # Python
 __pycache__/

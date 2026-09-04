@@ -18,8 +18,12 @@ activities (2024+), and a **Running Log**: my college running log that predated 
 - **Running Log** — my running history going back well before Strava
   existed, parsed out of old hand-kept HTML logs into one browsable,
   searchable page.
+- **An e-paper feed** — the same data cut into 63 single-fact "cards" for a
+  little 800×480 grey-scale panel stuck to the fridge. Sixteen of them
+  rotate, one an hour. No colour, no JavaScript, nothing smaller than 26 px,
+  because at 235 PPI the whole screen is about the size of a credit card.
 
-Both are static pages, rebuilt from data + a couple of Python scripts, and
+All of it is static pages, rebuilt from data + a few Python scripts, and
 published with GitHub Pages.
 
 ## Built by a team of robots (sort of)
@@ -63,8 +67,42 @@ numpy, no pandas).
 uv sync                                          # install dependencies
 uv run python running-log/visualize_log.py       # build running-log/index.html
 uv run python strava-data/build_dashboard.py     # build running-log/strava.html
-uv run python -m http.server 8765 --directory running-log      # preview at 127.0.0.1:8765
+uv run python strava-data/build_feed.py          # build the e-paper feed
 ```
+
+Everything builds into `running-log/`, which is also what GitHub Pages
+publishes. None of the generated HTML is committed.
+
+### Previewing locally
+
+Serve that one directory and open whichever page you want:
+
+```bash
+uv run python -m http.server 8765 --directory running-log
+```
+
+| URL | What it is |
+|---|---|
+| `http://127.0.0.1:8765/index.html` | Running Log dashboard |
+| `http://127.0.0.1:8765/strava.html` | Strava dashboard |
+| `http://127.0.0.1:8765/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
+| `http://127.0.0.1:8765/epaper.html` | exactly what the panel gets today |
+| `http://127.0.0.1:8765/epaper/<id>.html` | one card on its own, e.g. `/epaper/haiku.html` |
+
+Use **`127.0.0.1`**, not `localhost` — the Strava dashboard's maps are
+restricted by MapTiler to that origin. On Windows, prefix commands with
+`uv run`; a bare `python` may resolve to something ancient.
+
+For the e-paper cards there's an automated pass over all of it — the feed's
+structure, and every card's text size, stroke width, overlap and clipping at
+800×480:
+
+```bash
+uv run python tools/epaper_check.py
+```
+
+It writes a screenshot of each card to `tools/preview-output/epaper/`, so you
+can look at what the numbers passed.
 
 See [`CLAUDE.md`](CLAUDE.md) for the full build pipeline (fetch → analyze →
 build → deploy) and [`Project Docs/Handoffs/migration.md`](Project%20Docs/Handoffs/migration.md) for

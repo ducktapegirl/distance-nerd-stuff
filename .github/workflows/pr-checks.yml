@@ -12,7 +12,9 @@ name: PR checks
 # Deliberately no Playwright / no rendered pass. `uv sync --no-dev` excludes it,
 # and the rendered checks (.claude/qa-visual-suite.md V0-V8) stay in-session with
 # the QA agents by standing decision — see
-# Project Docs/Plans/running-log/qa-mobile-checks.md.
+# Project Docs/Plans/running-log/qa-mobile-checks.md. The same applies to the
+# e-paper feed: this workflow builds it, but tools/epaper_check.py (the 26 px /
+# 3 px / overlap pass) is run in-session, not here.
 on:
   pull_request:
     branches: [main]
@@ -20,6 +22,9 @@ on:
       - "strava-data/data/**"
       - "strava-data/build_dashboard.py"
       - "strava-data/dashboard/**"
+      - "strava-data/build_feed.py"
+      - "strava-data/feed/**"
+      - "strava-data/assets/**"
       - "running-log/dashboard/**"
       - "running-log/parse_log.py"
       - "running-log/visualize_log.py"
@@ -59,6 +64,13 @@ jobs:
 
       - name: Build Running Log dashboard
         run: uv run python running-log/visualize_log.py
+
+      # No new dependencies: the feed is stdlib + numpy, deliberately without
+      # Plotly or a MapTiler key. This is a build check only — the rendered
+      # pass lives in tools/epaper_check.py, which needs Playwright and so
+      # stays out of CI for the same reason the mobile pass does.
+      - name: Build e-paper feed
+        run: uv run python strava-data/build_feed.py
 
       # Must run after the build: qa.py's Group B checks read the freshly
       # generated running-log/index.html as text.

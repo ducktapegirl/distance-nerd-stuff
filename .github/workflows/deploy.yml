@@ -15,6 +15,11 @@ on:
       - "strava-data/data/**"
       - "strava-data/build_dashboard.py"
       - "strava-data/dashboard/**"
+      - "strava-data/build_feed.py"
+      - "strava-data/feed/**"
+      # A re-routed journey_routes.json (or a regenerated basemap) changes the
+      # rendered cards without touching any Python.
+      - "strava-data/assets/**"
       - "running-log/dashboard/**"
       - "running-log/parse_log.py"
       - "running-log/visualize_log.py"
@@ -27,6 +32,17 @@ on:
   workflow_run:
     workflows: ["Strava Data Fetch"]
     types: [completed]
+  # Hourly rebuild. NOT redundant with the triggers above, and the cadence is
+  # the whole point: the e-paper feed's card_of_the_day is chosen at *build*
+  # time (the panel runs no JavaScript, so it cannot choose), which means the
+  # rotation advances only as often as the site is rebuilt. Turning up the
+  # device's own poll interval does nothing — it would just re-fetch the same
+  # file. At hourly the 16-card rotation cycles in 16 hours instead of 16 days.
+  #
+  # It re-renders already-committed data and makes no Strava API calls, so the
+  # cost is a runner minute; the concurrency group below cancels any overlap.
+  schedule:
+    - cron: "0 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -63,6 +79,12 @@ jobs:
 
       - name: Build Running Log dashboard
         run: uv run python running-log/visualize_log.py
+
+      # E-paper feed for the reTerminal Sticky via SenseCraft HMI. Writes
+      # feed.xml / epaper.html / epaper-all.html / feed.json into running-log/,
+      # which is the Pages publish root uploaded below. Stdlib-only, no network.
+      - name: Build e-paper feed
+        run: uv run python strava-data/build_feed.py
 
       - uses: actions/configure-pages@v4
 
