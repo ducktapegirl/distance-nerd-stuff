@@ -154,6 +154,36 @@ Panel rules — these are constraints, not preferences, and `svg.py` enforces th
 - `metrics.load()` treats **the last day with data** as "today", not the wall clock — the fetch
   cron runs twice a month, so a wall-clock "days since" would describe the schedule, not the athlete.
 
+## Poster (40 for 40)
+
+```bash
+uv run python strava-data/tools/poster_40for40.py --png   # poster.svg, poster.png (300 dpi), README.md
+```
+
+A **standalone print tool**, not a build step and not wired into any workflow: a 16"×20" poster of
+forty 2025 GPS routes in a 5×8 grid, one colour per sport, with a footer of continuous-line sport
+figures instead of a text legend. Those figures come from a hand-made drawing,
+`assets/one_line_figures.svg`, vectorised into `assets/poster_glyphs.json` by
+`tools/gen_poster_glyphs.py` — **re-run that only when the drawing changes**, like `gen_journey.py`.
+They are *filled outlines* (fill-rule evenodd), not stroked centrelines, so a glyph's line weight is
+baked into its shape; the poster strokes each outline in its own colour to bring the ink up to the
+routes' weight rather than redrawing anything. Figures are scaled to a common **height**, not to a
+box, or the bike and skis would shrink the athlete inside them.
+
+The six families exist to fit the six drawings and to keep colour meaningful, so they are **not**
+Strava's enum: road and trail running are one family (same motion, indistinguishable at thumbnail
+size), and snow splits by direction of travel — `downhill` (alpine + snowboard) against `nordic`
+(nordic ski + the one pond skate). Merging a family for the legend must not empty the poster of a
+terrain, so `SUB_QUOTA` reserves part of the merged run quota for trail runs, which distance alone
+would otherwise eliminate. The README always names each pick's real sport. It reads `strava-data/data/` directly and **imports nothing from
+`feed/` or `dashboard/`** (it copies the cos-lat projection and the 10 km region clustering rather
+than importing them). Outputs go to `Project Docs/Plans/strava-data/poster/`, not `running-log/`.
+Selection is variety-first: a per-sport quota (mountain bike only — `Ride`/`EBikeRide` are
+excluded), four mandatory routes, one pick reserved per region visited, and a 100 m grid-cell
+Jaccard test so two laps of the same loop don't both make the wall (`--match-threshold`, default
+0.5). The README lists the forty plus ten runner-ups; swap one with `--swap <out_id>:<in_id>`.
+Needs Playwright (dev dep) only for `--png`.
+
 ## Preview
 
 A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
