@@ -523,7 +523,10 @@ def write_readme(path, chosen, runners, why, threshold, pairs):
               "### Ten runner-ups", "",
               "Swap one in with `--swap <out_id>:<in_id>`; the grid re-sorts by date.", "", hdr]
     lines += [line(r, chosen, "runner-up") for r in runners]
-    with open(path, "w", encoding="utf-8") as f:
+    # newline="\n" wherever text is written: Python translates to CRLF on Windows,
+    # where this is developed, while git stores LF, so without it every run of the
+    # tool leaves the repo dirty with a diff that has no content in it.
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
 
 
@@ -546,7 +549,7 @@ def main():
                    key=lambda t: -t[0])
     os.makedirs(a.out, exist_ok=True)
     svg_path = os.path.join(a.out, "poster.svg")
-    with open(svg_path, "w", encoding="utf-8") as f:
+    with open(svg_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(render(chosen))
     write_readme(os.path.join(a.out, "README.md"), chosen, runners, why, a.match_threshold, pairs)
     if a.png:

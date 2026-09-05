@@ -153,7 +153,7 @@ def main():
         after = out[name].count("M")
         print(f"{name:6s} rings {before:3d} -> {after:3d}   {len(out[name]):6d} chars")
 
-    with open(a.out, "w", encoding="utf-8") as f:
+    with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(out, f, indent=1)
         f.write("\n")
     print(f"wrote {a.out}")
