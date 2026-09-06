@@ -22,8 +22,12 @@ Open `proofs.html` for the contact sheet, or the `proof_*.svg` files directly in
 | **A** | **Ascent** | vertical stack, portrait | the drawn mountain | |
 | **B** | **Triptych** | three panels, portrait | equal billing | |
 | **C** | **Medallion** | circular, portrait | the GPS route | |
-| **D** | **Horizon** | landscape | the elevation profile | |
+| **D** | **Horizon** | landscape | the elevation profile | **taken forward → D1/D2/D3** |
 | **E** | **Summit** | triangular, portrait | the elevation profile | |
+
+**D was taken forward.** [`proofs_d.py`](proofs_d.py) develops it three ways with landmarks from
+the real Strava segments and the descent drawn as a map below the profile — see
+[Concept D developed](#concept-d-developed) at the foot of this file.
 
 ---
 
@@ -205,3 +209,119 @@ Run against all five on every build (`/tmp` scripts, not committed):
 Canvas and palette: **1100×1400 user units for 11×14 in at 100 units per inch** (D is 1400×1100,
 the same sheet turned), ground `#F5F0E6`, ink `#2B2A28` — the same 100-units-per-inch convention
 and the same two colours as the 40-for-40 print, so the two hang as a pair.
+
+---
+
+# Concept D developed
+
+`proofs_d.py` takes concept D and adds the three things it was asked to carry: landmarks along
+the profile drawn from this activity's own **Strava segment efforts**, the GPS route as the
+**descent only** set below the profile and tied to it, and **profile and route at equal weight**
+with the figures demoted to an accent.
+
+```bash
+uv run python "Project Docs/Plans/strava-data/whitney/proofs_d.py"
+```
+
+| | Layout | Sheet | Annotation | Chosen? |
+|-|--------|-------|------------|---------|
+| **D1** | **Section** | 11×14 portrait | numerals + legend at the foot | |
+| **D2** | **Descent** | 11×14 portrait | named in place under the profile | |
+| **D3** | **Field note** | 14×11 landscape | numerals + a column at the right | |
+
+## The landmarks come from the segments
+
+18 segment efforts are on file for this activity. `segment_efforts.csv` carries no start or end
+index, but it carries `start_date_local` and `elapsed_time_s`, and the stream carries `t` — which
+is enough to place every effort on the track exactly. Four efforts name landmarks directly:
+
+| Landmark | Source |
+|---|---|
+| Trail Camp | end of **"summit down to trail camp"** |
+| The 97 Switchbacks | **"99 Switchbacks down"** — the descent's own effort, 13.60–15.83 mi |
+| Trail Crest / JMT Jct | start of **"Trail Crest to Whitney Summit"** |
+| Lone Pine Lake Jct | start of **"Lone Pine Lake to Trail head"** |
+| The Final Ridge & Needles | summit → Trail Crest, from the same effort |
+| Outpost Camp | no segment; found by published elevation on the descent |
+
+A useful corroboration fell out of this: **"Trail Crest to Whitney Summit" ends at 14,505 ft** on
+the track — the surveyed figure, independently confirming crux 6.
+
+**Printed elevations are the published ones**, not the watch's. They are facts about the places
+rather than about the barometer, and every one lands within 132 ft of the track's own reading —
+under 2% of a profile spanning 6,146 ft, so the label and its position never visibly disagree.
+Distance is carried by 5-mile ticks on the baseline rather than hung off each landmark, because
+published mileages and this track disagree by about 6% (the guidebook's 10.7 mi to the summit
+against the watch's 11.37) and printing both side by side would look like an error.
+
+## Why there is no true cross-section
+
+The request was to align the two views vertically. **For this route that is impossible**, and the
+track says so twice:
+
+- The descent **backtracks 29% of its easting** — the switchbacks fold back on themselves — so
+  elevation plotted against easting is multivalued and draws a tangle, not a section.
+- Summit to Trail Crest is **1.89 mi and 898 ft of descent inside 57 m of easting**: 17.3% of the
+  descent's distance in 1.2% of its width. A true section would crush a fifth of the day, the
+  Needles and Trail Crest included, into a vertical wall.
+
+**Leader lines between the views were the next option and are also out.** Trail Crest lies 59 m
+*west* of the summit, because the final ridge runs north — so its tie-line crosses the summit's.
+Exactly one crossing, but it falls between the two most important marks on the sheet.
+
+What is left, and what all three use: **a numbered mark in both views, plus the two named spans
+drawn at double weight in both.** The switchbacks are a dense zigzag on the map and a steep step
+on the profile; drawing both heavier ties them by the line itself rather than by a rule.
+
+### How close does D2 actually get?
+
+D2 gives profile and map one shared measure, which is as near as this route allows. Measured:
+
+| | profile | map | apart |
+|---|---|---|---|
+| Whitney Portal | 100.0% | 97.3% | 2.7 pts |
+| Lone Pine Lake Jct | 73.7% | 79.3% | 5.6 pts |
+| Outpost Camp | 68.8% | 75.0% | 6.3 pts |
+| **Trail Camp** | **41.0%** | **28.5%** | **12.5 pts** |
+| Trail Crest / JMT Jct | 17.3% | 7.6% | 9.7 pts |
+| Mount Whitney Summit | 0.0% | 8.7% | 8.7 pts |
+
+Worst case **1.16 in on an 11 in sheet**, at Trail Camp, where the switchbacks pack trail distance
+into very little easting. Close enough that the eye scans between the two views, but it is *not*
+registration — so the numerals still carry the tie, and the tool prints this divergence on every
+run rather than letting the claim go unchecked.
+
+## Further cruxes
+
+**11 · The alignment turns the sheet portrait.** Stacking a full-measure map under the profile
+fixes the map's height: the descent's box is 5,234 × 3,476 m, so the map is 0.664 of its own
+width. At 14×11 landscape the measure is 1,210 units, making the map 805 tall and leaving nothing
+for a profile. Turned portrait the measure is 930, the map is 617, and profile + map + type all
+fit. D3 keeps the landscape sheet and pays for it — the map drops to 700 units and off the
+profile's measure entirely.
+
+**12 · D2's map is width-fitted, not contain-fitted.** A contain-fit map sits inset from the
+profile above it and quietly breaks the shared measure the design is built on, so `route_mapper`
+takes a `fit="width"` mode. D1 and D3 stay contain-fit; neither claims a shared measure.
+
+**13 · "Equal importance" is optical, not arithmetic.** The profile is a short taut line; the map
+is a long meander over twice the area. At identical stroke the map reads lighter, so it gets a 20%
+bump (3.6 against the profile's 3.0, spans 6.8 against 6.0) to sit level — the same kind of hand
+correction `poster_40for40.py` makes with `GLYPH_OPTICAL`.
+
+**14 · Six landmarks on one measure need fanned leaders, not staggered labels.** Outpost Camp and
+Lone Pine Lake are half a mile apart — 46 units on the descent's measure — so labels set under
+their own x collide however they are staggered. D2 puts them on six even slots with a two-segment
+leader back to the point. D1 cannot do this at all: its landmarks are squeezed into the right half
+of the triangle, which is why it needs the legend.
+
+**15 · One mapper per view.** `profile_mapper` and `route_mapper` return an index→point function,
+and both the drawn polyline and every mark on it come from that same function — so a landmark and
+the line it sits on cannot drift apart when a box is resized.
+
+## Verified
+
+- No element off any sheet; tightest margin **0.34 in** (D3).
+- No text overlaps in any of the three.
+- The D2 divergence table above is regenerated and printed on every run.
+- `--png --dpi 300` → 3300×4200 (D1, D2) and 4200×3300 (D3).
