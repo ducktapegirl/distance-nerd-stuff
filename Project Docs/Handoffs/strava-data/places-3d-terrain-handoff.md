@@ -131,7 +131,7 @@ Two traps worth remembering, both of which produced a wrong intermediate fix:
   `pitch=60`, terrain + route present, not stuck.
 - 9-step regression sweep (activity→activity, Overview/Street/Terrain switching,
   View button, multi-day trip, theme toggle): **9/9 PASS on the fixed build; the
-  pre-fix build fails only step A** (`z=3.546`, centre outside the activity box) with
+  pre-fix build fails only step A** (`z=3.546`, center outside the activity box) with
   every other step identical — a clean controlled comparison.
 - Both deep-link forms (`?a=<id>&b=terrain` and `?a=<id>`): PASS.
 - Mobile 375×812 first click: PASS.
@@ -311,7 +311,7 @@ raw event tracing found the real answer.
 These four answers are what collapsed the search space to a single code path before
 any instrumentation ran — worth asking first in any similar investigation.
 
-1. *First-click behaviour?* — "Navigates me back to the map and changes to the 3D
+1. *First-click behavior?* — "Navigates me back to the map and changes to the 3D
    Terrain view, but **doesn't zoom in enough**." (Ruled out a `4126db2` recurrence
    immediately: terrain was fine, the camera was not.)
 2. *Same activities each time?* — "**Whichever I click first.**"
@@ -363,5 +363,5 @@ open bug is outstanding on this feature. Possible follow-ups, none started:
   `Style._remove` ← `Map._updateStyle` still appears once per style swap. It is
   benign here (it predates this fix and did not cause the camera bug) but it has
   never been chased down.
-- **Per-day route colouring for multi-day trips** — scoped out by the user, see
+- **Per-day route coloring for multi-day trips** — scoped out by the user, see
   Decisions above.

@@ -84,7 +84,7 @@ Revisit this as its own pass.
    composite modes — it may need its own composite handling separate from the route lines'.
 4. **Re-check against all three real basemaps in both themes** (6 combinations, same matrix as
    the Backdrop/dark-mode verification pass) plus a few real routes at multiple zooms — a fix
-   tuned only against Backdrop's plain grey may not generalize to Street's saturated colors or
+   tuned only against Backdrop's plain gray may not generalize to Street's saturated colors or
    Terrain's relief shading.
 
 ## Not in scope for this note

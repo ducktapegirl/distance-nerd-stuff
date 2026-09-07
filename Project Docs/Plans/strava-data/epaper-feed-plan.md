@@ -6,8 +6,8 @@
 **Two places the build diverged from this plan, both deliberate:**
 
 1. **64 cards, not 63.** The plan's arithmetic treated the existing build as 56 cards; it was
-   already 57, because catalogue idea 19 builds both `journey-run` and `journey-bike`. Seven net
-   new cards (eight added, `animals` removed in favour of `wildlife`) makes 64. The rotation is 17
+   already 57, because catalog idea 19 builds both `journey-run` and `journey-bike`. Seven net
+   new cards (eight added, `animals` removed in favor of `wildlife`) makes 64. The rotation is 17
    as planned.
 2. **Step 5's verification script grew an overlap check.** The planned checks (text >= 26 px,
    stroke >= 3 px, 800x480, one `<svg>`, no console errors) all pass on a card whose labels are
@@ -21,7 +21,7 @@ Supersedes `Project Docs/Plans/strava-data/eink-feed-plan.md` on branch
 reference for its Pillow prototypes (`strava-data/tools/eink_cards.py`, the contact sheets under
 `Project Docs/Plans/strava-data/eink-cards/`).
 
-Companion docs: idea catalogue [`epaper-feed-brainstorm.md`](epaper-feed-brainstorm.md); device
+Companion docs: idea catalog [`epaper-feed-brainstorm.md`](epaper-feed-brainstorm.md); device
 runbook [`../../Handoffs/strava-data/epaper-deployment.md`](../../Handoffs/strava-data/epaper-deployment.md).
 
 ---
@@ -109,13 +109,13 @@ branch deletion. Commit before any code.
 ## Step 3 — cards
 
 Every new card is a `@card(idea, family, recipe)` function in `feed/cards.py` composed from
-`feed/layouts.py`, glyphs in `feed/svg.py` — the existing rule. New catalogue frames 57–62 get
+`feed/layouts.py`, glyphs in `feed/svg.py` — the existing rule. New catalog frames 57–62 get
 matching entries in the brainstorm doc. Prototype line refs are into
 `uoiv93:strava-data/tools/eink_cards.py`.
 
 | id | idea | layout | recipe |
 |---|---|---|---|
-| `latest` | 3 (`last` / `last-route` stay in the catalogue) | new `route_stats(c, path, stats)`: route on top (~220 px; reuse `metrics.route_for` + `layouts.route_card` geometry), 4×2 stat grid below, description as footer via `fit_text` | distance mi, moving h:mm, pace `M:SS/mi` (run) or mph (bike), climb ft, avg HR, temp °F, suffer, kudos. Proto `card_latest` L650. |
+| `latest` | 3 (`last` / `last-route` stay in the catalog) | new `route_stats(c, path, stats)`: route on top (~220 px; reuse `metrics.route_for` + `layouts.route_card` geometry), 4×2 stat grid below, description as footer via `fit_text` | distance mi, moving h:mm, pace `M:SS/mi` (run) or mph (bike), climb ft, avg HR, temp °F, suffer, kudos. Proto `card_latest` L650. |
 | `segment-month` | 57 · D | `spark` + a stat trio | most efforts in the 30 days before `asof` (ties → most overall); best / latest / `recent_trend` with an arrow word; effort-time sparkline, last 24, inverted (up = faster); footer: avg HR, worst, first effort. Proto `card_segment_week` L883. |
 | `hall-of-fame` | 58 · J | 5-row list on `bar_rows` geometry (sport glyph, name wrapped to 2 lines at 26 px, date + one stat) | exclude `DEFAULT_NAME` regex (L1234) and "Warm Up"; score = punctuation×3 + min(len,40)/8 + kudos/2 + 2 if non-ASCII; window of 5 by ISO-week seed. Proto L1237. |
 | `uv-week` | 59 · G | `cell_grid` (7 cells) + `hero_number` + new `glyph_sunscreen(fill_frac)` | Σ `uv_index × moving_time_min/60` over the ISO week of `asof` for rows with a UV value (339/374); cells shaded by daily UV-hours via `svg.tone`; tube fills at ≥ 20 UV-hours; footer: peak-UV activity. |
@@ -124,7 +124,7 @@ matching entries in the brainstorm doc. Prototype line refs are into
 | `anniversary` | 61 · I | `text_card` | race whose month-day is within ±7 days of **the build date** (else the next upcoming): "N years ago today" / "in 3 days", `race_name`, `race_distance`, `race_time` as headline, `comments` wrapped to 3 lines. **Calendar-driven exception** to the "asof = last data day" rule — say so in the recipe string. |
 | `haiku` | 62 · J | `text_card` (headline ~48 px, three lines) | deterministic templates seeded by the newest activity id: sport word, distance, weather/temp clause, suffer adjective, one wildlife/description noun if present; vowel-group syllable check, ~12 templates per slot, no LLM. Activity name in the footer. |
 
-`fresh` stays in the catalogue, out of rotation. Set `ROTATION` to the 17 ids above;
+`fresh` stays in the catalog, out of rotation. Set `ROTATION` to the 17 ids above;
 `card_of_the_day` needs no change. Also emit **per-card static pages**
 `running-log/epaper/<id>.html` (same `render_page`) so one card can be pinned in SenseCraft or
 checked locally; add `running-log/epaper/` to `.gitignore`.
@@ -166,7 +166,7 @@ run un-sandboxed:
   host (`sensecraft-hmi-docs.seeed.cc/en/guides/sensecraft-hmi-{web,rss}/`) still 404s from the
   planning environment — the device poll interval remains a "read it in the UI and write it here"
   item.
-- **`epaper-feed-brainstorm.md`**: catalogue entries 57–62, rotation marks updated, note
+- **`epaper-feed-brainstorm.md`**: catalog entries 57–62, rotation marks updated, note
   `animals` → `wildlife` and `fresh` demoted.
 - Flip this document's status to *built*.
 

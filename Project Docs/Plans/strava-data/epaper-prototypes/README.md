@@ -15,7 +15,7 @@
 Candidate "cards" for a **reTerminal E1005** (3.97", 800×650, 4-level greyscale) fed by
 SenseCraft HMI. This is an **idea picker**, not a build step: every card is rendered from
 the real data in `strava-data/data/` (and `running-log/running_log.csv`) by
-`strava-data/tools/eink_cards.py`, snapped to the panel's four grey levels
+`strava-data/tools/eink_cards.py`, snapped to the panel's four gray levels
 (0 / 85 / 170 / 255), and tiled into `contact-sheet.png`. Pick favourites; the follow-on
 work is a real feed builder (RSS + PNG enclosures) for the chosen views.
 
@@ -45,6 +45,6 @@ Notes
 - Road distances in the route ladder are approximate driving miles from 92129, hand-typed
   in `ROUTE_LADDER`; waypoints carry cumulative miles so the marker position is honest.
 - Icons are geometric Pillow primitives (no font glyphs), drawn at 1× and quantized, so they
-  survive the 2-bit panel without dithering artefacts.
+  survive the 2-bit panel without dithering artifacts.
 - Data is as of the latest activity in `activities.csv` at render time; the sample week has no
   runs, which is why cards 02 and 11 show 0 run miles.

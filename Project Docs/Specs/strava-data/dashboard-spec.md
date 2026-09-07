@@ -688,7 +688,7 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 > **Route standoff** — `drawGlow()` now draws each route in **two passes**: a contrasting
 > casing (white@.9 light / near-ground-dark@.85 dark, width `lw+2`, `source-over` so it isn't a
 > no-op under the colored pass's `multiply`/`lighter` composite — and all casings first so none
-> nicks a neighbour's colour), then the per-sport colour on top (its existing composite). Line
+> nicks a neighbor's color), then the per-sport color on top (its existing composite). Line
 > weight bumped to `max(1.4, min(3.0, 0.7+z*0.18))`. Paths are projected once into a `Path2D`
 > per track and stroked twice (cheaper than re-projecting on pan). Closes
 > `Plans/strava-data/places-basemap-contrast-future-work.md`.
@@ -1520,7 +1520,7 @@ rendering lazily. Affected every dark "pill" annotation baked via
 charts_exploratory.py's `X_ANN_BG`, charts_production.py's
 `chart_run_hr_vs_temp`-local `DARK_PILL`, and rollups_cards.py's reuse of
 `X_ANN_BG` (e.g. the Exploratory tab's R-value and "circle = run / diamond =
-MTB" symbol-key pills) — they stayed dark grey in light theme.
+MTB" symbol-key pills) — they stayed dark gray in light theme.
 
 - Superseded the JS bgcolor retint with a CSS rule scoped to
   `.annotation .bg[style*='fill-opacity: 0.65;']` (Plotly's generic

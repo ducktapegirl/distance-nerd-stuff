@@ -10,7 +10,7 @@ Your task:
 * Investigate all the GPS data I have for the year 2025 and understand what information is available
 * Review the "route mosaic" idea, image, and related code:
 	* **strava-data/feed/cards.py:866** — `c37_mosaic`, the card itself. Picks 32 tracks, lays out an 8×4 grid, scales each track to fit its cell preserving aspect, and emits one `polyline` per route.
-	* **strava-data/feed/places.py** — `all_tracks()` supplies the data: reads up to 400 stream CSVs, downsamples each to 64 points, and normalises via `normalise()` so the dominant axis spans 0..1. It's `@lru_cache`'d because the full read is ~1.8s and several cards want it.
+	* **strava-data/feed/places.py** — `all_tracks()` supplies the data: reads up to 400 stream CSVs, downsamples each to 64 points, and normalizes via `normalise()` so the dominant axis spans 0..1. It's `@lru_cache`'d because the full read is ~1.8s and several cards want it.
 	* **strava-data/feed/svg.py** — `polyline()` does the actual drawing.
 * Do a light amount of research into minimalist art or line art for inspiration
 * Propose 3-4 designs as proofs for me to choose from. Then we can make an implementation plan.

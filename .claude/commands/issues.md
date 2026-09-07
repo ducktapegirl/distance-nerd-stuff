@@ -94,7 +94,7 @@ do** — the following, and present them as a numbered menu:
 `enhancement` picks the **route** (feature work, not a bugfix) — it does not by itself decide
 whether Ideate runs. That's a separate call:
 
-**Vague vs specific** is the one judgement call. Both non-bug forms (*New view / chart idea* and
+**Vague vs specific** is the one judgment call. Both non-bug forms (*New view / chart idea* and
 *General enhancement*) carry the same **"How formed is this idea?"** field — it maps directly:
 *Rough* → with Ideate, *Specific* → skip Ideate, *Somewhere in between* → your call. Trust the
 author's own answer over your read of their prose.

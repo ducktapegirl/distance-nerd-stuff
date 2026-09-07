@@ -82,7 +82,7 @@ A **second, independent output target** alongside the dashboard, for a reTermina
 panel (800×480, 4-level grayscale, no JS) driven by SenseCraft HMI's RSS and Web functions.
 `strava-data/build_feed.py` is a thin entrypoint; the work lives in `strava-data/feed/`
 (`config.py`, `metrics.py`, `journey.py`, `geo.py`, `places.py`, `stats.py`, `svg.py`,
-`layouts.py`, `cards.py`, `fmt.py`, `rss.py`, `page.py`). All catalogued ideas are built —
+`layouts.py`, `cards.py`, `fmt.py`, `rss.py`, `page.py`). All cataloged ideas are built —
 **63 cards**, since ideas 3 and 19 each build more than one. **Add a new card as a
 `@card(idea, family, recipe)`-decorated function in `cards.py` composed from `layouts.py`** — not
 in the entrypoint, and not as a bespoke layout: the twelve layouts exist so 63 cards cannot drift
@@ -113,7 +113,7 @@ The Journey cards follow real interstates. `strava-data/tools/gen_journey.py` pu
 the dashboard build does no routing and no network I/O. To send a journey somewhere else, edit
 `CORRIDORS` there, not in `feed/journey.py`.
 
-Idea catalogue and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-brainstorm.md`](Project%20Docs/Plans/strava-data/epaper-feed-brainstorm.md).
+Idea catalog and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-brainstorm.md`](Project%20Docs/Plans/strava-data/epaper-feed-brainstorm.md).
 Getting it onto the panel — pairing, URLs, and the three refresh clocks:
 [`Project Docs/Handoffs/strava-data/epaper-deployment.md`](Project%20Docs/Handoffs/strava-data/epaper-deployment.md).
 
@@ -161,16 +161,16 @@ uv run python strava-data/tools/poster_40for40.py --png   # poster.svg, poster.p
 ```
 
 A **standalone print tool**, not a build step and not wired into any workflow: a 16"×20" poster of
-forty 2025 GPS routes in a 5×8 grid, one colour per sport, with a footer of continuous-line sport
+forty 2025 GPS routes in a 5×8 grid, one color per sport, with a footer of continuous-line sport
 figures instead of a text legend. Those figures come from a hand-made drawing,
-`assets/one_line_figures.svg`, vectorised into `assets/poster_glyphs.json` by
+`assets/one_line_figures.svg`, vectorized into `assets/poster_glyphs.json` by
 `tools/gen_poster_glyphs.py` — **re-run that only when the drawing changes**, like `gen_journey.py`.
-They are *filled outlines* (fill-rule evenodd), not stroked centrelines, so a glyph's line weight is
-baked into its shape; the poster strokes each outline in its own colour to bring the ink up to the
+They are *filled outlines* (fill-rule evenodd), not stroked centerlines, so a glyph's line weight is
+baked into its shape; the poster strokes each outline in its own color to bring the ink up to the
 routes' weight rather than redrawing anything. Figures are scaled to a common **height**, not to a
 box, or the bike and skis would shrink the athlete inside them.
 
-The six families exist to fit the six drawings and to keep colour meaningful, so they are **not**
+The six families exist to fit the six drawings and to keep color meaningful, so they are **not**
 Strava's enum: road and trail running are one family (same motion, indistinguishable at thumbnail
 size), and snow splits by direction of travel — `downhill` (alpine + snowboard) against `nordic`
 (nordic ski + the one pond skate). Merging a family for the legend must not empty the poster of a

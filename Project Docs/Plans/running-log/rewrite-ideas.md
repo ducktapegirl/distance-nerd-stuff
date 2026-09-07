@@ -3,7 +3,7 @@
 
 1. Don't want dark mode only. Add a toggle for dark/light/use system theme.
 2. Title (where College Running Log text) should be much larger. At least with larger text than the Overview title.
-3. The grey text in dark mode is hard to see (primarily used on axes labels)
+3. The gray text in dark mode is hard to see (primarily used on axes labels)
 4. Feedback for Claude Design: it showed me light mode even though it exported default dark mode.
 5. Don't include hover-highlight behavior on non-clickable sections.
 6. Change the Strava button text to say "My Strava Dashboard"
