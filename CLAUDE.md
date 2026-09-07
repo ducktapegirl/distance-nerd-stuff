@@ -196,18 +196,24 @@ uv run python strava-data/tools/poster_40for40.py --png   # poster.svg, poster.p
 
 A **standalone print tool**, not a build step and not wired into any workflow: a 16"×20" poster of
 forty 2025 GPS routes in a 5×8 grid, one color per sport, with a footer of continuous-line sport
-figures instead of a text legend. Those figures come from a hand-made drawing,
-`assets/one_line_figures.svg`, vectorized into `assets/poster_glyphs.json` by
-`tools/gen_poster_glyphs.py` — **re-run that only when the drawing changes**, like `gen_journey.py`.
-They are *filled outlines* (fill-rule evenodd), not stroked centerlines, so a glyph's line weight is
-baked into its shape; the poster strokes each outline in its own color to bring the ink up to the
-routes' weight rather than redrawing anything. Figures are scaled to a common **height**, not to a
-box, or the bike and skis would shrink the athlete inside them.
+figures instead of a text legend. Those figures come from hand-made drawings, vectorized into
+`assets/poster_glyphs.json` by `tools/gen_poster_glyphs.py` — **re-run that only when a drawing
+changes**, like `gen_journey.py`. It takes two kinds of input: `assets/one_line_figures.svg`, a 3×2
+sheet of six sports already in vector form, and `assets/one_line_downhill_pair.png`, a later drawing
+of a skier and a snowboarder together that arrived only as a raster and so is traced here with
+marching squares (pure numpy plus a small PNG decoder — there is no Pillow in this venv). Both are
+*filled outlines* (fill-rule evenodd), not stroked centerlines, so a glyph's line weight is baked
+into its shape; the poster strokes each outline in its own color to bring the ink up to the routes'
+weight, which is why `GLYPH_WEIGHT` is keyed by **drawing** rather than by family — the pair was
+inked more heavily and needs none. Figures are scaled to a common **height**, not to a box, or the
+bike and skis would shrink the athlete inside them.
 
-The six families exist to fit the six drawings and to keep color meaningful, so they are **not**
-Strava's enum: road and trail running are one family (same motion, indistinguishable at thumbnail
-size), and snow splits by direction of travel — `downhill` (alpine + snowboard) against `nordic`
-(nordic ski + the one pond skate). Merging a family for the legend must not empty the poster of a
+The six families exist to keep color meaningful, so they are **not** Strava's enum: road and trail
+running are one family (same motion, indistinguishable at thumbnail size), and snow splits by
+direction of travel — `downhill` (alpine + snowboard, drawn as the pair) against `nordic` (nordic
+ski + the one pond skate). The sheet's lone snowboarder is still in the asset but unused: it spoke
+for only one half of the downhill family, and for the rarer half. Merging a family for the legend
+must not empty the poster of a
 terrain, so `SUB_QUOTA` reserves part of the merged run quota for trail runs, which distance alone
 would otherwise eliminate. The README always names each pick's real sport. It reads `strava-data/data/` directly and **imports nothing from
 `feed/` or `dashboard/`** (it copies the cos-lat projection and the 10 km region clustering rather
