@@ -21,11 +21,18 @@ FAMILY = {
     "AlpineSki": "downhill", "Snowboard": "downhill",
     "NordicSki": "nordic", "IceSkate": "nordic",
     "RockClimbing": "other", "WeightTraining": "other", "Workout": "other",
-    "Pickleball": "other", "StandUpPaddling": "other",
+    "Pickleball": "other", "StandUpPaddling": "other", "Pilates": "other",
 }
+# Which activity wins when two share a calendar day and therefore an angle.
+# Higher paints later, so it ends up on top and is what the pointer reaches.
+PRIORITY = {"run": 3, "mtb": 3, "foot": 2, "downhill": 2, "nordic": 2, "other": 1}
+
 COLOR = {"run": "#2dd4bf", "mtb": "#f59e0b", "foot": "#a3e635",
          "downhill": "#60a5fa", "nordic": "#c084fc", "other": "#f472b6"}
 BG = "#0b0f14"
+
+
+UNMAPPED = set()
 
 
 def load(year=None):
@@ -36,6 +43,8 @@ def load(year=None):
             if year is not None and not r["start_date_local"].startswith(str(year)):
                 continue
             r["dt"] = datetime.strptime(r["start_date_local"], "%Y-%m-%d %H:%M:%S")
+            if r["sport_type"] not in FAMILY:
+                UNMAPPED.add(r["sport_type"])
             r["fam"] = FAMILY.get(r["sport_type"], "other")
             r["km"] = float(r["distance_km"] or 0)
             r["min"] = float(r["moving_time_min"] or 0)
@@ -325,16 +334,32 @@ def concept_year(acts, tracks, year=YEAR, interactive=False, scale=None,
     out.append('<circle cx="%.1f" cy="%.1f" r="%d" fill="none" stroke="#243244"/>'
                % (C, C, R0))
 
+    # Same-day activities land on the identical angle and overlap exactly, so
+    # paint order decides which one is visible and reachable. Draw the least
+    # "serious" first, so a run or a ride ends up on top of the gym session it
+    # shares a day with.
+    drawn = sorted(acts, key=lambda a: (a["dt"].date(), PRIORITY[a["fam"]], a["km"]))
+
     out.append('<g class="spokes">')
-    for a in acts:
+    for a in drawn:
         ang = math.radians((a["dt"].timetuple().tm_yday - 1) / nd * 360 - 90)
-        ln = R0 + (R1 - R0) * math.sqrt(min(a["km"] / mx, 1.0))
         w = 1.2 + min(a["min"], 240) / 60
         tag = ('class="spoke fam-%s" data-id="%s" ' % (a["fam"], a["id"])) if interactive else ""
+        if a["km"] <= 0:
+            # No distance recorded (climbing, weights, Pilates). A spoke would
+            # be exactly zero units long and simply not appear, so these get a
+            # tick inside the ring instead -- present and countable, without
+            # inventing a distance. Width still carries duration.
+            r0, r1 = R0 - 13, R0 - 4
+        else:
+            ln = R0 + (R1 - R0) * math.sqrt(min(a["km"] / mx, 1.0))
+            # a real but tiny distance still has to be visible; 4 units is
+            # ~1.7% of the radial range
+            r0, r1 = R0, max(ln, R0 + 4)
         out.append('<line %sx1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" '
                    'stroke-width="%.1f" stroke-linecap="round" opacity="0.9"/>'
-                   % (tag, C + R0 * math.cos(ang), C + R0 * math.sin(ang),
-                      C + ln * math.cos(ang), C + ln * math.sin(ang), COLOR[a["fam"]], w))
+                   % (tag, C + r0 * math.cos(ang), C + r0 * math.sin(ang),
+                      C + r1 * math.cos(ang), C + r1 * math.sin(ang), COLOR[a["fam"]], w))
     out.append('</g>')
 
     out.append('<g class="rd-default">')
@@ -351,15 +376,18 @@ def concept_year(acts, tracks, year=YEAR, interactive=False, scale=None,
     out.append('</g>')
 
     if interactive:
-        # hit targets last so they sit on top; full-length so a short spoke is
-        # no harder to reach than a long one
+        # hit targets last so they sit on top; full-length so a short spoke (or
+        # an inner-ring tick) is no harder to reach than a long one. Same paint
+        # order as the spokes, so the pointer reaches whatever is visually on
+        # top rather than whichever happens to be last in the file.
         out.append('<g class="hits" fill="none" stroke="transparent" stroke-width="13" '
                    'stroke-linecap="round" pointer-events="stroke">')
-        for a in acts:
+        for a in drawn:
             ang = math.radians((a["dt"].timetuple().tm_yday - 1) / nd * 360 - 90)
+            hr0 = R0 - 15   # far enough in to cover an inner-ring tick
             out.append('<line class="hit" data-id="%s" x1="%.1f" y1="%.1f" '
                        'x2="%.1f" y2="%.1f"/>'
-                       % (a["id"], C + R0 * math.cos(ang), C + R0 * math.sin(ang),
+                       % (a["id"], C + hr0 * math.cos(ang), C + hr0 * math.sin(ang),
                           C + (R1 + 8) * math.cos(ang), C + (R1 + 8) * math.sin(ang)))
         out.append('</g>')
 
@@ -483,8 +511,13 @@ PAGE_JS = """
     art.classList.add('sel'); if(def) def.style.display='none'; det.style.display='';
     fDate.textContent=(a.d+' '+a.yr).toUpperCase();
     setName(a.n);
-    fStat.textContent=a.mi.toFixed(1)+' mi \\u00b7 '+dur(a.t)+
-      (a.ft>50 ? ' \\u00b7 '+Math.round(a.ft).toLocaleString()+' ft' : '');
+    // no distance recorded (gym, climbing): "0.0 mi" is worse than saying
+    // nothing -- these are the inner-ring ticks
+    var bits=[];
+    if(a.mi>=0.05) bits.push(a.mi.toFixed(1)+' mi');
+    bits.push(dur(a.t));
+    if(a.ft>50) bits.push(Math.round(a.ft).toLocaleString()+' ft');
+    fStat.textContent=bits.join(' \\u00b7 ');
     fSport.textContent=a.sp.toUpperCase();
     hint.textContent = traces[id] ? '' : 'no GPS for this one \\u2014 nothing in the ground layer';
   }
@@ -573,6 +606,14 @@ PAGE_JS = """
   setYear(START_YEAR);
 })();
 """
+
+
+def js_json(obj):
+    """JSON safe to inline in a <script>: an activity named "</script>" would
+    otherwise end the block early. No name does today; nothing stops one."""
+    import json
+    return (json.dumps(obj, ensure_ascii=False)
+            .replace("<", "\u003c").replace(">", "\u003e"))
 
 
 def build_page(years, tracks, scale):
@@ -673,6 +714,11 @@ def main():
               % (y, n, sum(1 for a in years[y] if tracks.get(a["id"]))))
     print("shared scale: longest %.1f mi, bloom extent %.0f m"
           % (scale["mx"] * 0.621371, scale["ext"]))
+    nodist = sum(1 for a in all_acts if a["km"] <= 0)
+    print("%d activities have no distance -> inner-ring ticks" % nodist)
+    if UNMAPPED:
+        print("NOTE: sport types not in FAMILY, drawn as 'other': %s"
+              % ", ".join(sorted(UNMAPPED)))
 
     # the proof sheet stays single-year -- it is the record of the four
     # directions, not the deliverable
