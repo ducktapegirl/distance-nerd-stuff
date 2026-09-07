@@ -437,8 +437,11 @@ CONCEPTS = [
 ]
 
 
+# Legend text only -- the family keys and the fam-* classes stay as they are.
+# "nordic" covers ice skating too (an even 3/3 split with nordic skiing), so
+# that label understates what is in the family.
 FAM_LABEL = {"run": "run", "mtb": "bike", "foot": "hike / walk",
-             "downhill": "downhill", "nordic": "nordic / skate", "other": "other"}
+             "downhill": "ski/ride", "nordic": "nordic", "other": "other"}
 
 PAGE_CSS = """
 html,body{height:100%;margin:0;background:BGCOL;
