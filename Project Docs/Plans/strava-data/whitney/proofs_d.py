@@ -1,11 +1,15 @@
-"""Mt. Whitney — three developments of concept D, with landmarks and a registered map.
+"""Mt. Whitney — developments of concept D, with landmarks drawn from the Strava segments.
 
-Builds on proofs.py (imported, not copied — same folder, same exploration) and adds the three
-things concept D was asked to carry:
+Builds on proofs.py (imported, not copied — same folder, same exploration).
 
-  1. landmarks along the profile, positioned from this activity's real Strava segment efforts;
-  2. the GPS route drawn as the DESCENT ONLY and set below the profile, tied to it;
-  3. profile and route at equal weight, the figures demoted to an accent.
+  D4  PORTAL      the map is the subject; profile and legend are apparatus beneath it, the
+                  landmarks are marked on the ASCENT, the two spans are reduced to their
+                  start points, and the drawings are header art attached to no data
+  D1  SECTION     the whole day as a triangle, descent limb annotated, descent map below
+  D2  DESCENT     profile and map both the descent, on one shared measure
+  D3  FIELD NOTE  the original landscape sheet kept, map inset, landmarks in a column
+
+D4 is the current direction; D1-D3 are kept as the record of how it got there.
 
     uv run python "Project Docs/Plans/strava-data/whitney/proofs_d.py"
     uv run python "Project Docs/Plans/strava-data/whitney/proofs_d.py" --png --dpi 300
@@ -31,8 +35,8 @@ at the same place on the ground — is impossible for this route, and the track 
 
 Leader lines between the two views were the next option and are also out: Trail Crest lies 59 m
 WEST of the summit, because the final ridge runs north, so its tie-line crosses the summit's.
-What is left, and what these three use, is a numbered mark in both views plus the two named
-spans drawn heavier on both — so the correspondence is carried by the line itself.
+What is left is a numbered key in both views. D1-D3 also draw the two named spans heavier in
+both; D4 drops that device entirely and marks only where each span begins.
 """
 
 import argparse
@@ -116,6 +120,45 @@ def descend_to(act, ft):
         if act["_alt"][i] <= tgt:
             return i
     return len(act["_alt"]) - 1
+
+
+def ascend_to(act, ft):
+    """First index on the ascent at or above an elevation."""
+    tgt = ft / P.M_TO_FT
+    for i in range(0, act["_summit"] + 1):
+        if act["_alt"][i] >= tgt:
+            return i
+    return act["_summit"]
+
+
+def landmarks_ascent(act):
+    """The landmarks as they fall on the way UP, plus the two spans reduced to their starts.
+
+    Two of them genuinely coincide, and the marks are stacked rather than nudged apart
+    because the coincidence is the fact:
+
+      * the switchbacks begin AT Trail Camp — 4 and A are 0.8% of the ascent apart;
+      * the final ridge begins AT Trail Crest — so 5 and B are pinned to the same index,
+        the start of the "Trail Crest to Whitney Summit" effort. Positioning 5 by its
+        published 13,700 ft instead put it 3.9% AFTER the ridge it starts, which reads as
+        a mistake rather than as a coincidence.
+    """
+    e = segment_efforts(act)
+    crest = seg(e, "Trail Crest to Whitney Summit")["i0"]
+    pts = [
+        (1, "Whitney Portal", "8,365 FT", 0),
+        (2, "Lone Pine Lake Jct", "9,960 FT", ascend_to(act, 9960)),
+        (3, "Outpost Camp", "10,360 FT", ascend_to(act, 10360)),
+        (4, "Trail Camp", "12,039 FT", seg(e, "Trail Camp - Mount Whitney Ascent")["i0"]),
+        (5, "Trail Crest / JMT Jct", "13,700 FT", crest),
+        (6, "Mount Whitney Summit", f"{SUMMIT_FT:,} FT", act["_summit"]),
+    ]
+    starts = [
+        ("A", "The 97 Switchbacks begin", "12,000 FT",
+         seg(e, "The Whitney Trail Switchbacks")["i0"]),
+        ("B", "The Final Ridge begins", "13,700 FT", crest),
+    ]
+    return pts, starts
 
 
 def landmarks(act):
@@ -236,7 +279,7 @@ def legend_rows(pts, spans, x, y, lead, size=14, gap=250):
     return "".join(out)
 
 
-def mile_ticks(act, i0, i1, at, base, every=5):
+def mile_ticks(act, i0, i1, at, base, every=5, tick=9, size=12, drop=27):
     """Distance ticks on the profile baseline — distance stays readable without hanging a
     mileage off every landmark, where published and recorded figures disagree."""
     out = []
@@ -248,8 +291,8 @@ def mile_ticks(act, i0, i1, at, base, every=5):
             j = min(range(min(i0, i1), max(i0, i1) + 1),
                     key=lambda k: abs(act["_dist"][k] * 0.000621371 - m))
             px = at(j)[0]
-            out.append(line(px, base, px, base + 9, HAIR))
-            out.append(text(px, base + 27, f"{m:.0f}", 12, "middle", SANS, 1.5))
+            out.append(line(px, base, px, base + tick, HAIR))
+            out.append(text(px, base + drop, f"{m:.0f}", size, "middle", SANS, 1.5))
         m += every
     return "".join(out)
 
@@ -400,7 +443,171 @@ def design_d3(act):
     return frame("".join(body), w, h), "landscape kept, map inset, 5.6x"
 
 
+def outward(at, i, i0, i1, cen, d, rot=0.0):
+    """A point offset from the track, perpendicular to its local heading and away from the
+    route's centre — so a mark sits clear of the line instead of on top of it, whichever way
+    the trail happens to run there. `rot` swings that direction, which is what lets two keys
+    at one index fan apart instead of stacking along a single ray."""
+    a, b = at(max(i0, i - 40)), at(min(i1, i + 40))
+    tx, ty = b[0] - a[0], b[1] - a[1]
+    L = math.hypot(tx, ty) or 1.0
+    nx, ny = -ty / L, tx / L
+    p = at(i)
+    if (p[0] + nx * d - cen[0]) ** 2 + (p[1] + ny * d - cen[1]) ** 2 < \
+       (p[0] - nx * d - cen[0]) ** 2 + (p[1] - ny * d - cen[1]) ** 2:
+        nx, ny = -nx, -ny
+    if rot:
+        c, s = math.cos(rot), math.sin(rot)
+        nx, ny = nx * c - ny * s, nx * s + ny * c
+    return (p[0] + nx * d, p[1] + ny * d)
+
+
+def pt_seg(q, a, b):
+    """Distance from a point to a segment."""
+    (ax, ay), (bx, by) = a, b
+    dx, dy = bx - ax, by - ay
+    L2 = dx * dx + dy * dy
+    t = 0.0 if L2 == 0 else max(0.0, min(1.0,
+                                         ((q[0] - ax) * dx + (q[1] - ay) * dy) / L2))
+    return math.hypot(q[0] - (ax + t * dx), q[1] - (ay + t * dy))
+
+
+def keyed(p, q, s, r=12.0, size=14):
+    """A circled key at q, tied back to the point p it marks. The circle is filled with the
+    ground so it masks the line where it lands; the radius has to lead the type size or the
+    digit spills out of its own circle."""
+    return (line(p[0], p[1], q[0], q[1], HAIR)
+            + f'<circle cx="{q[0]:.1f}" cy="{q[1]:.1f}" r="{r}" fill="{BG}" stroke="{INK}" '
+              f'stroke-width="2.2"/>'
+            + text(q[0], q[1] + size * 0.35, s, size, "middle", SANS, 0, 600))
+
+
+def ticked(p, s, up=True, size=12, tick=11):
+    """A bare key on a short tick — no circle. The profile is apparatus, not subject, so its
+    marks stay light; it also lets eight keys sit on a 300-unit limb, which circles could
+    not do without touching."""
+    dy = -tick if up else tick
+    return (line(p[0], p[1], p[0], p[1] + dy, HAIR)
+            + text(p[0], p[1] + (dy - 5 if up else dy + 11), s, size, "middle", SANS, 0, 600))
+
+
+def design_d4(act):
+    """D4 · PORTAL — the map is the subject; profile and legend are the apparatus below it."""
+    side, cw = 85, W - 170
+    si = act["_summit"]
+    pts, starts = landmarks_ascent(act)
+    body = []
+
+    # --- header: type on the left, the drawings grouped as one picture on the right.
+    # The vignette and the figures share a baseline and sit shoulder to shoulder, so they
+    # read as a single piece of art rather than as two loose objects — and that keeps them
+    # visibly separate from everything below, none of which they are attached to.
+    art_base = 274.0
+    vg = art("Whitney_Peak_Vignette.svg")
+    vw = 372.0
+    body.append(art_width(vg, side + cw - vw, art_base - vw / (vg["w"] / vg["h"]),
+                          vw, HAIR)[0])
+    hk = art("hikers_simple2.svg")                    # kept whole: art, not data
+    hw = 178.0
+    body.append(art_width(hk, side + cw - vw - 26 - hw,
+                          art_base - hw / (hk["w"] / hk["h"]), hw, LIGHT)[0])
+    body.append(text(side, 120, TITLE, 68, "start", SERIF, -1))
+    body.append(text(side, 163, DATE, 18, "start", SANS, 5))
+
+    # --- the route, centre stage: full measure, the heaviest line on the sheet, and the
+    # only element allowed to occupy the middle third.
+    top = 344.0
+    rt, rw, rh = route_mapper(act, 0, si, side, top, cw, 0, "width")
+    line_pts = trace(rt, 0, si, 0.6)
+    body.append(poly(line_pts, 3.6))
+    cen = (sum(p[0] for p in line_pts) / len(line_pts),
+           sum(p[1] for p in line_pts) / len(line_pts))
+    # Placing a key on the outward normal alone is not enough: at Trail Crest the trail
+    # doubles back, so "away from the centre" aims the key straight into the switchbacks.
+    # Each key is pushed out along its normal until it clears both the drawn line and every
+    # key already placed.
+    # A key has to clear three things, and each was found the hard way:
+    #   * the SEGMENTS of the route, not its vertices — after simplification a straight
+    #     stretch carries vertices only at its ends, so a vertex test leaves a key sitting
+    #     happily in the middle of the line it is meant to be off;
+    #   * every key already placed;
+    #   * every key already placed with its LEADER — B and Trail Crest share an index, so
+    #     sending B further out along the same ray drove its leader straight through 5.
+    # Letters get a fan of candidate directions for that last reason.
+    segs = list(zip(line_pts, line_pts[1:]))
+    placed = []
+
+    def ok(q, p, r):
+        if any(pt_seg(q, a, b) < r + 9 for a, b in segs):
+            return False
+        if any(math.hypot(q[0] - o[0], q[1] - o[1]) < r + orad + 11 for o, orad in placed):
+            return False
+        return all(pt_seg(o, p, q) >= orad + 7 for o, orad in placed)
+
+    def place(i, r, d0, rots=(0.0,)):
+        p, fallback = rt(i), None
+        for rot in rots:
+            for k in range(14):
+                q = outward(rt, i, 0, si, cen, d0 + k * 9, rot)
+                if fallback is None:
+                    fallback = q
+                if ok(q, p, r):
+                    placed.append((q, r))
+                    return q
+        placed.append((fallback, r))
+        return fallback
+
+    for num, name, ft, i in pts:
+        body.append(keyed(rt(i), place(i, 12.0, 34), str(num)))
+    # the starts ride further out and are allowed to swing off the normal, so where a start
+    # coincides with a landmark — the switchbacks at Trail Camp, the ridge at Trail Crest —
+    # the pair fans apart from one point instead of fighting over one ray
+    for key, name, ft, i in starts:
+        body.append(keyed(rt(i), place(i, 11.0, 70, (0.75, -0.75, 1.15, -1.15, 0.0)),
+                          key, 11.0, 13))
+
+    # --- the apparatus band, under a hairline: legend and profile as peers, one register.
+    rule = top + rh + 74
+    body.append(line(side, rule, side + cw, rule, HAIR))
+
+    ly = rule + 42
+    for k, (num, name, ft, i) in enumerate(pts):
+        y = ly + k * 25
+        body.append(text(side, y, str(num), 13, "start", SANS, 0, 600))
+        body.append(text(side + 24, y, name, 13, "start", SANS, 1.2))
+        body.append(text(side + 350, y, ft, 13, "end", SANS, 1.2))
+    for k, (key, name, ft, i) in enumerate(starts):
+        y = ly + 160 + k * 25
+        body.append(text(side, y, key, 13, "start", SANS, 0, 600))
+        body.append(text(side + 24, y, name, 13, "start", SANS, 1.2))
+        body.append(text(side + 350, y, ft, 13, "end", SANS, 1.2))
+
+    px, pw = side + cw - 545, 545.0
+    pbase, ph = ly + 185, 140.0
+    pf = profile_mapper(act, 0, len(act["_alt"]) - 1, px, pbase - ph, pw, ph)
+    body.append(poly(trace(pf, 0, len(act["_alt"]) - 1, 0.35, 2), 2.2))
+    body.append(line(px, pbase, px + pw, pbase, HAIR))
+    body.append(mile_ticks(act, 0, len(act["_alt"]) - 1, pf, pbase, 5, 6, 10, 20))
+    # numbers above the line, letters below, so the two coincident pairs stack across it
+    for num, name, ft, i in pts:
+        body.append(ticked(pf(i), str(num), True, 12, 10))
+    for key, name, ft, i in starts:
+        body.append(ticked(pf(i), key, False, 11, 9))
+
+    body.append(text(side + cw, ly, f"{act['_mi']:.1f} MILES", 13, "end", SANS, 2))
+    body.append(text(side + cw, ly + 24, f"{act['_ft']:,.0f} FT GAINED", 13, "end", SANS, 2))
+    body.append(text(px + pw / 2, pbase + 48, "MILES ALONG THE TRAIL", 11, "middle", SANS, 3))
+    return frame("".join(body), W, H), "map hero, landmarks on the ascent"
+
+
 DESIGNS = [
+    ("D4", "Portal", design_d4, W, H,
+     "The map is the subject and holds the middle third alone at the heaviest weight on the "
+     "sheet. Landmarks are marked on the way up; the two spans are reduced to their start "
+     "points, so nothing is carried by stroke weight any more. The drawing and the figures "
+     "are grouped on one baseline as a single piece of header art, attached to no data. "
+     "Profile and legend sit together under a hairline as the apparatus that explains the "
+     "marks — peers to each other, subordinate to the map."),
     ("D1", "Section", design_d1, W, H,
      "The whole day kept as its triangle, with the descent limb carrying the landmarks and the "
      "descent map directly beneath it. Closest to the original D, and the only one of the three "

@@ -225,9 +225,13 @@ uv run python "Project Docs/Plans/strava-data/whitney/proofs_d.py"
 
 | | Layout | Sheet | Annotation | Chosen? |
 |-|--------|-------|------------|---------|
-| **D1** | **Section** | 11×14 portrait | numerals + legend at the foot | |
+| **D4** | **Portal** | 11×14 portrait | keyed on the map, legend + profile below | **current direction** |
+| **D1** | **Section** | 11×14 portrait | numerals + legend at the foot | superseded by D4 |
 | **D2** | **Descent** | 11×14 portrait | named in place under the profile | |
 | **D3** | **Field note** | 14×11 landscape | numerals + a column at the right | |
+
+**D4 is the current direction**, worked up from D1 against an explicit brief — see
+[D4 · Portal](#d4--portal) below.
 
 ## The landmarks come from the segments
 
@@ -325,3 +329,65 @@ the line it sits on cannot drift apart when a box is resized.
 - No text overlaps in any of the three.
 - The D2 divergence table above is regenerated and printed on every run.
 - `--png --dpi 300` → 3300×4200 (D1, D2) and 4200×3300 (D3).
+
+---
+
+## D4 · Portal
+
+Worked up from D1 against a five-point brief: the route takes centre stage; landmarks move to
+the **ascent**; the drawing and the figures become art attached to no data; the profile drops to
+the same rank as the legend; and the two spans are reduced to their **start points**, with the
+heavier-stroke device removed entirely.
+
+### The composition
+
+Three registers, top to bottom, each doing one job:
+
+- **Header.** Type at the left; the vignette and the figures on the right, sharing one baseline
+  and set shoulder to shoulder so they read as a *single* piece of art rather than two loose
+  objects. Grouping them is what keeps them visibly separate from everything below — which is the
+  point, since they illustrate the day rather than record it.
+- **The route**, alone, holding the middle third at the heaviest weight on the sheet (3.6 against
+  the profile's 2.2). Nothing else is allowed into that band.
+- **The apparatus**, under a hairline: legend at the left, profile at the right, as peers. The
+  rule is what makes them one register instead of two leftovers, and gives the map a floor.
+
+The ascent is drawn rather than the descent, to match where the landmarks now sit. Because the
+day is a 0.955-Jaccard out-and-back the two are visually identical — only the keyed indices differ.
+
+### Two landmarks genuinely coincide, and the marks say so
+
+- **The switchbacks begin at Trail Camp** — 4 and A are 0.8% of the ascent apart.
+- **The final ridge begins at Trail Crest** — 5 and B are the same place, so they are pinned to
+  the same index (the start of the *Trail Crest to Whitney Summit* effort). Positioning 5 by its
+  published 13,700 ft instead put it **3.9% *after* the ridge it starts**, which reads as an
+  error rather than as a coincidence.
+
+Both pairs fan apart from one point on a shared origin, so they read as one place with two names.
+
+### Further cruxes
+
+**16 · A key's circle has to lead its type size.** The first pass drew 15 px digits inside
+r = 5.4 circles; the digits spilled and every marker rendered as a blob. Circled keys are r = 12
+at 14 px on the map. On the profile they are bare digits on a short tick — no circle at all,
+both because the profile is apparatus rather than subject, and because eight circled keys will
+not fit on a 277-unit ascent limb without touching.
+
+**17 · Key placement has to clear three things, and each was found by getting it wrong.**
+`place()` pushes a key outward along the route's local normal until it clears:
+
+1. the **segments** of the route, not its vertices — after simplification a straight stretch of
+   trail carries vertices only at its ends, so a vertex test left "5" sitting squarely on the
+   line it was meant to be off;
+2. every key already placed;
+3. every key already placed *with its leader* — B and Trail Crest share an index, so sending B
+   further out along the same ray drove its leader straight through 5's circle. Letters get a fan
+   of candidate directions (±0.75, ±1.15 rad) for exactly this reason.
+
+**18 · Numbers above the profile line, letters below.** The coincident pairs then stack across
+the line, which is legible at a size where nudging them apart horizontally is not.
+
+**19 · Distance is on the axis, not on the landmarks.** Published mileages and this track
+disagree by about 6% (10.7 mi to the summit against the watch's 11.37), so the legend carries
+names and elevations only and the profile's baseline carries 5-mile ticks. Printing both figures
+side by side would look like an error.
