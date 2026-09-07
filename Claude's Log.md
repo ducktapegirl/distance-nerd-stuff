@@ -698,7 +698,7 @@ A CI workflow (`stock-alerts-ci.yml`) runs the tests automatically on any push t
 
 When the CI ran, almost all tests were failing. Investigated locally and found two categories of problems:
 
-**Import / environment issue:** `yfinance` requires `curl_cffi` which can't build in some environments. Since `check_once.py` imports yfinance at the top level, the test module couldn't even load. Fixed with `tests/conftest.py` — it attempts to import yfinance and silently mocks it if the import fails. Unit tests already mock `yf.download` individually via `@patch`, so this has no effect on test behaviour.
+**Import / environment issue:** `yfinance` requires `curl_cffi` which can't build in some environments. Since `check_once.py` imports yfinance at the top level, the test module couldn't even load. Fixed with `tests/conftest.py` — it attempts to import yfinance and silently mocks it if the import fails. Unit tests already mock `yf.download` individually via `@patch`, so this has no effect on test behavior.
 
 **Wrong test assertion:** `test_alerts_when_two_percent_threshold_crossed` expected 1 alert, but the mock returns -3% for both `^GSPC` and `^DJI`, so 2 alerts correctly fire. Updated the assertion.
 

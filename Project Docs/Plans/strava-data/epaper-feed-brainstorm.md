@@ -5,7 +5,7 @@
 review: footers dropped, 38 retired, 21 redesigned, 59's icon replaced) · **Owner:** unassigned
 
 Companion to the code in `strava-data/feed/` and the entrypoint `strava-data/build_feed.py`.
-This document is the idea catalogue; the code is the subset that already runs.
+This document is the idea catalog; the code is the subset that already runs.
 
 ---
 
@@ -31,7 +31,7 @@ Three facts drive every design decision below:
    at in passing. That argues for **one idea per screen** and against porting any multi-panel
    dashboard layout. With ~7-day standby the refresh cadence is hourly at best, so content should
    rotate on a **daily** clock, not a live one.
-3. **Four tones, no colour.** White / light / dark / black, plus ordered dithering for the steps
+3. **Four tones, no color.** White / light / dark / black, plus ordered dithering for the steps
    between. Enough for a real sequential ramp; nowhere near enough for the dashboard's teal/amber
    `SPORT_COLORS`, which must be re-tabled as **tone + pattern + shape**.
 
@@ -75,10 +75,10 @@ no icon font, no CDN, no JS. Three tiers:
   carry more than decorative icons do, and they are the reason `glyph_shoe` and `glyph_mountain`
   both take a `fill_frac`. **The fill is a lighter tone than the outline on purpose** — filled solid
   black, a full shoe loses its silhouette and reads as a blob.
-- **Tone ramp** — the panel's four native greys (`#000` / `#555` / `#AAA` / `#FFF`) extended with
+- **Tone ramp** — the panel's four native grays (`#000` / `#555` / `#AAA` / `#FFF`) extended with
   three ordered-dither `<pattern>` fills, giving a 7-step sequential ramp (`svg.RAMP`, `svg.tone()`).
   Every fill snaps to one of those seven so nothing depends on the device dithering an arbitrary
-  colour for us. **Encode categories by shape and pattern; reserve tone for quantity.**
+  color for us. **Encode categories by shape and pattern; reserve tone for quantity.**
 
 Type: one weight of a bundled-everywhere sans (Helvetica/Arial — the panel has no webfonts), all-caps
 26–30 px labels with wide tracking, and hairline rules instead of boxes. ePaper renders a 3 px rule
@@ -90,55 +90,55 @@ budget (there is no text measurement at build time, so widths are approximated a
 
 ---
 
-## The catalogue
+## The catalog
 
 61 ideas, **all of them now built** as 63 real `card_*` functions — ideas 3 and 19 each build more
 than one. **[ROTATION]** marks the fifteen ideas (sixteen cards) the device cycles through daily,
-hand-picked 2026-09-03; **[CATALOGUE]** ones exist, render, and ship in `feed.xml`, on the proof
+hand-picked 2026-09-03; **[CATALOG]** ones exist, render, and ship in `feed.xml`, on the proof
 sheet and at their own `epaper/<id>.html`, but are held back from the panel. Every recipe was checked
 against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 
 ### A · Right now — state you would glance at
 
-1. **[CATALOGUE]** **Load gauge** — ACWR (7-day ÷ 28-day mean daily suffer score) on a four-band dial:
+1. **[CATALOG]** **Load gauge** — ACWR (7-day ÷ 28-day mean daily suffer score) on a four-band dial:
    `<0.8` detrained, `0.8–1.3` steady, `1.3–1.5` spiking, `>1.5` danger. Same quantity the
    dashboard's V8 chart plots, reduced to the one number you would actually glance at.
    *Today: **1.37**, spiking.* Bands get monotonically more ink as risk rises, so the ramp reads as
-   a gradient of concern with no colour key. Needle stops at 60 % of the radius so it never crosses
+   a gradient of concern with no color key. Needle stops at 60 % of the radius so it never crosses
    the readout.
-2. **[CATALOGUE]** **Days since last activity** — one enormous numeral; the whole screen is the number. Trivial off
+2. **[CATALOG]** **Days since last activity** — one enormous numeral; the whole screen is the number. Trivial off
    `streaks()["days_since"]`.
 3. **[ROTATION]** **Last activity** — three cards off one idea. `last` is the words (name and
    description, typographically); `last-route` is the shape alone; **`latest` is both** — the GPS
    track across the top with a 4x2 grid of its own numbers beneath, and it is the one that rotates.
    On a fridge magnet the map and the numbers want to arrive together. The dashboard's
    `_activity_detail_json` already emits these fields, pre-formatted.
-4. **[CATALOGUE]** **Rolling 7-day totals** — miles + hours + feet as three big numbers. `totals(window(acts, 7))`.
-5. **[CATALOGUE]** **Fresh / cooked** — a single word from ACWR + days-since, with a face-glyph. The most
+4. **[CATALOG]** **Rolling 7-day totals** — miles + hours + feet as three big numbers. `totals(window(acts, 7))`.
+5. **[CATALOG]** **Fresh / cooked** — a single word from ACWR + days-since, with a face-glyph. The most
    "fridge magnet" idea in the list, and **demoted out of the rotation** when the merged plan landed:
    a readiness verdict computed from data that is at most a fortnight fresh describes the fetch cron
    as much as the athlete. The companion "rest nudge" card was cut for the same reason.
-6. **[CATALOGUE]** **Last activity's route** — as #36 but pinned to the most recent GPS activity rather than rotating.
+6. **[CATALOG]** **Last activity's route** — as #36 but pinned to the most recent GPS activity rather than rotating.
 
 ### B · Streaks and consistency
 
-7. **[CATALOGUE]** **Active-day streak** — consecutive days with an activity. *Current 1, longest ever 7.*
-8. **[CATALOGUE]** **Rest-day counter** — days since the last full rest day; the inverse framing, and for this
+7. **[CATALOG]** **Active-day streak** — consecutive days with an activity. *Current 1, longest ever 7.*
+8. **[CATALOG]** **Rest-day counter** — days since the last full rest day; the inverse framing, and for this
    athlete (355 active days of 687) the more interesting one.
 9. **[ROTATION]** **Last-30-days strip** — 30 cells, filled = active. *17 of 30.* Rendered as **two rows of
    15**, not one row of 30: at 800 px a single row forces 20 px cells (~2 mm) that vanish at arm's
    length.
-10. **[CATALOGUE]** **Week-shape bars** — 7 bars Mon–Sun, this week's miles against the 8-week median as a ghost outline.
-11. **[CATALOGUE]** **Consistency ratio** — active ÷ elapsed days, all-time (355/687 = 52 %) as a split disc.
-12. **[CATALOGUE]** **Day-of-week fingerprint** — 7 bars. *Sunday 70, Wednesday 55, Saturday 43.* Counterintuitive
+10. **[CATALOG]** **Week-shape bars** — 7 bars Mon–Sun, this week's miles against the 8-week median as a ghost outline.
+11. **[CATALOG]** **Consistency ratio** — active ÷ elapsed days, all-time (355/687 = 52 %) as a split disc.
+12. **[CATALOG]** **Day-of-week fingerprint** — 7 bars. *Sunday 70, Wednesday 55, Saturday 43.* Counterintuitive
     (Saturday is the **least** active day) and therefore worth a card.
-13. **[CATALOGUE]** **Longest streak vs current** — two bars racing. Only interesting when the gap is small.
+13. **[CATALOG]** **Longest streak vs current** — two bars racing. Only interesting when the gap is small.
 
 ### C · Volume and progress
 
-14. **[CATALOGUE]** **YTD vs the same date last year** — *536 mi vs 489 mi.* Two bars plus a delta pill.
-15. **[CATALOGUE]** **This month vs the 12-month median** — a thermometer that fills. *Aug 58 mi against a ~70 mi median.*
-16. **[CATALOGUE]** **Rolling 12-month odometer** — *880 mi*, digits in mechanical odometer boxes,
+14. **[CATALOG]** **YTD vs the same date last year** — *536 mi vs 489 mi.* Two bars plus a delta pill.
+15. **[CATALOG]** **This month vs the 12-month median** — a thermometer that fills. *Aug 58 mi against a ~70 mi median.*
+16. **[CATALOG]** **Rolling 12-month odometer** — *880 mi*, digits in mechanical odometer boxes,
     `MILES · LAST 365 DAYS` beneath. Footer carries activities / feet / moving hours.
 17. **[ROTATION]** **Monthly sparkline** — 13 months of miles as a 3 px step line, no axis, a dot on "now".
 18. **[ROTATION]** **Elevation as landmark** — *126,355 ft = 4.4 × Everest*, drawn as four solid peaks plus
@@ -151,22 +151,22 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 
 ### D · The racing self — segments
 
-22. **[CATALOGUE]** **Latest PR** — segment name, time, date, effort number, and the effort count as
+22. **[CATALOG]** **Latest PR** — segment name, time, date, effort number, and the effort count as
     five-bar tally gates. *"Oops, I crapped my pants on Lenkeit bridge", 0:10 on effort 21.* The
     segment names are half the appeal; `fit_text` exists largely for them.
-23. **[CATALOGUE]** **PR pace** — PRs set in the last 30 / 90 / 365 days as three counters. *30 / 135 / 500.*
+23. **[CATALOG]** **PR pace** — PRs set in the last 30 / 90 / 365 days as three counters. *30 / 135 / 500.*
     Currently the footer of #22; deserves its own card.
-24. **[CATALOGUE]** **Home-segment leaderboard** — top 5 by effort count with best times, as a scoreboard.
+24. **[CATALOG]** **Home-segment leaderboard** — top 5 by effort count with best times, as a scoreboard.
     *Canyon entrance via Salix ×36, Salix out to PV ×29, Lenkeit bridge ×21.*
-25. **[CATALOGUE]** **Most-improving segment** — biggest negative `recent_trend` among segments with ≥5 efforts.
+25. **[CATALOG]** **Most-improving segment** — biggest negative `recent_trend` among segments with ≥5 efforts.
     *Lex Town Track, −40.7 %.*
-26. **[CATALOGUE]** **Most-declining segment** — the honest inverse. *Tree Y/T 1 split, +48.7 %.* Ships with a
+26. **[CATALOG]** **Most-declining segment** — the honest inverse. *Tree Y/T 1 split, +48.7 %.* Ships with a
     self-deprecating caption or it is just mean.
-27. **[CATALOGUE]** **Segment consistency spotlight** — reuse `rollups_cards.seg_consistency_picks`; show the
+27. **[CATALOG]** **Segment consistency spotlight** — reuse `rollups_cards.seg_consistency_picks`; show the
     coefficient of variation as a dot scatter of every effort.
-28. **[CATALOGUE]** **Repeat-offender counter** — one segment, its count as tally marks. The tally renderer from
+28. **[CATALOG]** **Repeat-offender counter** — one segment, its count as tally marks. The tally renderer from
     #22 already handles up to 40.
-29. **[CATALOGUE]** **The crossover fact** — reuse `chart_seg_grade_vs_time`: the grade at which running overtakes
+29. **[CATALOG]** **The crossover fact** — reuse `chart_seg_grade_vs_time`: the grade at which running overtakes
     mountain biking. A one-sentence card, no chart.
 
 57. **[ROTATION]** **Segment of the month** — whichever segment saw the most efforts in the last 30
@@ -176,26 +176,26 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 
 ### E · Gear — the most actionable category
 
-30. **[CATALOGUE]** **Shoe mileage bars** — one row per non-retired shoe: data-glyph, name, filled bar,
+30. **[CATALOG]** **Shoe mileage bars** — one row per non-retired shoe: data-glyph, name, filled bar,
     `mi / limit`. Threshold comes from Strava's own replacement reminder, else 400 mi.
     **Units trap:** `notification_distance` arrives in the athlete's *display* units (400, 450, 0 —
-    only coherent as miles against a 470-mile shoe), while `distance` is metres and
+    only coherent as miles against a 470-mile shoe), while `distance` is meters and
     `converted_distance` is miles.
-31. **[CATALOGUE]** **Retire-me alert** — reversed out of the full black bar in white, so
+31. **[CATALOG]** **Retire-me alert** — reversed out of the full black bar in white, so
     the alert needs no extra row height and cannot collide with the shoe below.
     *ASICS DS Trainer at 470 mi against a 450 mi threshold — over.* The one genuinely **useful**
     card here.
-32. **[CATALOGUE]** **Bike odometer** — *Wile E. Coyote, 250.2 mi*, a bike glyph with a filling frame.
-33. **[CATALOGUE]** **Gear graveyard** — the retired ASICS and its description: *"last of its kind. I've purchased
+32. **[CATALOG]** **Bike odometer** — *Wile E. Coyote, 250.2 mi*, a bike glyph with a filling frame.
+33. **[CATALOG]** **Gear graveyard** — the retired ASICS and its description: *"last of its kind. I've purchased
     the same shoe for 15 years."* Pure personality, zero computation.
 
 ### F · Places
 
-34. **[CATALOGUE]** **Passport counter** — *28 regions, 9 states and provinces*, via the dashboard's
+34. **[CATALOG]** **Passport counter** — *28 regions, 9 states and provinces*, via the dashboard's
     `_count_regions` (10 km greedy clustering) and `_count_states` (39-box lat/lng table).
-35. **[CATALOGUE]** **Two homes** — *San Diego 782 mi vs Boston 530 mi*, two route thumbnails side by side.
+35. **[CATALOG]** **Two homes** — *San Diego 782 mi vs Boston 530 mi*, two route thumbnails side by side.
     Reuse `_home_stats` and `_home_thumb_tracks`.
-36. **[CATALOGUE]** **Route of the day** — one activity's GPS path, chosen deterministically by date so it
+36. **[CATALOG]** **Route of the day** — one activity's GPS path, chosen deterministically by date so it
     changes daily with no device-side state. Reads **one** streams file, not the 42 MB directory.
     Latitude degrees are ~1/cos(lat) wider on the ground than longitude degrees, so the path is
     cosine-corrected or it comes out squashed; it is then fitted to the card's **rectangle**,
@@ -209,17 +209,17 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
     the body's height on a 5:3 panel, and at that size the three dither patterns stop being
     distinguishable from each other. `places.raw_points_in`, which existed only for this card,
     went with it.
-39. **[CATALOGUE]** **Compass extremes** — *northernmost 49.3°N, easternmost 70.2°W, highest 14,507 ft*, from the
+39. **[CATALOG]** **Compass extremes** — *northernmost 49.3°N, easternmost 70.2°W, highest 14,507 ft*, from the
     pinned `_PEAKS_DEF` record book.
 
 ### G · Weather and environment
 
-40. **[CATALOGUE]** **Temperature range** — trained from *−14.5 °C to 32.7 °C* (**6 °F to 91 °F**). A thermometer
+40. **[CATALOG]** **Temperature range** — trained from *−14.5 °C to 32.7 °C* (**6 °F to 91 °F**). A thermometer
     with two marks.
-41. **[CATALOGUE]** **The heat verdict** — reuse V4: pace degrades with heat, heart rate does not. One sentence.
-42. **[CATALOGUE]** **UV exposure** — *max 8.7*; a sun glyph whose ray count is the index. Note `uv_index` is
+41. **[CATALOG]** **The heat verdict** — reuse V4: pace degrades with heat, heart rate does not. One sentence.
+42. **[CATALOG]** **UV exposure** — *max 8.7*; a sun glyph whose ray count is the index. Note `uv_index` is
     time-of-day resolved, not a daily max (a 07:34 run reads 0.1).
-43. **[CATALOGUE]** **Dark o'clock** — *22 starts before 8 a.m., earliest 03:17.* A moon/sun split glyph.
+43. **[CATALOG]** **Dark o'clock** — *22 starts before 8 a.m., earliest 03:17.* A moon/sun split glyph.
 
 59. **[ROTATION]** **UV this week** — sum of `uv_index x moving hours` over the ISO week, as a
     seven-cell day strip under one big number, beside a sun whose disc darkens toward 20 UV-hours.
@@ -229,16 +229,16 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 
 ### H · Records and superlatives
 
-44. **[CATALOGUE]** **Record book** — the six pinned `_PEAKS_DEF` rows, one per rotation day, each a full-screen fact.
-45. **[CATALOGUE]** **Longest ever** — longest run, longest ride, biggest climb day.
-46. **[CATALOGUE]** **Kudos leaderboard** — *"Snow Snake 🐍", 12 kudos.* Small and human.
+44. **[CATALOG]** **Record book** — the six pinned `_PEAKS_DEF` rows, one per rotation day, each a full-screen fact.
+45. **[CATALOG]** **Longest ever** — longest run, longest ride, biggest climb day.
+46. **[CATALOG]** **Kudos leaderboard** — *"Snow Snake 🐍", 12 kudos.* Small and human.
 
 ### I · Memory
 
-47. **[CATALOGUE]** **On this day** — same month/day in prior years. **Sparse**: the dataset only spans 2024–2026,
+47. **[CATALOG]** **On this day** — same month/day in prior years. **Sparse**: the dataset only spans 2024–2026,
     so most days have exactly one hit. Must degrade to "nothing on this day — here is the nearest".
-48. **[CATALOGUE]** **A year ago this week** — a wider, far more reliable window than #47. Prefer this one.
-49. **[CATALOGUE]** **First ever** — the first activity in the dataset, framed as an origin story.
+48. **[CATALOG]** **A year ago this week** — a wider, far more reliable window than #47. Prefer this one.
+49. **[CATALOG]** **First ever** — the first activity in the dataset, framed as an origin story.
 
 60. **[ROTATION]** **This week in 2004** — the same ISO week in the paper-era log against this one:
     miles, average pace, and up to four workouts with a race flag, the old log in a shaded band
@@ -252,9 +252,9 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 
 ### J · Voice and whimsy
 
-50. **[CATALOGUE]** **The joggernaut byline** — the Strava bio (*"I'm the joggernaut, bitch"*) as a masthead.
+50. **[CATALOG]** **The joggernaut byline** — the Strava bio (*"I'm the joggernaut, bitch"*) as a masthead.
     Already the RSS channel description.
-51. **[CATALOGUE]** **From the logbook** — an activity title and its description, typographically, rotating
+51. **[CATALOG]** **From the logbook** — an activity title and its description, typographically, rotating
     daily. Picks only from activities that *have* a description (291 of 374). Zero charts, maximum
     charm — the titles are genuinely funny ("Oooh, clockwise!", "🦌", "Saw a massive coyote, hazed
     it, then almost fell into a small ravine while looking at it sideways and running forwards").
@@ -264,7 +264,7 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
     plural**, ported from the `uoiv93` prototype along with its animal silhouettes: the original
     substring test counted "slowly" as an owl and "sealed" as a seal, which is where the old
     "29 activities" came from. Silly, cheap, and yours.
-53. **[CATALOGUE]** **Emoji-title census** — how many activity names are pure emoji.
+53. **[CATALOG]** **Emoji-title census** — how many activity names are pure emoji.
 
 58. **[ROTATION]** **Activity-name hall of fame** — five of the 242 activities that got a real name
     rather than "Morning Run", scored on punctuation, length, kudos and emoji, in a window that
@@ -279,9 +279,9 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 
 ### K · Meta and data-nerd
 
-54. **[CATALOGUE]** **Dataset stats** — *374 activities, 687,776 GPS points, 42 MB of streams.* A card about the data.
-55. **[CATALOGUE]** **Device timeline** — *Forerunner 255S ×364, 255 ×9, Strava App ×1.*
-56. **[CATALOGUE]** **Lap splits** — the first use of the **unconsumed `laps/` data** (374 files, 1,356 rows): the
+54. **[CATALOG]** **Dataset stats** — *374 activities, 687,776 GPS points, 42 MB of streams.* A card about the data.
+55. **[CATALOG]** **Device timeline** — *Forerunner 255S ×364, 255 ×9, Strava App ×1.*
+56. **[CATALOG]** **Lap splits** — the first use of the **unconsumed `laps/` data** (374 files, 1,356 rows): the
     last activity's mile splits as a bar ladder. Note 79 files hold a single whole-activity lap, so
     only ~295 activities have anything to show, and `1.609 km` laps mean auto-lap is set to miles.
 
@@ -329,7 +329,7 @@ the road actually passes, at measured distance, so nothing is hand-maintained. T
 somewhere else, edit `CORRIDORS` in `gen_journey.py` and re-run it.
 
 **Layout — the map + milepost hybrid.** Headline mileage and "N MI TO ⟨city⟩" in the left column;
-a small orientation map top-right with the travelled portion solid and the road ahead dashed, and a
+a small orientation map top-right with the traveled portion solid and the road ahead dashed, and a
 dot at the current position; a full-width milepost strip beneath with filled (passed) and hollow
 (ahead) stations and the sport glyph riding the line. Two registers: the map answers *where*, the
 strip answers *how far*.
@@ -340,7 +340,7 @@ Three details that are load-bearing rather than cosmetic:
   bounding box. The bike corridor is a thin east-west band, so a tight frame renders an
   unrecognisable sliver. The map is for orientation only, so a consistent, recognisable silhouette
   beats filling the box.
-- **Basemap strokes are solid greys, never `svg.tone()`.** A dither pattern used as a *stroke*
+- **Basemap strokes are solid grays, never `svg.tone()`.** A dither pattern used as a *stroke*
   renders as a dotted chain and turns a coastline into noise.
 - **`svg.polyline` gained a `dash` argument** for the road ahead.
 
@@ -350,7 +350,7 @@ the bike corridor now ends at Austin regardless.
 ## The proof sheet
 
 `epaper-all.html` is the browsing surface: every card rendered at real size, grouped into rolls by
-family, each proof carrying its catalogue number, RSS title and data recipe, and a mark for whether
+family, each proof carrying its catalog number, RSS title and data recipe, and a mark for whether
 the device actually cycles it. It is generated by the same build as the cards, so it cannot drift
 from what ships.
 
@@ -394,7 +394,7 @@ loads dotenv and reads `MAPTILER_KEY`). The cost is duplicated reference data �
 home boxes and the peaks record book are copied into `places.py` and **can drift** from the
 dashboard's copies. Hoisting them into `nerd_common/` is the right fix and is out of scope here.
 
-Deliberate non-choices: **no Plotly** (needs JS and a CDN, emits anti-aliased colour, assumes hover),
+Deliberate non-choices: **no Plotly** (needs JS and a CDN, emits anti-aliased color, assumes hover),
 **no JavaScript at all** in the page, and **whole-card SVG at exact user units** rather than CSS
 layout, so nothing depends on the cascade or on font metrics.
 
@@ -411,7 +411,7 @@ dashboards still build and `running-log/qa.py` passes 13/13.
 
 Four bugs the sweep caught and fixed, worth knowing because they are the kind that recur:
 `fit_text` ignored letter-spacing, so any fitted string drawn with tracking could overrun its box;
-`cell_grid` used a hardcoded 10 px vertical gap while honouring `gap` horizontally, overflowing the
+`cell_grid` used a hardcoded 10 px vertical gap while honoring `gap` horizontally, overflowing the
 card; `by_weekday` built names as `"Tue" + "day"`; and the home-density card binned *start* points
 over a one-degree box, so every ride landed in a single cell — it now bins every 15th point of every
 track over the extent the data actually occupies.

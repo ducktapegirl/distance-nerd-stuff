@@ -6,7 +6,7 @@
 
 The Exploratory tab's **Heat & Sun** charts (V9 `chart_x_heatsun`, V10
 `chart_x_heatverdict`) currently answer "does temperature, UV, or a combined
-temp+UV score best predict pace?" The combined predictor is labelled — honestly —
+temp+UV score best predict pace?" The combined predictor is labeled — honestly —
 as **"WBGT-lite"**, because the sports-science gold standard for environmental
 heat stress is **WBGT (Wet-Bulb Globe Temperature)**, which blends dry-bulb
 temperature, a **humidity**-driven wet-bulb term, and a **solar/globe** radiant
@@ -21,7 +21,7 @@ temperature and UV against a legitimate heat-stress index instead of a proxy.
 and elevation are removed, weather explains only ~2–3% of running pace variance,
 and temp∼UV are collinear at r≈0.47), a real WBGT will *probably* still explain
 only a few percent. The value of this work is **methodological** — replacing a
-proxy with the recognised metric and retiring the "WBGT-lite" caveat — not a
+proxy with the recognized metric and retiring the "WBGT-lite" caveat — not a
 near-certain jump in explanatory power. Frame any resulting captions accordingly.
 
 ## Background: what WBGT actually requires
@@ -180,7 +180,7 @@ Once `wbgt_c` is a column, the chart work is small and local to
   arrays + x-axis title + annotation swap), and the seg-filter buttons in
   [`strava-data/dashboard/page.py`](../../strava-data/dashboard/page.py). Mirror the V1/V4 three-state patterns.
 - **Captions / attribution** in `page.py` — retire the "WBGT-lite" language; note
-  the WBGT is *estimated* (globe temp modelled, not measured) and observational.
+  the WBGT is *estimated* (globe temp modeled, not measured) and observational.
 - **Spec** — add a dated addendum to
   [`Specs/strava-data/dashboard-spec.md`](../../Specs/strava-data/dashboard-spec.md) documenting the new column,
   the WBGT method + weighting used, and a `Verify vs recipe:` line pinning the new

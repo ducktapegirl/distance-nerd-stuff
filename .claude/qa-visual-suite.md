@@ -30,7 +30,7 @@ returning JSON, so the same file runs unchanged under either browser transport: 
 contents to `preview_eval`. Fix a check in its `.js` file — this document describes intent,
 thresholds, and how to judge the output.
 
-Each script carries a header comment explaining what it catches and why the neighbouring checks
+Each script carries a header comment explaining what it catches and why the neighboring checks
 can't. Read that header before overriding a verdict.
 
 ---
@@ -346,7 +346,7 @@ figure. Three verdicts per chart, reported separately so none masks another:
   - `OK` — within tolerance, or no cartesian x-axis (donuts, sparklines, heatmaps, maps report
     `axis: "n/a"`).
 - **`plotStatus`** — `WARN` when the plot area is under 55% of the figure width. The floor is
-  calibrated, not guessed: a labelled mobile chart bottoms out near 59% (a ~65px left margin for
+  calibrated, not guessed: a labeled mobile chart bottoms out near 59% (a ~65px left margin for
   tick text on a ~297px figure is unavoidable) and typical charts sit at 70–76%, so 55% flags
   only charts paying for something extra — usually a dual-axis (`secondary_y`) chart with a wide
   fixed `margin.r`. Fix with `automargin=True` rather than a hardcoded margin.

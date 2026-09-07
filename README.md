@@ -19,8 +19,8 @@ activities (2024+), and a **Running Log**: my college running log that predated 
   existed, parsed out of old hand-kept HTML logs into one browsable,
   searchable page.
 - **An e-paper feed** — the same data cut into 63 single-fact "cards" for a
-  little 800×480 grey-scale panel stuck to the fridge. Sixteen of them
-  rotate, one an hour. No colour, no JavaScript, nothing smaller than 26 px,
+  little 800×480 gray-scale panel stuck to the fridge. Sixteen of them
+  rotate, one an hour. No color, no JavaScript, nothing smaller than 26 px,
   because at 235 PPI the whole screen is about the size of a credit card.
 
 All of it is static pages, rebuilt from data + a few Python scripts, and

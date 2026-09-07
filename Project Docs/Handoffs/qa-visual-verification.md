@@ -77,7 +77,7 @@ uv run python -c "from plotly.offline import get_plotlyjs_version; print(get_plo
 # -> 2.35.2, which is exactly what nerd_common/tokens.py pins
 ```
 
-So Playwright can fulfil the CDN request from disk. **This is wired into the CLI** as
+So Playwright can fulfill the CDN request from disk. **This is wired into the CLI** as
 `--offline-plotly`:
 
 ```bash

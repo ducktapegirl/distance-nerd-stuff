@@ -169,7 +169,7 @@ Everything lives inside the current identity so it reads as *part* of the dashbo
   line-drawing** (tips into gimmick; wrong for a keepsake). Respect `prefers-reduced-motion`.
 - **Display units policy still applies** (min/mi, mph, °F; metric data converted at display time).
 
-## 8. Decisions locked (my judgment, per athlete's "trust your judgement")
+## 8. Decisions locked (my judgment, per athlete's "trust your judgment")
 
 - **D1 — Superlative badges live ON the featured stamps** (not only in the peaks reel). They tie the two
   modules together and give each stamp a reason-for-being; kept to trips that genuinely earn one.
