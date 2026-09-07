@@ -42,6 +42,7 @@ both; D4 drops that device entirely and marks only where each span begins.
 import argparse
 import csv
 import datetime as dt
+import json
 import math
 import os
 import sys
@@ -58,9 +59,27 @@ W, H = 1100, 1400
 # taut line and the map is a long meander dispersed over twice the area, so at identical
 # stroke the map reads lighter. It gets a 20% bump to sit level — the same kind of hand
 # correction poster_40for40.py applies with GLYPH_OPTICAL.
+# Stroke weights for the two drawings, in sheet units (1 unit = 0.254 mm). These are now
+# real widths — see the note on proofs.art_at — so they had to be re-chosen once the artwork
+# stopped silently changing weight with the output resolution.
+ART_VIGNETTE, ART_HIKERS = 1.0, 1.2   # 0.25 / 0.30 mm on paper
 PROF, MAPL = 3.0, 3.6
 SPAN, MAP_SPAN = 6.0, 6.8   # the two named spans: 2x the line they sit on, in both views
 TITLE, DATE = "Mt. Whitney", "OCTOBER 1, 2025"
+
+# --- D4 placement, in user units (100 per inch), tuned by hand in layout.html; see tune.py.
+# Every number below was dragged rather than reasoned out, so they are set here as plain
+# constants rather than derived from each other: a derived layout silently re-flows the next
+# time one of its inputs moves, which is exactly what hand-tuning is trying to stop.
+V_AT, V_W = (537.5, 50.0), 447.0          # mountain drawing: ink top-left, ink width
+HK_AT, HK_W = (87.5, 187.5), 118.0        # hikers: now under the type, at 0.66x
+TITLE_Y, DATE_Y = 120.0, 163.0
+ROUTE_AT = (75.0, 325.0)                  # the map block's left edge and top
+LEGEND_LEAD, STATS_Y = 25.0, 1078.0    # the legend's own top is derived below
+RIGHT = 1023.4                            # the one right margin of the lower band
+PROFILE_AT = (RIGHT - 545.0, 1215.7)      # plot left (derived from RIGHT), baseline
+PROFILE_WH = (545.0, 140.0)
+CAPTION_GAP = 56.5                        # baseline below the profile's own baseline
 
 # Set in place on the profile, a label gets one slot of cw/6 ~ 155 units, so the long names
 # are shortened for that use only. The legend and this listing keep them in full.
@@ -132,33 +151,24 @@ def ascend_to(act, ft):
 
 
 def landmarks_ascent(act):
-    """The landmarks as they fall on the way UP, plus the two spans reduced to their starts.
+    """The landmarks as they fall on the way UP, as one numbered sequence.
 
-    Two of them genuinely coincide, and the marks are stacked rather than nudged apart
-    because the coincidence is the fact:
-
-      * the switchbacks begin AT Trail Camp — 4 and A are 0.8% of the ascent apart;
-      * the final ridge begins AT Trail Crest — so 5 and B are pinned to the same index,
-        the start of the "Trail Crest to Whitney Summit" effort. Positioning 5 by its
-        published 13,700 ft instead put it 3.9% AFTER the ridge it starts, which reads as
-        a mistake rather than as a coincidence.
+    Ordered by distance along the ascent. Positions come from this activity's own segment
+    efforts wherever a segment names the place, and otherwise from the published elevation
+    found on the way up. Trail Crest is pinned to the start of the "Trail Crest to Whitney
+    Summit" effort rather than to its published 13,700 ft, which lands 3.9% further along —
+    past the ridge it begins.
     """
     e = segment_efforts(act)
-    crest = seg(e, "Trail Crest to Whitney Summit")["i0"]
-    pts = [
+    return [
         (1, "Whitney Portal", "8,365 FT", 0),
         (2, "Lone Pine Lake Jct", "9,960 FT", ascend_to(act, 9960)),
         (3, "Outpost Camp", "10,360 FT", ascend_to(act, 10360)),
         (4, "Trail Camp", "12,039 FT", seg(e, "Trail Camp - Mount Whitney Ascent")["i0"]),
-        (5, "Trail Crest / JMT Jct", "13,700 FT", crest),
+        (5, "Trail Crest / JMT Jct", "13,700 FT",
+         seg(e, "Trail Crest to Whitney Summit")["i0"]),
         (6, "Mount Whitney Summit", f"{SUMMIT_FT:,} FT", act["_summit"]),
     ]
-    starts = [
-        ("A", "The 97 Switchbacks begin", "12,000 FT",
-         seg(e, "The Whitney Trail Switchbacks")["i0"]),
-        ("B", "The Final Ridge begins", "13,700 FT", crest),
-    ]
-    return pts, starts
 
 
 def landmarks(act):
@@ -491,33 +501,36 @@ def ticked(p, s, up=True, size=12, tick=11):
             + text(p[0], p[1] + (dy - 5 if up else dy + 11), s, size, "middle", SANS, 0, 600))
 
 
-def design_d4(act):
-    """D4 · PORTAL — the map is the subject; profile and legend are the apparatus below it."""
+def d4_parts(act):
+    """D4 · PORTAL, as an ordered list of independently placeable pieces.
+
+    Returns [(key, label, mode, svg)] where mode is "lock" (resizing preserves aspect) or
+    "free" (width and height move independently). Keeping the design in named pieces is what
+    lets tune.py hand it to a layout editor and hand the result back, without either side
+    knowing how any one piece is drawn.
+    """
     side, cw = 85, W - 170
     si = act["_summit"]
-    pts, starts = landmarks_ascent(act)
+    pts = landmarks_ascent(act)
+    P_ = []
     body = []
 
-    # --- header: type on the left, the drawings grouped as one picture on the right.
-    # The vignette and the figures share a baseline and sit shoulder to shoulder, so they
-    # read as a single piece of art rather than as two loose objects — and that keeps them
-    # visibly separate from everything below, none of which they are attached to.
-    art_base = 274.0
+    # --- header: the drawing large on the right, the figures small and tucked under the
+    # type on the left. They no longer share a baseline — the figures now group with the
+    # title block by proximity and the drawing stands alone, which is a different reading of
+    # "art, attached to no data" than the shoulder-to-shoulder pairing they replaced.
     vg = art("Whitney_Peak_Vignette.svg")
-    vw = 372.0
-    body.append(art_width(vg, side + cw - vw, art_base - vw / (vg["w"] / vg["h"]),
-                          vw, HAIR)[0])
+    P_.append(("vignette", "Mountain drawing", "lock",
+               art_width(vg, V_AT[0], V_AT[1], V_W, ART_VIGNETTE)[0]))
     hk = art("hikers_simple2.svg")                    # kept whole: art, not data
-    hw = 178.0
-    body.append(art_width(hk, side + cw - vw - 26 - hw,
-                          art_base - hw / (hk["w"] / hk["h"]), hw, LIGHT)[0])
-    body.append(text(side, 120, TITLE, 68, "start", SERIF, -1))
-    body.append(text(side, 163, DATE, 18, "start", SANS, 5))
+    P_.append(("hikers", "Hikers", "lock",
+               art_width(hk, HK_AT[0], HK_AT[1], HK_W, ART_HIKERS)[0]))
+    P_.append(("title", "Title", "lock", text(side, TITLE_Y, TITLE, 68, "start", SERIF, -1)))
+    P_.append(("date", "Date", "lock", text(side, DATE_Y, DATE, 18, "start", SANS, 5)))
 
     # --- the route, centre stage: full measure, the heaviest line on the sheet, and the
     # only element allowed to occupy the middle third.
-    top = 344.0
-    rt, rw, rh = route_mapper(act, 0, si, side, top, cw, 0, "width")
+    rt, rw, rh = route_mapper(act, 0, si, ROUTE_AT[0], ROUTE_AT[1], cw, 0, "width")
     line_pts = trace(rt, 0, si, 0.6)
     body.append(poly(line_pts, 3.6))
     cen = (sum(p[0] for p in line_pts) / len(line_pts),
@@ -557,47 +570,85 @@ def design_d4(act):
         placed.append((fallback, r))
         return fallback
 
+    # One labelling system now, so every key is placed the same way and any of them may swing
+    # off the normal — which is what keeps 4 and 5 apart, the switchbacks beginning at Trail
+    # Camp barely a tenth of a mile on.
+    FAN = (0.0, 0.7, -0.7, 1.15, -1.15)
     for num, name, ft, i in pts:
-        body.append(keyed(rt(i), place(i, 12.0, 34), str(num)))
-    # the starts ride further out and are allowed to swing off the normal, so where a start
-    # coincides with a landmark — the switchbacks at Trail Camp, the ridge at Trail Crest —
-    # the pair fans apart from one point instead of fighting over one ray
-    for key, name, ft, i in starts:
-        body.append(keyed(rt(i), place(i, 11.0, 70, (0.75, -0.75, 1.15, -1.15, 0.0)),
-                          key, 11.0, 13))
+        body.append(keyed(rt(i), place(i, 12.0, 34, FAN), str(num)))
 
-    # --- the apparatus band, under a hairline: legend and profile as peers, one register.
-    rule = top + rh + 74
-    body.append(line(side, rule, side + cw, rule, HAIR))
+    # --- the apparatus band: legend and profile as peers, one register. There is no rule
+    # between it and the map any more — the separation is carried by the gap alone.
+    P_.append(("route", "GPS route", "lock", "".join(body)))
+    body = []
 
-    ly = rule + 42
+    # The legend hangs from the axis caption's baseline rather than sitting at a fixed top,
+    # so the foot of the apparatus band stays one line however many landmarks there are.
+    ly = PROFILE_AT[1] + CAPTION_GAP - (len(pts) - 1) * LEGEND_LEAD
     for k, (num, name, ft, i) in enumerate(pts):
-        y = ly + k * 25
+        y = ly + k * LEGEND_LEAD
         body.append(text(side, y, str(num), 13, "start", SANS, 0, 600))
         body.append(text(side + 24, y, name, 13, "start", SANS, 1.2))
         body.append(text(side + 350, y, ft, 13, "end", SANS, 1.2))
-    for k, (key, name, ft, i) in enumerate(starts):
-        y = ly + 160 + k * 25
-        body.append(text(side, y, key, 13, "start", SANS, 0, 600))
-        body.append(text(side + 24, y, name, 13, "start", SANS, 1.2))
-        body.append(text(side + 350, y, ft, 13, "end", SANS, 1.2))
+    P_.append(("legend", "Legend", "lock", "".join(body)))
+    body = []
 
-    px, pw = side + cw - 545, 545.0
-    pbase, ph = ly + 185, 140.0
-    pf = profile_mapper(act, 0, len(act["_alt"]) - 1, px, pbase - ph, pw, ph)
-    body.append(poly(trace(pf, 0, len(act["_alt"]) - 1, 0.35, 2), 2.2))
+    P_.append(("stats", "Distance / gain", "lock",
+               text(RIGHT, STATS_Y, f"{act['_mi']:.1f} MILES", 13, "end", SANS, 2)
+               + text(RIGHT, STATS_Y + 24, f"{act['_ft']:,.0f} FT GAINED",
+                      13, "end", SANS, 2)))
+
+    px, pw = PROFILE_AT[0], PROFILE_WH[0]
+    pbase, ph = PROFILE_AT[1], PROFILE_WH[1]
+    n = len(act["_alt"]) - 1
+    pf = profile_mapper(act, 0, n, px, pbase - ph, pw, ph)
+    body.append(poly(trace(pf, 0, n, 0.35, 2), 2.2))
     body.append(line(px, pbase, px + pw, pbase, HAIR))
-    body.append(mile_ticks(act, 0, len(act["_alt"]) - 1, pf, pbase, 5, 6, 10, 20))
-    # numbers above the line, letters below, so the two coincident pairs stack across it
+    body.append(mile_ticks(act, 0, n, pf, pbase, 5, 6, 10, 20))
+    # Keys sit above the line, and drop below it only when they would otherwise collide —
+    # 4 and 5 land 2.5 units apart here, so 5 goes underneath. Staggering by crowding rather
+    # than by kind keeps the one numbering system intact.
+    above = []
     for num, name, ft, i in pts:
-        body.append(ticked(pf(i), str(num), True, 12, 10))
-    for key, name, ft, i in starts:
-        body.append(ticked(pf(i), key, False, 11, 9))
+        q = pf(i)
+        if all(abs(q[0] - x) > 15 for x in above):
+            body.append(ticked(q, str(num), True, 12, 10))
+            above.append(q[0])
+        else:
+            body.append(ticked(q, str(num), False, 12, 10))
+    P_.append(("profile", "Elevation profile", "free", "".join(body)))
 
-    body.append(text(side + cw, ly, f"{act['_mi']:.1f} MILES", 13, "end", SANS, 2))
-    body.append(text(side + cw, ly + 24, f"{act['_ft']:,.0f} FT GAINED", 13, "end", SANS, 2))
-    body.append(text(px + pw / 2, pbase + 48, "MILES ALONG THE TRAIL", 11, "middle", SANS, 3))
-    return frame("".join(body), W, H), "map hero, landmarks on the ascent"
+    P_.append(("caption", "Axis caption", "lock",
+               text(px + pw / 2, pbase + CAPTION_GAP, "MILES ALONG THE TRAIL", 11, "middle", SANS, 3)))
+    return P_
+
+
+def place_parts(parts, layout=None):
+    """Join the pieces, applying a saved layout if there is one.
+
+    A layout entry is the piece's new bounding box in sheet units. Mapping it back is one
+    transform per piece — translate to the new corner, scale by the size ratio, translate the
+    original corner to the origin first — so the editor never has to know what a piece is
+    made of, and nothing about how a piece is drawn has to change to move it.
+    """
+    out = []
+    for key, label, mode, svg in parts:
+        box = (layout or {}).get(key)
+        if box and box.get("w") and box.get("h"):
+            sx = box["w"] / max(box["w0"], 1e-9)
+            sy = box["h"] / max(box["h0"], 1e-9)
+            out.append(f'<g transform="translate({box["x"]:.3f} {box["y"]:.3f}) '
+                       f'scale({sx:.6f} {sy:.6f}) '
+                       f'translate({-box["x0"]:.3f} {-box["y0"]:.3f})">{svg}</g>')
+        else:
+            out.append(svg)
+    return "".join(out)
+
+
+def design_d4(act, layout=None):
+    """D4 · PORTAL — the map is the subject; profile and legend are the apparatus below it."""
+    return (frame(place_parts(d4_parts(act), layout), W, H),
+            "map hero, landmarks on the ascent")
 
 
 DESIGNS = [
@@ -632,6 +683,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--png", action="store_true")
     ap.add_argument("--dpi", type=int, default=300)
+    ap.add_argument("--layout", help="JSON from tune.py: reposition D4 before rendering")
     ap.add_argument("--out", default=os.path.dirname(os.path.abspath(__file__)))
     args = ap.parse_args()
 
@@ -656,9 +708,15 @@ def main():
     print(f"  D2 profile-to-map divergence: worst {worst[0]:.0f} units "
           f"({worst[0] / 100:.2f} in) at {worst[1]}", file=sys.stderr)
 
+    layout = None
+    if args.layout:
+        with open(args.layout, encoding="utf-8") as f:
+            layout = json.load(f)
+        print(f"  applying layout: {args.layout} ({len(layout)} pieces)", file=sys.stderr)
+
     cards = []
     for key, name, fn, w, h, blurb in DESIGNS:
-        svg, note = fn(act)
+        svg, note = fn(act, layout) if key == "D4" else fn(act)
         path = os.path.join(args.out, f"proof_{key}.svg")
         write(path, svg)
         print(f"  {key} · {name:10s} {w}x{h}  {note}", file=sys.stderr)
