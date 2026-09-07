@@ -19,8 +19,24 @@ uv run python strava-data/tools/proof_year_art.py
 
 Standalone like `poster_40for40.py`: reads `strava-data/data/` directly, imports
 nothing from `feed/` or `dashboard/`, and is **not** wired into any build or
-workflow. It copies the poster's six-family color scheme so the two pieces read
-as siblings.
+workflow. It borrows the poster's idea of coloring by sport family so the two
+pieces read as siblings, but groups into **five** families rather than the
+poster's six:
+
+| Family | Legend | Sport types |
+|---|---|---|
+| `run` | run | Run, TrailRun |
+| `mtb` | bike | MountainBikeRide, Ride, EBikeRide |
+| `foot` | hike / walk | Hike, Walk |
+| `snow` | snow | AlpineSki, Snowboard, NordicSki |
+| `other` | other | IceSkate, RockClimbing, WeightTraining, Workout, Pickleball, StandUpPaddling, Pilates |
+
+The poster splits snow by direction of travel — downhill against nordic —
+because it must fill a wall from forty routes and a merged family could empty
+it of a terrain. Nothing here is selected, so all snow is one family, and
+skating (which the poster groups with nordic) sits in `other`. A color is worth
+spending on a family you see often, not on eleven activities across three
+years.
 
 ## Output
 
