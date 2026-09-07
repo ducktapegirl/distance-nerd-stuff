@@ -140,6 +140,48 @@ def by_year(acts):
 
 # ─── drawing ──────────────────────────────────────────────────────────────────
 
+# Douglas-Peucker tolerance, in SVG user units. The viewBox is 900 units wide
+# and renders at 720 CSS px, so 1 unit is ~0.8 px and this is ~0.4 px -- still
+# sub-pixel at 2x zoom. It drops the bloom from 110,718 points to 40,361 with
+# nothing visible to lose: the traces draw at 0.9px stroke and 0.38 opacity.
+# A tolerance of 1.0 would save a further ~0.15 MB, which is not worth twice
+# the deviation.
+SIMPLIFY_EPS = 0.5
+
+
+def simplify(pts, eps=SIMPLIFY_EPS):
+    """Douglas-Peucker, iterative so a long track cannot blow the stack.
+
+    Must run on points already projected into user units -- a tolerance in
+    meters means nothing until the points are in the space they are drawn in.
+    """
+    n = len(pts)
+    if n < 3 or eps <= 0:
+        return pts
+    keep = [False] * n
+    keep[0] = keep[n - 1] = True
+    stack = [(0, n - 1)]
+    while stack:
+        i, j = stack.pop()
+        if j <= i + 1:
+            continue
+        x1, y1 = pts[i]
+        x2, y2 = pts[j]
+        dx, dy = x2 - x1, y2 - y1
+        norm = math.hypot(dx, dy) or 1e-9
+        far, fi = -1.0, -1
+        for k in range(i + 1, j):
+            x, y = pts[k]
+            d = abs(dy * x - dx * y + x2 * y1 - y2 * x1) / norm
+            if d > far:
+                far, fi = d, k
+        if far > eps:
+            keep[fi] = True
+            stack.append((i, fi))
+            stack.append((fi, j))
+    return [p for p, k in zip(pts, keep) if k]
+
+
 def path(pts):
     return "M" + "L".join("%.1f %.1f" % (x, y) for x, y in pts)
 
@@ -182,7 +224,8 @@ def year_layer(acts, tracks, year, scale, interactive=True, visible=False):
             continue
         th = (a["dt"].timetuple().tm_yday - 1) / nd * 2 * math.pi
         ct, st = math.cos(th), math.sin(th)
-        pp = [(C + (x * ct - y * st) * s, C + (x * st + y * ct) * s) for x, y in t]
+        pp = simplify([(C + (x * ct - y * st) * s, C + (x * st + y * ct) * s)
+                       for x, y in t])
         tag = ('class="art-trace art-fam-%s" data-id="%s" ' % (a["fam"], a["id"])) \
             if interactive else ""
         out.append('<path %sd="%s" stroke="%s" stroke-width="0.9" opacity="0.38"/>'

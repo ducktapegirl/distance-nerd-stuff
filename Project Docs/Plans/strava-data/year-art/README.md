@@ -158,7 +158,8 @@ Audited against the real data rather than assumed:
 
 Tracked in
 [`../2026-09-07-year-art-future-work.md`](../2026-09-07-year-art-future-work.md):
-Douglas–Peucker simplification (the page is ~1.5 MB of bloom path data, and a
-sub-pixel tolerance would remove three quarters of the points), metric morph,
-keyboard access to individual activities, a draw-on animation, ambient mode, a
-deep link to a single activity, and scrub damping.
+metric morph, keyboard access to individual activities, a draw-on animation,
+ambient mode, a deep link to a single activity, and scrub damping.
+Douglas–Peucker simplification is **done** — `simplify()` runs at 0.5 user
+units, which is sub-pixel at the rendered size and cut the bloom from 110,718
+points to 40,361.

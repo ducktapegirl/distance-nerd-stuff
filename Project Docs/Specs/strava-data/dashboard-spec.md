@@ -2001,10 +2001,17 @@ Every activity of a calendar year in one figure, with a picker for each year pre
 
 ### Cost
 
-`art_fragment()` adds **~1.5 MB** to `strava.html` (3.34 MB → 4.88 MB), almost entirely bloom path
-data — 351 GPS tracks across three years, already decimated 6:1 at read time. It grows with every
-year added. A Douglas–Peucker pass on the traces is the obvious lever if this becomes a problem;
-nothing else in the page is close to this size.
+`art_fragment()` adds **~0.7 MB** to `strava.html` (3.34 MB → 4.04 MB), almost entirely bloom path
+data — 351 GPS tracks across three years. It grows with every year added, and nothing else on the
+page is close to this size.
+
+Two separate reductions are already applied and do different jobs, so keep both:
+`track(step=6)` bounds how much of each stream is **read**, and `simplify()` at
+**`SIMPLIFY_EPS = 0.5`** user units bounds the **shape** once projected. The tolerance is ~0.4 CSS
+px at the rendered 720px width — sub-pixel even at 2x zoom — and takes the bloom from 110,718
+points to 40,361 with nothing visible to lose at 0.9px stroke and 0.38 opacity. **Simplification
+must run after projection to user units**, never in `track()`: a tolerance in meters means nothing
+until the points are in the space they are drawn in.
 
 ### Source of truth
 
