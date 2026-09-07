@@ -34,6 +34,7 @@ from .rollups_cards import (
 from .template import (
     CSS, THEME_INIT_JS, THEME_TOGGLE_SVGS, build_js, hash_init_js, view_paint_css,
 )
+from .art_year import art_fragment
 from .theme import fig_html
 
 # Ordered nav sections. First entry is the default (shown for a missing/unknown
@@ -45,6 +46,7 @@ NAV_VIEWS = [
     ("segments",    "Segments"),
     ("places",      "Places"),
     ("exploratory", "Exploratory"),
+    ("art",         "Art"),
 ]
 VIEW_NAMES = [v for v, _ in NAV_VIEWS]
 
@@ -365,6 +367,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
                     run_pace_hr, run_hr_temp, run_pace_tort, run_pace_grade,
                     run_hr_grade, mtb_pace_tort, mtb_pace_grade, mtb_hr_grade,
                     cons_cards_html, fast_cards_html, grade_time_html,
+                    art_html,
                     v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -516,6 +519,15 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   {places_peaks}
 </section>
 
+<section id="view-art" class="view">
+  <div class="section-anchor">Art</div>
+  <div class="card">
+    <div class="card-title">Years in Motion</div>
+    {art_html}
+    <p class="plot-caption">Every activity of a calendar year in one figure. Around the ring, one spoke per activity placed at its exact day &mdash; length is distance, thickness is duration, color is the sport family. Activities with no distance recorded (gym, climbing) sit as short ticks just inside the ring rather than vanishing. Behind it, every GPS track of that year drawn from a shared origin and rotated to its day of year: the dense knot is home, and the long limbs are trips. Point at a spoke to light its route in the ground layer, drag to scrub through the year, and use the legend to filter by sport. Years marked with a dot are partial.</p>
+  </div>
+</section>
+
 <section id="view-exploratory" class="view">
   <div class="section-anchor">Exploratory</div>
   <div class="card">
@@ -638,6 +650,9 @@ def build_page(rows, segs):
      mirage_air_text, mirage_app_text,
      heatsun_temp_text, heatsun_uv_text) = _build_exploratory_charts(rows)
 
+    print("  year art...")
+    art_html = art_fragment(rows)
+
     date_range, stats_html, nav_links, theme_buttons = _build_stats_panel(rows, stats)
     search_html = _build_activity_search_html(len(rows))
 
@@ -663,5 +678,6 @@ def build_page(rows, segs):
         mtb_pace_grade=mtb_pace_grade, mtb_hr_grade=mtb_hr_grade,
         cons_cards_html=cons_cards_html, fast_cards_html=fast_cards_html,
         grade_time_html=grade_time_html,
+        art_html=art_html,
         v1=v1, v2=v2, v3=v3, v4=v4, v5=v5, v6=v6, v7=v7, v8=v8, v9=v9, v10=v10,
     )

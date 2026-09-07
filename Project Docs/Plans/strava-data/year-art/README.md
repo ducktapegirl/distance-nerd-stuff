@@ -13,12 +13,22 @@ out. Every year present in the data gets a layer, reachable from a picker:
 The year range is **discovered from the data**, not hardcoded — a new year in
 `activities.csv` becomes a new layer and a new picker button on the next build.
 
+**The piece now ships in the Strava dashboard**, as the only entry on its `Art`
+tab. The canonical generator is
+[`strava-data/dashboard/art_year.py`](../../../../strava-data/dashboard/art_year.py);
+the build spec is the
+[dashboard spec](../../../Specs/strava-data/dashboard-spec.md) under
+"Art tab". This directory keeps the exploration record and a standalone copy of
+the piece:
+
 ```bash
-uv run python strava-data/tools/proof_year_art.py
+uv run python strava-data/build_dashboard.py      # the Art tab
+uv run python strava-data/tools/proof_year_art.py # the proofs + standalone page
 ```
 
-Standalone like `poster_40for40.py`: reads `strava-data/data/` directly, imports
-nothing from `feed/` or `dashboard/`, and is **not** wired into any build or
+`proof_year_art.py` **imports** the piece from `dashboard/art_year.py` rather
+than keeping a second copy — it owns only the four exploration proofs. It reads
+`strava-data/data/` directly and is **not** wired into any build or
 workflow. It borrows the poster's idea of coloring by sport family so the two
 pieces read as siblings, but groups into **five** families rather than the
 poster's six:
@@ -42,7 +52,7 @@ years.
 
 | File | What it is |
 |---|---|
-| `year.html` | **the piece** — every year, interactive, self-contained, no framework or build step |
+| `year.html` | the piece standalone — same fragment the Art tab renders, in a bare page |
 | `year.svg` | the 2025 composition, static (what a print export would start from) |
 | `grid.svg`, `spiral.svg`, `bloom.svg`, `clock.svg` | the four exploration proofs |
 | `proofs.html` | contact sheet of all five — gitignored, rebuild to view |
@@ -72,7 +82,7 @@ clear for them.
 
 ## Multiple years
 
-All years live in **one SVG**, one `<g class="year">` each, and the picker
+All years live in **one SVG**, one `<g class="art-year">` each, and the picker
 toggles which is shown — so switching costs no fetch and the armature never
 moves underneath you. Two things this forced:
 
@@ -110,10 +120,12 @@ Four interactions, one of which mobile forces:
   the nearest activity in an enabled family. Hover is the desktop enhancement,
   not the only way in.
 - **Year picker** at the bottom, or ← → keys. Switching clears the selection
-  but keeps the family filter.
+  but keeps the family filter. In the dashboard the arrow keys only act while
+  the Art tab is the active view — a document-level handler would otherwise eat
+  left/right on every other tab.
 
 Spokes are ~2 px wide, so the drawn geometry is not a usable pointer target —
-`concept_year(interactive=True)` emits fat transparent hit lines, full-length so
+`year_layer(interactive=True)` emits fat transparent hit lines, full-length so
 a short spoke is no harder to reach than a long one.
 
 ## Edge cases
