@@ -374,17 +374,24 @@ def text(x, y, s, size, family=SERIF, anchor="start", fill=INK, spacing=0, weigh
 #     line weight is baked into the shape at whatever size it is drawn. Stroking the
 #     outline in the same colour grows the ink on both sides, which is how GLYPH_WEIGHT
 #     brings the figures up to the routes' 3.6 u without redrawing them.
-#   * The sheet's six drawings now map one to one onto the six families, with the
-#     snowboarder carrying downhill and the skier nordic.
+#   * Downhill covers both alpine skiing and snowboarding, so it uses a later drawing of
+#     the two together rather than the sheet's lone snowboarder, which spoke for only one
+#     of the pair and for the rarer one. The sheet's own board figure stays in the asset,
+#     unused. The five others map one to one, with the sheet's skier carrying nordic.
 GLYPH_SRC = {"run": "run", "mtb": "bike", "hike": "hike",
-             "walk": "walk", "downhill": "board", "nordic": "ski"}
-# Optical correction, applied on top of the common height, for figures whose box holds
-# more than the athlete. The hiker's ground line climbs and the snowboarder is crouched
-# over a board as long as she is tall, so fitting their boxes lands both heads well below
-# everyone else's on a shared baseline. The cyclist needs none: she sits low because she
-# is bent over the bars, which is simply true.
-GLYPH_OPTICAL = {"hike": 1.08, "downhill": 1.12}
-GLYPH_WEIGHT = 1.0                  # added ink, in the glyph's own 100-box units
+             "walk": "walk", "downhill": "skiboard", "nordic": "ski"}
+# Optical correction, applied on top of the common height, for a figure whose box holds
+# more than the athlete: the hiker's ground line climbs, which lands her head below
+# everyone else's on a shared baseline. Nobody else needs one. The cyclist and the two
+# downhillers sit low because they are crouched, which is simply true.
+GLYPH_OPTICAL = {"hike": 1.08}
+# Added ink, in the glyph's own 100-box units, keyed by DRAWING rather than by family —
+# it compensates for how heavily a given drawing was inked, not for what it depicts. The
+# sheet's figures need a little; the downhill pair was drawn with a heavier pen and, being
+# wide, is scaled up more to reach the common height, so it arrives at the right weight
+# already and adding to it would make it the boldest thing on the page.
+GLYPH_WEIGHT = {"skiboard": 0.0}
+GLYPH_WEIGHT_DEFAULT = 1.0
 GLYPH_H = 58.9                      # every figure is drawn to this height, not this width
 GLYPH_GAP = 40.0                    # between figures; the row is a cluster, not a spread
 CAPTION_DROP = 14                   # date caption baseline, above the grid's bottom edge
@@ -429,7 +436,7 @@ def glyph(fam, x, base, colour, art):
     tx, ty = x - g["x0"] * s, base - g["y1"] * s
     return (f'<path d="{g["d"]}" transform="translate({tx:.1f},{ty:.1f}) '
             f'scale({s:.4f})" fill="{colour}" fill-rule="evenodd" '
-            f'stroke="{colour}" stroke-width="{GLYPH_WEIGHT:.2f}" stroke-linejoin="round"/>')
+            f'stroke="{colour}" stroke-width="{GLYPH_WEIGHT.get(GLYPH_SRC[fam], GLYPH_WEIGHT_DEFAULT):.2f}" stroke-linejoin="round"/>')
 
 
 def render(rows):
