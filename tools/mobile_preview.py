@@ -277,7 +277,7 @@ def main() -> int:
         with sync_playwright() as p:
             # Resolve Chromium in whichever environment this is running in.
             # PLAYWRIGHT_CHROMIUM_PATH is an explicit per-machine override;
-            # otherwise defer to Playwright, which honours
+            # otherwise defer to Playwright, which honors
             # PLAYWRIGHT_BROWSERS_PATH (set to /opt/pw-browsers in the web /
             # remote containers) and falls back to its own install location.
             override = os.environ.get("PLAYWRIGHT_CHROMIUM_PATH") or ""

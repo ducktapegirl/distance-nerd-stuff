@@ -102,7 +102,7 @@ def count_regions(pts, threshold_km=10.0):
 
 
 def count_states(pts):
-    """Distinct labelled boxes touched, plus one bucket for anything uncovered."""
+    """Distinct labeled boxes touched, plus one bucket for anything uncovered."""
     seen, uncovered = set(), 0
     for lat, lng in pts:
         for label, *box in STATE_BOXES:
@@ -134,7 +134,7 @@ def home_stats(acts):
 
 @lru_cache(maxsize=1)
 def all_tracks(cap=64, max_files=400):
-    """Every GPS track, heavily simplified, normalised per-track to 0..1.
+    """Every GPS track, heavily simplified, normalized per-track to 0..1.
 
     Memoized: several cards want this and the full read is ~1.8 s for 374
     files, which is fine once and wasteful four times.
@@ -153,11 +153,11 @@ def all_tracks(cap=64, max_files=400):
         if len(pts) > cap:
             step = len(pts) / cap
             pts = [pts[int(i * step)] for i in range(cap)]
-        tracks.append((name[:-4], normalise(pts)))
+        tracks.append((name[:-4], normalize(pts)))
     return tuple(tracks)
 
 
-def normalise(pts):
+def normalize(pts):
     """Scale a lng/lat track so its dominant axis spans 0..1.
 
     Latitude degrees are ~1/cos(lat) wider on the ground than longitude

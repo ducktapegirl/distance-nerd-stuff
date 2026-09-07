@@ -89,7 +89,7 @@ def concept_grid(acts, tracks):
 # ---------------------------------------------------------------- concept B
 def concept_spiral(acts, tracks):
     """A year-clock: 365 days around a ring, each activity a radial bar whose
-    length is distance and whose width is duration. Sport by colour."""
+    length is distance and whose width is duration. Sport by color."""
     S = 820
     C = S / 2
     R0, R1 = 150, 380
@@ -191,7 +191,7 @@ CONCEPTS = [
     ("year", "The piece &#183; year clock on the bloom",
      "B standing on C: every 2025 track from a shared origin, rotated by day of "
      "year, held back as ground; the year clock as figure. Bar length = distance, "
-     "thickness = duration, colour = sport family.", concept_year),
+     "thickness = duration, color = sport family.", concept_year),
     ("grid", "A &#183; Calendar grid",
      "12&#215;31 cells, one route per day at true relative scale within its month. "
      "Rest days are the negative space.", concept_grid),

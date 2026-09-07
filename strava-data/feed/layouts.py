@@ -44,9 +44,9 @@ def base(cid, title, summary, kicker, asof):
 # --- 1. one huge numeral ------------------------------------------------
 
 def hero_number(c, value, unit=None, sub=None, glyph=None, size=150):
-    """A single number carrying the whole card. Centred, with an optional
+    """A single number carrying the whole card. Centered, with an optional
     unit beside it and a caption beneath."""
-    # Centred on the body, which now runs to BOT_RULE rather than stopping
+    # Centered on the body, which now runs to BOT_RULE rather than stopping
     # where the footer band began.
     y = 280 if sub else 300
     c.add(S.text(CX, y, str(value), size, "bold", anchor="middle"))
@@ -86,7 +86,7 @@ def stat_trio(c, items, baseline=269, size=84):
     return c
 
 
-# --- 2. labelled bars ---------------------------------------------------
+# --- 2. labeled bars ---------------------------------------------------
 
 def bar_rows(c, rows, label_w=250, value_w=180, note=None):
     """``rows`` are ``(label, value_text, frac)`` with ``frac`` in 0..1.
@@ -231,7 +231,7 @@ def cell_grid(c, levels, per_row=15, cell=40, gap=8, headline=None, labels=None,
 
 def dial(c, value, vmax, bands, readout, band_label, ticks=()):
     """A half-circle gauge. ``bands`` are ``(lo, hi, tone_level)``; more ink
-    means more concern, which reads as a gradient with no colour key."""
+    means more concern, which reads as a gradient with no color key."""
     cx, cy, r = CX, 298, 142
 
     def ang(v):
@@ -264,7 +264,7 @@ def dial(c, value, vmax, bands, readout, band_label, ticks=()):
 # --- 8. route -----------------------------------------------------------
 
 def route_card(c, path, pw, ph, lines=(), region=None):
-    """Fit a normalised path to a rectangle, preserving aspect. Letterboxing a
+    """Fit a normalized path to a rectangle, preserving aspect. Letterboxing a
     wide, flat route into a square wastes most of the card."""
     rx, ry, rw, rh = region or (372, BODY_TOP, W - PAD - 372, BODY_H)
     k = min(rw / (pw or 1e-9), rh / (ph or 1e-9))

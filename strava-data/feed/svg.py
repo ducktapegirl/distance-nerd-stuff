@@ -1,7 +1,7 @@
 """1-bit / 4-tone SVG primitives, the dither ramp, and the glyph set.
 
 Everything is hand-generated SVG rather than Plotly: the panel has no
-JavaScript, no CDN, no hover, and four grey levels. Plotly gives us none of
+JavaScript, no CDN, no hover, and four gray levels. Plotly gives us none of
 what we need here and costs a 3 MB runtime to say so.
 
 Cards render as a whole 800x480 ``<svg>``, so layout is exact user units - no
@@ -20,7 +20,7 @@ def esc(s):
 # The panel's four native tones, extended with three ordered-dither patterns
 # for the steps in between, giving a usable 7-step sequential ramp. Every fill
 # in the output is one of these, so nothing depends on the device dithering an
-# arbitrary colour for us.
+# arbitrary color for us.
 DITHER_DEFS = f"""<defs>
   <pattern id="d25" width="4" height="4" patternUnits="userSpaceOnUse">
     <rect width="4" height="4" fill="{WHITE}"/><rect width="2" height="2" fill="{BLACK}"/>
@@ -169,26 +169,26 @@ def triangle(cx, cy, size, direction="up", fill=BLACK):
 # Solid silhouettes in a 100x100 box. Interior detail below ~3 px vanishes on
 # e-ink, so these are deliberately chunky: strokes, not outlines.
 
-def _g(body, x, y, size, colour=BLACK):
+def _g(body, x, y, size, color=BLACK):
     s = size / 100.0
     return (f'<g transform="translate({x:.1f},{y:.1f}) scale({s:.4f})" '
-            f'stroke="{colour}" fill="none" stroke-linecap="round" '
+            f'stroke="{color}" fill="none" stroke-linecap="round" '
             f'stroke-linejoin="round">{body}</g>')
 
 
-def glyph_runner(x, y, size, colour=BLACK):
+def glyph_runner(x, y, size, color=BLACK):
     body = (
-        f'<circle cx="52" cy="13" r="10" fill="{colour}" stroke="none"/>'
+        f'<circle cx="52" cy="13" r="10" fill="{color}" stroke="none"/>'
         '<path d="M52 26 L43 50" stroke-width="9"/>'
         '<path d="M45 33 L68 27" stroke-width="8"/>'
         '<path d="M45 36 L26 48" stroke-width="8"/>'
         '<path d="M43 50 L62 62 L69 85" stroke-width="9"/>'
         '<path d="M43 50 L27 68 L12 66" stroke-width="9"/>'
     )
-    return _g(body, x, y, size, colour)
+    return _g(body, x, y, size, color)
 
 
-def glyph_bike(x, y, size, colour=BLACK):
+def glyph_bike(x, y, size, color=BLACK):
     body = (
         '<circle cx="21" cy="68" r="19" stroke-width="7"/>'
         '<circle cx="79" cy="68" r="19" stroke-width="7"/>'
@@ -197,10 +197,10 @@ def glyph_bike(x, y, size, colour=BLACK):
         '<path d="M45 68 L38 42 L52 42" stroke-width="7"/>'
         '<path d="M60 38 L72 34" stroke-width="7"/>'
     )
-    return _g(body, x, y, size, colour)
+    return _g(body, x, y, size, color)
 
 
-def glyph_shoe(x, y, size, colour=BLACK, fill_frac=None, fill_colour=DARK):
+def glyph_shoe(x, y, size, color=BLACK, fill_frac=None, fill_color=DARK):
     """A shoe outline; with ``fill_frac`` the sole fills like a fuel gauge.
 
     The fill is a lighter tone than the outline on purpose - filled solid
@@ -214,16 +214,16 @@ def glyph_shoe(x, y, size, colour=BLACK, fill_frac=None, fill_colour=DARK):
         top = 74 - 49 * max(0.0, min(1.0, fill_frac))
         parts.append(f'<clipPath id="{clip_id}"><path d="{outline}"/></clipPath>')
         parts.append(f'<rect x="0" y="{top:.1f}" width="100" height="{74 - top:.1f}" '
-                     f'fill="{fill_colour}" stroke="none" clip-path="url(#{clip_id})"/>')
+                     f'fill="{fill_color}" stroke="none" clip-path="url(#{clip_id})"/>')
     parts.append(f'<path d="{outline}" stroke-width="6"/>')
-    return _g("".join(parts), x, y, size, colour)
+    return _g("".join(parts), x, y, size, color)
 
 
 MOUNTAIN_PTS = "4,86 38,24 56,52 68,36 96,86"
 
 
-def glyph_mountain(x, y, size, colour=BLACK, filled=True, fill_frac=None,
-                   fill_colour=None):
+def glyph_mountain(x, y, size, color=BLACK, filled=True, fill_frac=None,
+                   fill_color=None):
     """A peak silhouette. ``fill_frac`` fills it from the base like a gauge,
     clipped to the outline so a partial summit never spills past the slopes."""
     if fill_frac is not None:
@@ -231,14 +231,14 @@ def glyph_mountain(x, y, size, colour=BLACK, filled=True, fill_frac=None,
         top = 86 - 62 * max(0.0, min(1.0, fill_frac))
         body = (f'<clipPath id="{clip_id}"><polygon points="{MOUNTAIN_PTS}"/></clipPath>'
                 f'<rect x="0" y="{top:.1f}" width="100" height="{86 - top:.1f}" '
-                f'fill="{fill_colour or DARK}" stroke="none" clip-path="url(#{clip_id})"/>'
-                f'<polygon points="{MOUNTAIN_PTS}" fill="none" stroke="{colour}" '
+                f'fill="{fill_color or DARK}" stroke="none" clip-path="url(#{clip_id})"/>'
+                f'<polygon points="{MOUNTAIN_PTS}" fill="none" stroke="{color}" '
                 f'stroke-width="6"/>')
-        return _g(body, x, y, size, colour)
-    fill = colour if filled else "none"
+        return _g(body, x, y, size, color)
+    fill = color if filled else "none"
     body = (f'<polygon points="{MOUNTAIN_PTS}" fill="{fill}" '
-            f'stroke="{colour}" stroke-width="6"/>')
-    return _g(body, x, y, size, colour)
+            f'stroke="{color}" stroke-width="6"/>')
+    return _g(body, x, y, size, color)
 
 
 GLYPHS = {"run": glyph_runner, "bike": glyph_bike,
@@ -254,8 +254,8 @@ class Card:
         self.id = cid
         self.title = title        # RSS <title> - the fact itself
         self.summary = summary    # RSS <description> - one sentence of context
-        self.idea = idea          # catalogue number, for the contact sheet
-        self.family = family      # catalogue family letter
+        self.idea = idea          # catalog number, for the contact sheet
+        self.family = family      # catalog family letter
         self.recipe = recipe      # one line on where the numbers come from
         self.parts = []
 
@@ -279,32 +279,32 @@ class Card:
 # Strokes are specified in the 100-box, so a stroke of 8 at size 52 lands at
 # 4.2 effective px - above the 3 px floor with room to spare.
 
-def _fill(pts, colour):
+def _fill(pts, color):
     d = " ".join(f"{x * 100:.1f},{y * 100:.1f}" for x, y in pts)
-    return f'<polygon points="{d}" fill="{colour}" stroke="none"/>'
+    return f'<polygon points="{d}" fill="{color}" stroke="none"/>'
 
 
-def _ell(x0, y0, x1, y1, colour):
+def _ell(x0, y0, x1, y1, color):
     return (f'<ellipse cx="{(x0 + x1) * 50:.1f}" cy="{(y0 + y1) * 50:.1f}" '
             f'rx="{(x1 - x0) * 50:.1f}" ry="{(y1 - y0) * 50:.1f}" '
-            f'fill="{colour}" stroke="none"/>')
+            f'fill="{color}" stroke="none"/>')
 
 
-def _stroke(pts, colour, w=8):
+def _stroke(pts, color, w=8):
     d = " ".join(f"{x * 100:.1f},{y * 100:.1f}" for x, y in pts)
-    return (f'<polyline points="{d}" fill="none" stroke="{colour}" '
+    return (f'<polyline points="{d}" fill="none" stroke="{color}" '
             f'stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round"/>')
 
 
-def _eye(x, y, colour=WHITE, r=2.6):
+def _eye(x, y, color=WHITE, r=2.6):
     return (f'<circle cx="{x * 100:.1f}" cy="{y * 100:.1f}" r="{r}" '
-            f'fill="{colour}" stroke="none"/>')
+            f'fill="{color}" stroke="none"/>')
 
 
 def _animal(body_fn):
     """Wrap a body builder into the standard ``glyph_*(x, y, size)`` shape."""
-    def glyph(x, y, size, colour=BLACK):
-        return _g(body_fn(colour), x, y, size, colour)
+    def glyph(x, y, size, color=BLACK):
+        return _g(body_fn(color), x, y, size, color)
     return glyph
 
 
@@ -472,24 +472,24 @@ ANIMAL_GLYPHS = {
 }
 
 
-def glyph_sun(x, y, size, colour=BLACK, level=0.0, rays=8):
+def glyph_sun(x, y, size, color=BLACK, level=0.0, rays=8):
     """A rayed sun whose disc darkens with ``level`` (0..1).
 
     Replaces a sunscreen tube that nobody could identify - at this size a tube
     reads as a jar or a battery, whereas a sun needs no caption and matches
     the peak-UV card next door, which also draws one. Dose is carried by tone
-    rather than by a fill line: on four grey levels a darkening disc is a
+    rather than by a fill line: on four gray levels a darkening disc is a
     clearer quantity than a partial fill inside a circle, and it keeps the
     silhouette intact.
     """
     import math as _m
     r = 27.0
     body = [f'<circle cx="50" cy="50" r="{r}" fill="{tone(level)}" '
-            f'stroke="{colour}" stroke-width="6"/>']
+            f'stroke="{color}" stroke-width="6"/>']
     for i in range(rays):
         th = _m.radians(i * 360.0 / rays - 90)
         x0, y0 = 50 + (r + 9) * _m.cos(th), 50 + (r + 9) * _m.sin(th)
         x1, y1 = 50 + (r + 21) * _m.cos(th), 50 + (r + 21) * _m.sin(th)
         body.append(f'<line x1="{x0:.1f}" y1="{y0:.1f}" x2="{x1:.1f}" y2="{y1:.1f}" '
-                    f'stroke="{colour}" stroke-width="7" stroke-linecap="round"/>')
-    return _g("".join(body), x, y, size, colour)
+                    f'stroke="{color}" stroke-width="7" stroke-linecap="round"/>')
+    return _g("".join(body), x, y, size, color)

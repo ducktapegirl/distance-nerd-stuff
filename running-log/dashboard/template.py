@@ -1481,9 +1481,9 @@ DATE_CHART_IDS.forEach(id => {
   }
   // Dark-theme gray text hexes baked into figures by tidy_dark / chart builders.
   // Annotations using THESE get re-colored to the current secondary text color.
-  // The light-theme grey (#424a53 == rgb(66,74,83)) is included so the retint is
+  // The light-theme gray (#424a53 == rgb(66,74,83)) is included so the retint is
   // reversible: once an annotation has been recolored for light, switching back
-  // to dark must still match it, or the label sticks at low-contrast light grey
+  // to dark must still match it, or the label sticks at low-contrast light gray
   // on the dark plot.
   var GRAY_TEXT = ['#8b949e', '#e6edf3', '#424a53', 'rgb(66,74,83)'];
   // Brand-colored annotation text is baked with the DARK palette hex by the

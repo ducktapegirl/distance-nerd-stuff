@@ -39,9 +39,9 @@ def load_routes():
 
 # Both Journey cards frame on this fixed extent rather than on their own
 # route's bounding box. The bike corridor is a thin east-west band, so a
-# tight frame renders an unrecognisable sliver; the map here is for
+# tight frame renders an unrecognizable sliver; the map here is for
 # orientation only (the milepost strip carries the precision), so a
-# consistent, recognisable continental silhouette is worth more than filling
+# consistent, recognizable continental silhouette is worth more than filling
 # the box.
 CONUS = (25.0, 49.5, -125.0, -67.0)
 
@@ -49,7 +49,7 @@ CONUS = (25.0, 49.5, -125.0, -67.0)
 class Frame:
     """Equirectangular projection with a cos(lat) correction at mid-latitude.
 
-    The same treatment ``places.normalise()`` gives GPS tracks. A conic would be
+    The same treatment ``places.normalize()`` gives GPS tracks. A conic would be
     prettier across the whole continent but buys nothing at 800x480.
     """
 
@@ -86,7 +86,7 @@ class Frame:
 def draw_basemap(card, frame, S, layers=("admin", "coast")):
     """Add basemap polylines, split wherever they leave the frame.
 
-    Strokes are **solid greys, never svg.tone()**: a dither pattern used as a
+    Strokes are **solid grays, never svg.tone()**: a dither pattern used as a
     stroke renders as a dotted chain and turns a coastline into noise.
     """
     bm = load_basemap()

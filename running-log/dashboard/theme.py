@@ -1,6 +1,6 @@
 """Running Log dashboard theme — thin wrapper over the shared nerd_common theme.
 
-Supplies the two per-dashboard values (grid colour = BORDER_SUBTLE, title font =
+Supplies the two per-dashboard values (grid color = BORDER_SUBTLE, title font =
 TITLE_FONT_FAMILY) so every chart builder can keep calling the bare
 ``tidy_dark(fig)`` / ``fig_html(fig, ...)`` unchanged.
 """

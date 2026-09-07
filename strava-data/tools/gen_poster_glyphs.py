@@ -1,7 +1,7 @@
 """Turn the hand-made one-line drawings into the poster's sport glyphs.
 
 Two inputs, both in ``strava-data/assets/`` and both outlines of the ink rather than
-stroked centrelines, so a glyph is *filled* (fill-rule evenodd) and its line weight is
+stroked centerlines, so a glyph is *filled* (fill-rule evenodd) and its line weight is
 baked into the shape:
 
 * ``one_line_figures.svg`` — a 3x2 sheet of six sports (running, walking, cross-country
@@ -12,7 +12,7 @@ baked into the shape:
   which gives smooth curves instead of a pixel staircase.
 
 Output is ``strava-data/assets/poster_glyphs.json``: every figure cleaned of tracing
-specks, simplified, and normalised into a 100x100 box.
+specks, simplified, and normalized into a 100x100 box.
 
     uv run python strava-data/tools/gen_poster_glyphs.py
 
@@ -43,7 +43,7 @@ GRID = {(0, 0): "run", (0, 1): "walk", (0, 2): "ski",
 RASTERS = {"skiboard": "one_line_downhill_pair.png"}
 
 SIMPLIFY_TOL = 0.7      # source units; the sheet is 1536 wide
-SPECK_SIZE = 2.5        # a ring smaller than this, in the normalised 100-box...
+SPECK_SIZE = 2.5        # a ring smaller than this, in the normalized 100-box...
 SPECK_DIST = 4.0        # ...and further than this from any real ring, is tracing noise
 REAL_RING = 5.0         # a ring at least this big is part of the drawing
 
@@ -106,7 +106,7 @@ def size(ring):
     return max(max(xs) - min(xs), max(ys) - min(ys))
 
 
-def centre(ring):
+def center(ring):
     return (sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring))
 
 
@@ -125,7 +125,7 @@ def despeck(rs, scale):
         if size(r) * scale >= SPECK_SIZE:
             kept.append(r)
             continue
-        cx, cy = centre(r)
+        cx, cy = center(r)
         near = min((math.hypot(cx - x, cy - y) * scale
                     for big in real for x, y in big), default=0.0)
         if near <= SPECK_DIST:
@@ -134,7 +134,7 @@ def despeck(rs, scale):
 
 
 def figure(rs, tol, simplify=douglas_peucker, box=100.0):
-    """Rings -> one evenodd path string, normalised into a ``box`` square."""
+    """Rings -> one evenodd path string, normalized into a ``box`` square."""
     xs = [p[0] for r in rs for p in r]
     ys = [p[1] for r in rs for p in r]
     span = max(max(xs) - min(xs), max(ys) - min(ys))
@@ -170,7 +170,7 @@ def sheet_rings(d):
 def cluster(rs, cols=3, rows=2, w=1536, h=1024):
     groups = {}
     for r in rs:
-        cx, cy = centre(r)
+        cx, cy = center(r)
         key = (min(int(cy / (h / rows)), rows - 1), min(int(cx / (w / cols)), cols - 1))
         groups.setdefault(key, []).append(r)
     return groups

@@ -77,7 +77,7 @@ HIKE_COLOR = "#4ade80"
 # Dark-theme design tokens (BG_*/BORDER*/TEXT_*/ACCENT*/fonts/PLOTLY_CDN) are
 # imported from nerd_common.tokens above. The theme toggle JS overrides these at
 # runtime via Plotly.relayout reading the CSS custom properties.
-GRID = BORDER_SUBTLE  # grid/zeroline colour (identical value to BORDER_SUBTLE)
+GRID = BORDER_SUBTLE  # grid/zeroline color (identical value to BORDER_SUBTLE)
 
 # Semantic trend colors for segment bars
 FASTER  = "#2dd4bf"

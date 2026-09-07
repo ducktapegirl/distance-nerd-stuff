@@ -1,6 +1,6 @@
 """Design tokens shared verbatim by both dashboards.
 
-These colours, fonts, and the Plotly CDN tag were previously copy-pasted into
+These colors, fonts, and the Plotly CDN tag were previously copy-pasted into
 each dashboard's config.py. Domain-specific palettes (SPORT_COLORS, TYPE_COLORS,
 YEAR_PALETTE, …) deliberately stay in each dashboard's own config — only the
 truly-common design tokens live here.

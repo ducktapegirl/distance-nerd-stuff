@@ -45,7 +45,7 @@ SERIF = "Georgia, 'Times New Roman', serif"
 SANS = "'Helvetica Neue', Helvetica, Arial, sans-serif"
 
 # --- sport families -----------------------------------------------------------
-# A family is one colour and one legend figure, so the split is by how a route *looks and
+# A family is one color and one legend figure, so the split is by how a route *looks and
 # reads*, not by Strava's enum:
 #   * Ride / EBikeRide are absent — cycling on this poster means mountain biking.
 #   * Road and trail running are one family. They are the same motion on the same feet and
@@ -58,7 +58,7 @@ SANS = "'Helvetica Neue', Helvetica, Arial, sans-serif"
 FAMILY = {"Run": "run", "TrailRun": "run", "MountainBikeRide": "mtb", "Hike": "hike",
           "Walk": "walk", "AlpineSki": "downhill", "Snowboard": "downhill",
           "NordicSki": "nordic", "IceSkate": "nordic"}
-# Six families, six colours, no new hex: nordic inherits the green that road-and-trail
+# Six families, six colors, no new hex: nordic inherits the green that road-and-trail
 # merging freed up.
 COLOR = {"run": "#1F6F78", "mtb": "#C8602A", "hike": "#7A3E5F",
          "walk": "#9A8F7E", "downhill": "#5B8DB8", "nordic": "#4E7A3A"}
@@ -76,7 +76,7 @@ BY_SIZE = ("hike", "downhill", "nordic")   # ranked by miles; the rest spread ov
 MIN_MI = 1.0
 
 # Merging a family for the legend must not quietly empty the poster of a terrain. Road and
-# trail runs share a colour and a figure, but they do not share a shape — a canyon loop
+# trail runs share a color and a figure, but they do not share a shape — a canyon loop
 # scribbles where a road run draws a long line — and on distance alone the road runs win
 # every window, which took all eight trail runs off the sheet. This reserves part of the
 # merged quota for the sport that would otherwise lose. Set the count to 0 to let distance
@@ -132,15 +132,15 @@ def load():
 
 # ------------------------------------------------------------------- geometry
 
-def metres(pts):
-    """Absolute equirectangular metres (shared origin), so two tracks are comparable."""
+def meters(pts):
+    """Absolute equirectangular meters (shared origin), so two tracks are comparable."""
     lat0 = sum(p[1] for p in pts) / len(pts)
     kx = math.cos(math.radians(lat0)) * 111_320.0
     return [(lng * kx, lat * 110_540.0) for lng, lat in pts]
 
 
 def cells(pts):
-    return frozenset((int(x // CELL_M), int(y // CELL_M)) for x, y in metres(pts))
+    return frozenset((int(x // CELL_M), int(y // CELL_M)) for x, y in meters(pts))
 
 
 def jaccard(a, b):
@@ -200,8 +200,8 @@ def douglas_peucker(pts, tol):
 
 
 def shape(pts, tol_m=8.0, cap=600):
-    """Track -> simplified path in local metres, origin top-left, y down."""
-    m = metres(pts)
+    """Track -> simplified path in local meters, origin top-left, y down."""
+    m = meters(pts)
     x0, y0 = min(x for x, _ in m), max(y for _, y in m)
     m = [(x - x0, y0 - y) for x, y in m]
     s = douglas_peucker(m, tol_m)
@@ -370,9 +370,9 @@ def text(x, y, s, size, family=SERIF, anchor="start", fill=INK, spacing=0, weigh
 # vectorised into ``assets/poster_glyphs.json`` by ``gen_poster_glyphs.py`` — see that
 # script for the shape of the data. Two consequences matter here:
 #
-#   * A glyph is a FILLED outline (fill-rule evenodd), not a stroked centreline, so its
+#   * A glyph is a FILLED outline (fill-rule evenodd), not a stroked centerline, so its
 #     line weight is baked into the shape at whatever size it is drawn. Stroking the
-#     outline in the same colour grows the ink on both sides, which is how GLYPH_WEIGHT
+#     outline in the same color grows the ink on both sides, which is how GLYPH_WEIGHT
 #     brings the figures up to the routes' 3.6 u without redrawing them.
 #   * Downhill covers both alpine skiing and snowboarding, so it uses a later drawing of
 #     the two together rather than the sheet's lone snowboarder, which spoke for only one
@@ -429,14 +429,14 @@ def glyph_size(fam, art):
     return s, (g["x1"] - g["x0"]) * s
 
 
-def glyph(fam, x, base, colour, art):
+def glyph(fam, x, base, color, art):
     """Draw a figure with its ink starting at ``x`` and standing on ``base``."""
     g = art[GLYPH_SRC[fam]]
     s, _ = glyph_size(fam, art)
     tx, ty = x - g["x0"] * s, base - g["y1"] * s
     return (f'<path d="{g["d"]}" transform="translate({tx:.1f},{ty:.1f}) '
-            f'scale({s:.4f})" fill="{colour}" fill-rule="evenodd" '
-            f'stroke="{colour}" stroke-width="{GLYPH_WEIGHT.get(GLYPH_SRC[fam], GLYPH_WEIGHT_DEFAULT):.2f}" stroke-linejoin="round"/>')
+            f'scale({s:.4f})" fill="{color}" fill-rule="evenodd" '
+            f'stroke="{color}" stroke-width="{GLYPH_WEIGHT.get(GLYPH_SRC[fam], GLYPH_WEIGHT_DEFAULT):.2f}" stroke-linejoin="round"/>')
 
 
 def render(rows):
@@ -453,9 +453,9 @@ def render(rows):
         body.append(text(SIDE + c * cw + cw / 2, TOP + (rr + 1) * ch - CAPTION_DROP,
                          r["_date"][5:].replace("-", " · "), 15, SANS, "middle", MUTED, 2))
 
-    # The legend is one centred cluster sitting in the white band between the last row of
+    # The legend is one centered cluster sitting in the white band between the last row of
     # dates and the summary line. Both edges of that band are derived from the type that
-    # bounds it rather than typed in, so moving either piece keeps the row centred.
+    # bounds it rather than typed in, so moving either piece keeps the row centered.
     fams = [f for f in ORDER if any(r["_fam"] == f for r in rows)]
     art = load_glyphs()
     sizes = [glyph_size(f, art) for f in fams]

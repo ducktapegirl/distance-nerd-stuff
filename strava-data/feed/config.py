@@ -40,7 +40,7 @@ PAD        = 30
 
 # The panel's four native tones. Every fill in the output snaps to one of
 # these (or to a dither pattern built from two of them) so we never depend on
-# the device's own dithering of an arbitrary colour.
+# the device's own dithering of an arbitrary color.
 BLACK = "#000000"
 DARK  = "#555555"
 LIGHT = "#AAAAAA"

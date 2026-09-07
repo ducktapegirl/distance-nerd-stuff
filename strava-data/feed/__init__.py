@@ -2,5 +2,5 @@
 
 Separate from ``dashboard/`` on purpose. The dashboard targets a browser
 (Plotly, hover, tabs, light/dark themes); this targets a reTerminal Sticky
-ePaper panel (800x480, 4-level grayscale, no JS, no hover, no colour).
+ePaper panel (800x480, 4-level grayscale, no JS, no hover, no color).
 """

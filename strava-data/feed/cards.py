@@ -1,11 +1,11 @@
-"""One function per catalogued idea, all 63 of them.
+"""One function per cataloged idea, all 63 of them.
 
 A card is a whole 800x480 screen carrying *one* idea - the Sticky is a fridge
 magnet glanced at in passing, not a dashboard you sit in front of. The RSS
 title and summary live on the same object so the two transports cannot drift.
 
 Layout lives in ``layouts.py``; these functions are mostly data binding. Each
-is registered with its catalogue number, family and a one-line recipe, which
+is registered with its catalog number, family and a one-line recipe, which
 the contact sheet reads.
 
 Numbering matches Project Docs/Plans/strava-data/epaper-feed-brainstorm.md.
@@ -39,7 +39,7 @@ _REGISTRY = []
 
 
 def card(idea, family, recipe):
-    """Register a card builder with its catalogue metadata."""
+    """Register a card builder with its catalog metadata."""
     def deco(fn):
         _REGISTRY.append((idea, family, recipe, fn))
         return fn
@@ -281,7 +281,7 @@ def c13_streak_race(b, o):
             "streak vs record", b, 13, "B", "current streak against the all-time longest")
     L.two_up(c, ("now", st["current"], "days"), ("record", st["longest"], "days"),
              delta=f"{st['longest'] - st['current']} to beat"
-             if st["longest"] > st["current"] else "record equalled")
+             if st["longest"] > st["current"] else "record equaled")
     return c
 
 
@@ -379,7 +379,7 @@ def c18_everest(b, o):
     for _ in range(shown):
         c.add(S.glyph_mountain(x, y, size, filled=True))
         x += size + gap
-    c.add(S.glyph_mountain(x, y, size, fill_frac=frac, fill_colour=S.tone(0.45)))
+    c.add(S.glyph_mountain(x, y, size, fill_frac=frac, fill_color=S.tone(0.45)))
     c.add(S.text(PAD, 160, f"{e['ft']:,.0f} FT", 76, "bold"),
           S.text(W - PAD, 160, f"{e['multiple']:.1f}× EVEREST", 34, "bold",
                  anchor="end", tracking=2))
@@ -1088,7 +1088,7 @@ def c47_this_day(b, o):
     return c
 
 
-@card(48, "I", "a +/- 3 day window centred 365 days back")
+@card(48, "I", "a +/- 3 day window centered 365 days back")
 def c48_year_ago(b, o):
     hits = M.year_ago_week(b["acts"], b["asof"])
     if not hits:
@@ -1096,10 +1096,10 @@ def c48_year_ago(b, o):
     mi = sum(r["_mi"] for r in hits)
     a = max(hits, key=lambda r: r["_mi"])
     c = _mk("year-ago", f"A year ago this week: {mi:.1f} mi over {len(hits)} activities",
-            f"In the same week last year there were {len(hits)} activities totalling "
+            f"In the same week last year there were {len(hits)} activities totaling "
             f"{mi:.1f} miles, the biggest being \"{a['name']}\" at {a['_mi']:.1f} mi.",
             "a year ago this week", b, 48, "I",
-            "a +/- 3 day window centred 365 days back")
+            "a +/- 3 day window centered 365 days back")
     L.stat_trio(c, [(len(hits), "activities"), (f"{mi:.0f}", "miles"),
                     (f"{sum(r['_ft'] for r in hits):,.0f}", "feet")])
     nm, ns = S.fit_text(f"biggest: {a['name']}", 30, W - 2 * PAD)
@@ -1183,7 +1183,7 @@ def c54_dataset(b, o):
     c = _mk("dataset", f"{d['acts']} activities, {d['streams']} GPS streams, "
                        f"{d['mb']:.0f} MB",
             f"The log behind these cards: {d['acts']} activities, {d['streams']} per-second "
-            f"GPS stream files totalling {d['mb']:.0f} MB, plus segment efforts and laps.",
+            f"GPS stream files totaling {d['mb']:.0f} MB, plus segment efforts and laps.",
             "the dataset itself", b, 54, "K",
             "row counts and on-disk size of the fetched data")
     L.stat_trio(c, [(d["acts"], "activities"), (d["streams"], "gps streams"),
@@ -1230,13 +1230,13 @@ def c56_laps(b, o):
 # ══ merged-in cards (57-62) ═════════════════════════════════════════════
 # Ported or newly built when this branch merged the other e-paper plan. They
 # sit at the end of the registry rather than beside their family's other
-# cards, so the catalogue numbers stay stable and the proof sheet still groups
+# cards, so the catalog numbers stay stable and the proof sheet still groups
 # them by family.
 
 @card(3, "A", "newest activity: its GPS stream over its own numbers")
 def c57_latest(b, o):
     """Idea 3, combined. `last` (the words) and `last-route` (the shape) both
-    stay in the catalogue; this is the one that rotates, because on a fridge
+    stay in the catalog; this is the one that rotates, because on a fridge
     magnet the map and the numbers want to arrive together."""
     a = b["acts"][-1]
     r = M.route_for(a)
@@ -1521,7 +1521,7 @@ def c64_haiku(b, o):
 # still appears on the proof sheet - promoting one is a one-line edit here.
 # Seventeen ids means the rotation repeats every seventeen days.
 #
-# card_of_the_day falls back to the whole catalogue if an id here goes missing,
+# card_of_the_day falls back to the whole catalog if an id here goes missing,
 # so a typo degrades rather than crashes.
 ROTATION = [
     "strip",          # 9  - last 30 days as two rows of cells
@@ -1543,7 +1543,7 @@ ROTATION = [
 ]
 
 def build_cards(bundle, today=None):
-    """Every card, in catalogue order. Cards that lack data drop out silently."""
+    """Every card, in catalog order. Cards that lack data drop out silently."""
     today = today or date.today()
     o = today.toordinal()
     out = []
@@ -1566,7 +1566,7 @@ def card_of_the_day(cards, now=None):
     UTC because the build runs on a UTC runner, so a local key would step at a
     different moment depending on where the build happened.
 
-    Falls back to the whole catalogue if a rotation id ever goes missing, so a
+    Falls back to the whole catalog if a rotation id ever goes missing, so a
     typo in ROTATION degrades rather than crashes.
     """
     now = now or datetime.now(timezone.utc)
