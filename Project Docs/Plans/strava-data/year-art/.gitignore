@@ -1,0 +1,3 @@
+# The proof sheet inlines all five pieces, so it is 2.4 MB of duplicated SVG.
+# Run proof_year_art.py to rebuild it; the .svg files beside it are the record.
+proofs.html
