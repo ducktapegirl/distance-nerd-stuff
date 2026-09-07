@@ -355,9 +355,19 @@ def art(name, drop=()):
 
 
 def art_at(a, s, tx, ty, sw):
+    """Place art at a scale, with the stroke width DIVIDED BY that scale rather than left to
+    vector-effect="non-scaling-stroke".
+
+    non-scaling-stroke looks like the right tool and is a trap: Chromium pins it to DEVICE
+    pixels, so the drawing got lighter the higher the output resolution — the same file showed
+    one weight in a screen preview and roughly a third of it at 300 dpi — and it vanished
+    altogether when the SVG was rasterised as an <img> rather than opened as a document.
+    Dividing by the scale means `sw` is a real width in sheet units everywhere, and the file
+    no longer depends on a renderer supporting the attribute at all.
+    """
     return (f'<g transform="translate({tx:.2f},{ty:.2f}) scale({s:.5f})" fill="none" '
-            f'stroke="{INK}" stroke-width="{sw}" stroke-linecap="round" '
-            f'stroke-linejoin="round" vector-effect="non-scaling-stroke">'
+            f'stroke="{INK}" stroke-width="{sw / s:.4f}" stroke-linecap="round" '
+            f'stroke-linejoin="round">'
             + "".join(f'<path d="{d}"/>' for d in a["d"]) + "</g>")
 
 

@@ -349,8 +349,10 @@ Three registers, top to bottom, each doing one job:
   point, since they illustrate the day rather than record it.
 - **The route**, alone, holding the middle third at the heaviest weight on the sheet (3.6 against
   the profile's 2.2). Nothing else is allowed into that band.
-- **The apparatus**, under a hairline: legend at the left, profile at the right, as peers. The
-  rule is what makes them one register instead of two leftovers, and gives the map a floor.
+- **The apparatus**: legend at the left, profile at the right, as peers, sharing a baseline at
+  the foot of the sheet. A hairline rule originally separated this band from the map and was
+  later removed — the gap alone carries the separation, and the shared bottom baseline is what
+  makes the two read as one register rather than two leftovers.
 
 The ascent is drawn rather than the descent, to match where the landmarks now sit. Because the
 day is a 0.955-Jaccard out-and-back the two are visually identical — only the keyed indices differ.
@@ -391,3 +393,186 @@ the line, which is legible at a size where nudging them apart horizontally is no
 disagree by about 6% (10.7 mi to the summit against the watch's 11.37), so the legend carries
 names and elevations only and the profile's baseline carries 5-mile ticks. Printing both figures
 side by side would look like an error.
+
+## Tuning D4 by hand — `tune.py`
+
+`tune.py` writes **`layout.html`**: the real proof with every piece movable and resizable over
+an inch ruler and grid. Nothing about the design is duplicated in it — the pieces come from
+`proofs_d.d4_parts()`, so what you drag is exactly what prints.
+
+```bash
+uv run python "Project Docs/Plans/strava-data/whitney/tune.py"
+uv run python "Project Docs/Plans/strava-data/whitney/proofs_d.py" --layout layout.json --png
+```
+
+Ten pieces, each `aspect` (corner handles, ratio preserved), `free` (independent w/h) or `wide`
+(a rule — width only): mountain drawing, hikers, title, date, GPS route, horizontal rule, legend,
+distance/gain, elevation profile, axis caption. Drag to move, corners to resize, arrow keys to
+nudge 0.01″ (Shift 0.1″), or type exact inches. Snap defaults to 1/8″. Dashed ghosts show where
+a moved piece started.
+
+**The round trip.** Move things → **Copy** → save as `layout.json` beside the script →
+`proofs_d.py --layout layout.json` renders it for real. `place_parts()` maps each saved box back
+to one transform per piece, so the editor never needs to know how a piece is drawn.
+
+**A layout file is a staging post, not the destination.** It renders correctly but leaves the
+source saying one thing and the picture showing another, so once a layout is settled the numbers
+get wired into the constants in `design_d4` by hand and the JSON is thrown away. `layout.json` is
+gitignored to stop a stale one outliving the source it contradicts.
+
+### Cruxes
+
+**20 · Never put SVG in a `<template>`.** Template contents are parsed as **HTML**, where
+`<path/>` does not self-close — so all 80 paths of the mountain drawing nested inside the first
+one and only that one rendered, while `getBBox()` reported a box a quarter of the right size.
+The pieces are written straight into the live `<svg>`, where the parser is in SVG mode.
+
+**21 · Measure before adding the hit target.** Each piece gets a transparent rect over its
+bounding box so the whole box is draggable rather than only the hairlines under the cursor — but
+measure first, or the target defines the box it is supposed to describe.
+
+**22 · A rule is a line, so its box has no height.** `h/h0` is then a divide-by-zero and the
+piece is ungrabbable. Degenerate axes are padded to 8 units, and the scale factors guard against
+a zero denominator on both the JS and the Python side.
+
+**23 · Handles are sized `4.5/Z`** so they stay constant on screen at any zoom, and pointer
+positions come from `getScreenCTM().inverse()` rather than from arithmetic on the zoom factor.
+
+Verified end to end: an element moved in the editor to (5.43, 1.355) at 3.00 in wide renders from
+`--layout` at exactly (5.43, 1.355) × 3.00 in.
+
+**24 · A layout file is only valid against the source that produced it.** Every box carries the
+`x0/y0/w0/h0` it was measured from, so once the tuned numbers are folded into the constants the
+same file would apply the move a *second* time. `layout.json` is deleted at the moment it is
+wired in, not kept around.
+
+### Round one, wired in
+
+Six pieces moved; title, date, legend and stats stayed. The tuned values now live in one block
+of module constants (`V_AT`, `HK_AT`, `ROUTE_AT`, `RULE_AT`, `PROFILE_AT`, …) rather than being
+derived from each other — a derived layout silently re-flows the next time one of its inputs
+moves, which is the thing hand-tuning is trying to stop.
+
+| piece | move | scale |
+|---|---|---|
+| Mountain drawing | 1.06&Prime; left, 0.36&Prime; up | **1.20&times;** |
+| Hikers | 3.52&Prime; left, 0.62&Prime; down — now under the type | **0.66&times;** |
+| GPS route | 0.10&Prime; left, 0.19&Prime; up | — |
+| Horizontal rule | 0.32&Prime; up | — |
+| Elevation profile | 0.47&Prime; up | — |
+| Axis caption | 0.39&Prime; up | — |
+
+The header no longer pairs the drawing with the figures on one baseline: the figures group with
+the title block by proximity and the drawing stands alone. Everything renders within **0.03 in**
+of what was dragged.
+
+### Round two — one numbering system
+
+The Final Ridge marker was dropped and the switchbacks joined the numbered sequence, so the
+letter keys are gone entirely and the sheet carries **one labelling system, 1-7**, ordered by
+distance along the ascent.
+
+Two consequences worth recording:
+
+**25 · Staggering is now by crowding, not by kind.** The switchbacks begin *at* Trail Camp, so
+4 and 5 sit 0.10 mi apart — 2.5 units apart on the profile. Previously 4 was a number (above the
+line) and A a letter (below), and the split did the separating for free. With both numbered, the
+profile places a key above the line unless it would land within 15 units of one already there,
+in which case it drops below. On the map every key now shares one placement routine with the
+full fan of directions available to any of them, rather than the fan being reserved for letters.
+
+**26 · The legend hangs from the caption's baseline.** Its top is no longer a constant: it is
+derived as `PROFILE_AT[1] + CAPTION_GAP - (len(pts) - 1) * LEGEND_LEAD`, so the foot of the
+apparatus band stays one line however many landmarks there are. Adding or removing a landmark
+now re-flows the legend upward from the bottom instead of running it past the sheet edge. This
+is the one place a derived value is right — the alignment is the requirement.
+
+**Open:** the legend reads `4 Trail Camp 12,039 FT` then `5 The 97 Switchbacks begin 12,000 FT`
+— an ascending list that goes down 39 ft. The published figures disagree because the switchbacks
+begin at Trail Camp and the two are quoted from different sources; the track has them at 12,058
+and 12,078 ft, in the right order. Printing 12,039 for both would state the coincidence
+correctly.
+
+### Round three — the rule comes out
+
+The hairline between the map and the apparatus band was removed; the band is now held together
+by the shared baseline at its foot and separated from the map by whitespace alone. That drops
+the movable pieces from ten to nine and settles one of the open questions above, since the
+rule's right end was the odd one out. Two right edges remain: the route and profile at 1023.4,
+the distance/gain block at 1015.
+
+### Round four — the switchbacks come out
+
+`The 97 Switchbacks begin` was dropped, leaving six landmarks, 1-6. The legend re-flowed on its
+own: its top is derived from the axis caption's baseline, so losing a row moved it 25 units down
+rather than leaving a gap at the foot — which is what crux 26 was for.
+
+Two things resolved themselves with it. The legend no longer reads `12,039 FT` then `12,000 FT`
+on consecutive ascending rows, since that was the switchbacks quoted from a different source than
+Trail Camp. And the profile's crowding rule no longer fires: with the switchbacks gone, no two
+landmarks fall within 15 units of each other, so every key sits above the line. The rule stays in
+the code because it is what makes the legend safe to edit.
+
+---
+
+# Print files
+
+```bash
+uv run python "Project Docs/Plans/strava-data/whitney/print_ready.py"
+```
+
+Writes `whitney_11x14.{pdf,svg,png}`. The PDF is the deliverable: **11.00 × 14.00 in exactly**
+(MediaBox 792 × 1008 pt), three embedded font subsets, no background. Set up for **one ink on
+cream stock**, so no bleed is needed — no ink comes within half an inch of the trim.
+
+## 27 · `vector-effect="non-scaling-stroke"` is a trap, and it had been lying for weeks
+
+The drawings sit inside a `scale()`, so they need their stroke weight held independent of that
+scale. `non-scaling-stroke` looks like exactly the right tool. **Chromium pins it to DEVICE
+pixels**, which means:
+
+- the same file rendered darker in a screen preview than at 300 dpi — the drawing got *lighter
+  the higher the output resolution*;
+- rasterised as an `<img>` rather than opened as a document, the hikers produced **zero ink**
+  and vanished entirely.
+
+Measured, rendering as a document at 3×, against strokes with the scale folded in:
+
+| region | as shipped | correct | |
+|---|---|---|---|
+| Mountain drawing | 28,642 px | 78,231 px | **+173%** |
+| Hikers | 1,235 px | 14,791 px | **+1098%** |
+| GPS route (no `scale()`) | 97,814 px | 97,814 px | 0% |
+
+So **every proof PNG in this folder's history had under-weighted artwork**, and the design was
+art-directed against it. `proofs.art_at` now divides the width by the scale and emits no
+`vector-effect` at all, so a weight means the same thing at every resolution and in every
+renderer. The art weights were then re-chosen against the honest render: `ART_VIGNETTE = 1.0`
+and `ART_HIKERS = 1.2` units (0.25 / 0.30 mm), which matches what had been approved on screen
+while clearing the practical minimum for ink on uncoated stock. `print_ready.bake_strokes` still
+exists and now finds nothing to do — it is a guard, not a step.
+
+## 28 · A PNG with no `pHYs` chunk has no size at all
+
+`page.screenshot` writes none, so 3300 × 4200 opened as **45.8 × 58.3 in at 72 dpi**. A shop
+would print it at the wrong size or bounce it. `tag_png_dpi` inserts the chunk after IHDR.
+
+## 29 · The sans was never Helvetica Neue
+
+The stack is `"Helvetica Neue", Helvetica, Arial` and Helvetica Neue is not installed on this
+machine, so all 38 sans elements have been set in **Arial** throughout — as the PDF's embedded
+`ArialMT` and `Arial-BoldMT` confirm. A Mac at the print shop *would* have Helvetica Neue, take
+the first branch, and reflow every right-anchored elevation in the legend. Embedding the fonts
+that were actually used is what makes the page deterministic; the SVG is for editing, not output.
+
+## 30 · One right margin
+
+The lower band had drifted onto three right edges — route 1023.6, profile 1023.3, distance/gain
+1015 — because the 1/8 in snap grid in the layout editor does not contain 1015, so anything
+sitting on the old margin jumped when it was dragged. `RIGHT = 1023.4` is now a single constant;
+the profile's left edge is derived from it (`RIGHT - 545`) and the distance/gain block is
+anchored to it. Both land on 1023.40 exactly.
+
+The route's ink edge is 1023.60, 0.2 units out, and stays there: that edge is wherever landmark
+1's callout circle happens to fall, so pinning it would mean shifting the whole map to suit a
+bubble. 0.2 units is 0.002 in — 0.05 mm.
