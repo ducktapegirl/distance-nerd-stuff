@@ -13,22 +13,25 @@ DATA = os.path.join(ROOT, "strava-data", "data")
 OUT = os.path.join(ROOT, "Project Docs", "Plans", "strava-data", "year-art")
 YEAR = 2025
 
-# six families, same logic as the poster: colour must stay meaningful
+# Five families. The poster keeps six and splits snow by direction of travel
+# (downhill against nordic); here all snow is one family, and skating -- which
+# the poster groups with nordic -- sits in "other", so a color is not spent on
+# a handful of activities across three years.
 FAMILY = {
     "Run": "run", "TrailRun": "run",
     "MountainBikeRide": "mtb", "Ride": "mtb", "EBikeRide": "mtb",
     "Hike": "foot", "Walk": "foot",
-    "AlpineSki": "downhill", "Snowboard": "downhill",
-    "NordicSki": "nordic", "IceSkate": "nordic",
-    "RockClimbing": "other", "WeightTraining": "other", "Workout": "other",
-    "Pickleball": "other", "StandUpPaddling": "other", "Pilates": "other",
+    "AlpineSki": "snow", "Snowboard": "snow", "NordicSki": "snow",
+    "IceSkate": "other", "RockClimbing": "other", "WeightTraining": "other",
+    "Workout": "other", "Pickleball": "other", "StandUpPaddling": "other",
+    "Pilates": "other",
 }
 # Which activity wins when two share a calendar day and therefore an angle.
 # Higher paints later, so it ends up on top and is what the pointer reaches.
-PRIORITY = {"run": 3, "mtb": 3, "foot": 2, "downhill": 2, "nordic": 2, "other": 1}
+PRIORITY = {"run": 3, "mtb": 3, "foot": 2, "snow": 2, "other": 1}
 
 COLOR = {"run": "#2dd4bf", "mtb": "#f59e0b", "foot": "#a3e635",
-         "downhill": "#60a5fa", "nordic": "#c084fc", "other": "#f472b6"}
+         "snow": "#60a5fa", "other": "#f472b6"}
 BG = "#0b0f14"
 
 
@@ -437,11 +440,9 @@ CONCEPTS = [
 ]
 
 
-# Legend text only -- the family keys and the fam-* classes stay as they are.
-# "nordic" covers ice skating too (an even 3/3 split with nordic skiing), so
-# that label understates what is in the family.
+# Legend text only -- the family keys and the fam-* classes are separate.
 FAM_LABEL = {"run": "run", "mtb": "bike", "foot": "hike / walk",
-             "downhill": "ski/ride", "nordic": "nordic", "other": "other"}
+             "snow": "snow", "other": "other"}
 
 PAGE_CSS = """
 html,body{height:100%;margin:0;background:BGCOL;
