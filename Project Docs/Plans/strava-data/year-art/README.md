@@ -100,6 +100,32 @@ Spokes are ~2 px wide, so the drawn geometry is not a usable pointer target —
 `concept_year(interactive=True)` emits fat transparent hit lines, full-length so
 a short spoke is no harder to reach than a long one.
 
+## Edge cases
+
+Audited against the real data rather than assumed:
+
+- **Leap years.** 2024 maps onto 366 days, so its Dec 31 lands at 359.0° next to
+  2025's 359.01° — no drift under the picker. No Feb 29 activity exists yet.
+- **No distance recorded** (25 activities: climbing, weights, Pilates, one
+  skate). A spoke would be exactly zero units long and simply not appear, while
+  still being counted in the subtitle. These draw as a **tick inside the ring**
+  instead — present and countable, without inventing a distance. Width still
+  carries duration, and the readout omits the mileage rather than printing
+  "0.0 mi".
+- **Tiny but real distances** get a 4-unit floor, ~1.7% of the radial range, so
+  a 0.05-mile activity is still visible as itself.
+- **Two activities on one day** share an angle exactly and overlap — 19 across
+  the three years. They are **not** fanned or stacked: the angle stays honest and
+  paint order decides. `PRIORITY` puts runs and rides on top of the gym session
+  they share a day with, and the hit lines are emitted in the same order so the
+  pointer reaches whatever is visually on top rather than whichever happened to
+  be last in the file.
+- **Unmapped sport types** fall back to "other", which is survivable but silent,
+  so the build now prints a note naming them. `Pilates` was the one found this
+  way and is now mapped explicitly.
+- **Activity names are inlined as JSON in a `<script>`**, so `<` and `>` are
+  escaped — no current name would break out, but nothing stops a future one.
+
 ## Known gaps
 
 - **No keyboard access to individual activities.** ← → change year, but there
