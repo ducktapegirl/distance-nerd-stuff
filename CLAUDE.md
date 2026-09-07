@@ -47,6 +47,40 @@ All scripts use a single UV-managed venv at the repo root (`pyproject.toml`). Al
 uv sync   # install/update all deps
 ```
 
+## Editing files — prefer the Write/Edit tools over shell heredocs
+
+**Do not edit files by piping a heredoc through the shell** (`cat > f <<'EOF'`,
+`uv run python - <<'EOF'`) when the Write or Edit tool can do the job. This
+environment is Windows + Git Bash, and heredocs here **silently eat one level of
+backslash escaping**. Observed failures, all real:
+
+- `"\\n"` inside a quoted heredoc arrived in the Python source as a literal
+  newline, producing `SyntaxError: unterminated string literal`.
+- A `\` line-continuation inside a search string became a continuation of the
+  *outer* string, so the search text no longer matched the file — and
+  `str.replace()` does not raise on a miss, so the edit **silently did nothing**.
+- A plain `cat > file <<'PY'` died with ``unexpected EOF while looking for
+  matching `'` `` on content that was perfectly valid.
+
+Heredocs are still fine for content with **no backslashes** — commit messages
+(`git commit -F -`), appending prose to a doc. The moment a backslash, a regex,
+or Python escape handling is involved, use Write/Edit instead.
+
+**If you do write a scripted multi-edit, assert every replacement separately.**
+The expensive failure is not a crash, it is a `str.replace()` that matched
+nothing while a *different* replacement in the same script succeeded, so an
+aggregate `assert s != original` still passes and the run looks clean:
+
+```python
+for old, new in edits:
+    assert old in s, "no match: " + old[:60]   # per-edit, not one at the end
+    s = s.replace(old, new)
+```
+
+Then **re-verify the built artifact**, not just the source — several silent
+no-ops in this repo were caught only by the rendered page still showing the old
+behavior.
+
 ## Build the Strava dashboard
 
 ```bash
