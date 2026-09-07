@@ -4,7 +4,7 @@ ARCHIVED, not a build step. This is the script as it stood when the four layouts
 put side by side and A was picked; the poster that shipped is
 strava-data/tools/poster_40for40.py. Its selection rules are the ORIGINAL ones and
 have since diverged: quotas differ, road bikes and e-bikes are still their own family,
-trail running still has its own colour, and there is none of the region or
+trail running still has its own color, and there is none of the region or
 route-similarity logic that came later. Re-running it reproduces the proofs as they were
 seen, not the alternates under today's rules.
 
@@ -73,7 +73,7 @@ def pick40(acts):
             pool.sort(key=lambda r: -r["_mi"])
             chosen += pool[:n]
             continue
-        # evenly spaced through the year, preferring the longer of neighbours
+        # evenly spaced through the year, preferring the longer of neighbors
         if len(pool) <= n:
             chosen += pool
             continue
@@ -279,10 +279,10 @@ def main():
     print("picked", len(rows), collections.Counter(r["_fam"] for r in rows), file=sys.stderr)
     for r in rows:
         print(f"  {r['start_date_local'][:10]} {r['sport_type']:16s} {r['_mi']:5.1f} mi  {r['name'][:40]}", file=sys.stderr)
-    designs = [("A", "The Grid", design_a(rows), "5×8 small multiples, uniform cells, aspect-fitted, one line per route, colour by sport, date under each."),
+    designs = [("A", "The Grid", design_a(rows), "5×8 small multiples, uniform cells, aspect-fitted, one line per route, color by sport, date under each."),
                ("B", "The Mosaic", design_b(rows), "Squarified treemap: tile area is proportional to miles, tinted by sport. Whitney dominates; the mile trial is a chip."),
                ("C", "Ridgelines", design_c(rows), "Forty elevation profiles stacked in date order with a shared vertical scale. Skis saw-tooth, hikes tower, runs ripple."),
-               ("D", "The Year Ring", design_d(rows), "Routes on a clock face, January at 12, size ∝ √miles, a typographic 40 at the centre.")]
+               ("D", "The Year Ring", design_d(rows), "Routes on a clock face, January at 12, size ∝ √miles, a typographic 40 at the center.")]
     cards = []
     for key, name, svg, blurb in designs:
         path = os.path.join(OUT, f"proof_{key}.svg")

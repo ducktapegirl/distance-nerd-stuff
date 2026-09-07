@@ -4,7 +4,7 @@
 no scrolling, sized in exact user units so nothing depends on the CSS cascade.
 
 ``render_contact_sheet`` is the opposite: a browsing surface for a person, on
-a real screen, showing every card in the catalogue at once.
+a real screen, showing every card in the catalog at once.
 """
 
 from collections import OrderedDict
@@ -29,7 +29,7 @@ def render_page(card, asof):
 
 
 # ── proof sheet ───────────────────────────────────────────────────────────
-# A darkroom contact sheet: each card is a proof, numbered by its catalogue
+# A darkroom contact sheet: each card is a proof, numbered by its catalog
 # frame and grouped into rolls. The page's neutral scale is the panel's own
 # four tones, extended - the one detail that could only come from this subject.
 
@@ -198,7 +198,7 @@ _SHEET_JS = """
 
 
 def render_contact_sheet(cards, asof, rotation=(), families=None):
-    """Every card as a proof, grouped into rolls by catalogue family."""
+    """Every card as a proof, grouped into rolls by catalog family."""
     families = families or {}
     rot = set(rotation)
 
@@ -247,9 +247,9 @@ def render_contact_sheet(cards, asof, rotation=(), families=None):
 <header class="head">
   <p class="eyebrow">reTerminal Sticky · 800 × 480 · 4-level grayscale</p>
   <h1>Every card, at panel size</h1>
-  <p class="standfirst">The whole Strava e-paper catalogue drawn under the real
+  <p class="standfirst">The whole Strava e-paper catalog drawn under the real
   constraints: nothing smaller than 26&nbsp;px, no stroke under 3&nbsp;px, four
-  tones and three dither patterns, no colour and no JavaScript. Each proof below
+  tones and three dither patterns, no color and no JavaScript. Each proof below
   is the actual file the panel would render — not a mockup of one.</p>
   <dl class="spec">
     <div><dt>Cards</dt><dd>{len(cards)}</dd></div>
@@ -277,7 +277,7 @@ Built by <code>strava-data/build_feed.py</code> from the live Strava export.
 Proofs render white because the panel does — on a dark screen they sit as a
 lightbox, not inverted.<br>
 <b>In rotation</b> marks the cards the device actually cycles through daily;
-the rest stay in the catalogue. Numbers are catalogue frames from
+the rest stay in the catalog. Numbers are catalog frames from
 <code>Project&nbsp;Docs/Plans/strava-data/epaper-feed-brainstorm.md</code>.
 </p>
 </div>

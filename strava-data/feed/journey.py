@@ -42,7 +42,7 @@ def point_at(cor, miles):
 
 
 def split_index(cor, miles):
-    """Index in the path where the travelled portion ends."""
+    """Index in the path where the traveled portion ends."""
     cum = cor["cum_mi"]
     for i, v in enumerate(cum):
         if v >= miles:

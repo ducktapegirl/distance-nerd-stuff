@@ -79,7 +79,7 @@ class Welder:
     endpoints are near-coincident rather than identical. Plain grid rounding is
     not enough to join them -- two endpoints 1 km apart can straddle a cell
     boundary, which shattered the network into 229 components and made obviously
-    reachable cities unroutable. Searching the 3x3 neighbourhood fixes it.
+    reachable cities unroutable. Searching the 3x3 neighborhood fixes it.
     """
 
     def __init__(self, tol=SNAP):

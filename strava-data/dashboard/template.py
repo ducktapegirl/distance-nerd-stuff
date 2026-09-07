@@ -889,7 +889,7 @@ function miniMap(a) {{
 // Reuses the Places hero's style scheme (charts_places.py): backdrop-v4-dark in
 // dark, the custom Glow-light style in light. Per-panel maps are tracked so they
 // can be torn down on close (browsers cap live WebGL contexts ~16), and lazily
-// initialised so a showDay stack only spins up the maps actually scrolled into view.
+// initialized so a showDay stack only spins up the maps actually scrolled into view.
 var MM_MAPS = [];
 function mmStyleUrl() {{
   var slug = document.documentElement.classList.contains('light')
@@ -1268,11 +1268,11 @@ function syncRange(sourceId, ed) {{
   // Dark-theme gray text hexes baked into figures by tidy_dark / chart builders.
   // Annotations using THESE are re-colored on theme change to the current
   // secondary text color.
-  // Includes the light-theme --text-secondary/--text-tertiary grey (#424a53 ==
+  // Includes the light-theme --text-secondary/--text-tertiary gray (#424a53 ==
   // rgb(66,74,83)) so that once an annotation has been retinted to the light
-  // grey, switching back to dark still matches and retints to #8b949e. Without
+  // gray, switching back to dark still matches and retints to #8b949e. Without
   // it the light->dark transition was one-way (label stuck at low-contrast light
-  // grey on the dark plot).
+  // gray on the dark plot).
   var GRAY_TEXT = ['#8b949e', '#e6edf3', '#424a53', 'rgb(66,74,83)'];
   // Brand-colored annotation text (teal/amber/violet) is baked with the DARK
   // palette hex by the chart builders, but the dark variants are low-contrast on

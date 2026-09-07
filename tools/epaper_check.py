@@ -58,7 +58,7 @@ SHOT_DIR = os.path.join(_REPO, "tools", "preview-output", "epaper")
 W, H = 800, 480
 MIN_TEXT = 26
 MIN_STROKE = 3
-MIN_ITEMS = 17          # the rotation's size; the catalogue is far larger
+MIN_ITEMS = 17          # the rotation's size; the catalog is far larger
 
 # Display-units policy. Word-boundary matched so "5km" is caught but
 # "Kilometre Road" as a segment name is not mistaken for a unit.

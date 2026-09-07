@@ -1440,7 +1440,7 @@ _HERO_TEMPLATE = r"""<div class="places-hero" id="places-hero">
 
     // Pass 1 — contrasting casing/standoff. Drawn source-over (a white casing
     // under 'multiply', or a dark one under 'lighter', would be a no-op), and
-    // BEFORE any colored line so a casing never nicks a neighbour's color. White
+    // BEFORE any colored line so a casing never nicks a neighbor's color. White
     // on light, near-ground-dark on dark; faded with each route's own alpha.
     ctx.globalCompositeOperation = 'source-over';
     ctx.lineWidth = lw + 2.0;

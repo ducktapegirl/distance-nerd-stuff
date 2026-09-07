@@ -171,6 +171,6 @@ Ordered by dependency. Each milestone ends with its own test point — don't pro
 | Code review | default | low | Small, contained diff |
 
 ## Related docs
-- [Session Handoff — Running Log Dashboard](../Handoffs/running-log/session-handoff.md)
-- [Design Handoff — Running Log](../Specs/running-log/design_handoff_running_log/readme.md)
-- [CLAUDE.md — Running Log Architecture](../../CLAUDE.md)
+- [Session Handoff — Running Log Dashboard](../../Handoffs/running-log/session-handoff.md)
+- [Design Handoff — Running Log](../../Specs/running-log/design_handoff_running_log/readme.md)
+- [CLAUDE.md — Running Log Architecture](../../../CLAUDE.md)

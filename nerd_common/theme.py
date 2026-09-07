@@ -1,7 +1,7 @@
 """Shared Plotly dark-theme styling and HTML-embedding helpers.
 
 Both dashboards style their figures identically apart from two values (the grid
-colour and the title font), so those are parameters here. Each dashboard has a
+color and the title font), so those are parameters here. Each dashboard has a
 thin local theme.py that supplies its two values and re-exports tidy_dark /
 fig_html, letting every chart builder keep calling the bare tidy_dark(fig) and
 fig_html(fig, ...) unchanged.

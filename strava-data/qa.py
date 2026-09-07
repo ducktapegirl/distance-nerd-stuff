@@ -195,7 +195,7 @@ def check_peaks_do_not_clobber_trip_fly_box(rows, html):
     trip's other two days drawn but off-screen.
 
     Guards both halves: the payload carries a priority, and the publish loop
-    actually honours it rather than last-writer-wins.
+    actually honors it rather than last-writer-wins.
     """
     _f, _b, pc, _s, _p = _passport_data(rows)
     _pk, pd = _peaks_data(rows)

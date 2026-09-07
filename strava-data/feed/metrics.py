@@ -248,7 +248,7 @@ def title_of_day(acts, ordinal):
 
 
 def route_of_day(acts, ordinal, max_points=180):
-    """A deterministic GPS activity, its path normalised into a 0..1 box.
+    """A deterministic GPS activity, its path normalized into a 0..1 box.
 
     Reads one streams file only - the whole streams dir is 42 MB and a card
     that needs one route should not pay for all of it.
@@ -281,7 +281,7 @@ def route_of_day(acts, ordinal, max_points=180):
     w = max((x1 - x0) * coslat, 1e-9)
     h = max(y1 - y0, 1e-9)
     scale = max(w, h)
-    # Normalise so the dominant axis spans 0..1 and report the other axis's
+    # Normalize so the dominant axis spans 0..1 and report the other axis's
     # extent, rather than letterboxing into a square. A wide, flat route can
     # then be scaled to fill the card's rectangle instead of being penned into
     # the middle third of a square.
@@ -303,7 +303,7 @@ def ytd_compare(acts, asof):
     return {"year": asof.year, "this": upto(asof.year), "last": upto(asof.year - 1)}
 
 
-# --- metrics added for the full card catalogue ---------------------------
+# --- metrics added for the full card catalog ---------------------------
 
 def rest_days(acts, asof):
     """Days since the last full rest day, and the longest rest gap ever."""
@@ -538,8 +538,8 @@ def last_with_laps(acts):
 
 
 def route_for(act, max_points=180):
-    """Normalised path for one specific activity, or None."""
-    from .places import normalise
+    """Normalized path for one specific activity, or None."""
+    from .places import normalize
     path = os.path.join(STREAMS_DIR, f"{act['id']}.csv")
     if not os.path.exists(path):
         return None
@@ -554,7 +554,7 @@ def route_for(act, max_points=180):
     if len(pts) > max_points:
         step = len(pts) / max_points
         pts = [pts[int(i * step)] for i in range(max_points)]
-    return normalise(pts)
+    return normalize(pts)
 
 
 def segment_pace_by_grade(efforts, act_by_id):
