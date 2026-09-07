@@ -156,18 +156,9 @@ Audited against the real data rather than assumed:
 
 ## Known gaps
 
-- **No keyboard access to individual activities.** ← → change year, but there
-  is no way to reach a spoke without a pointer: 194 spokes would mean 194 tab
-  stops, so arrow-keys stepping through days is the right answer and it is not
-  built.
-- **`year.html` is ~1.5 MB** with all three years embedded, almost all bloom
-  path data (already decimated 6:1). Fine as a page, but it wants a
-  Douglas–Peucker pass before shipping to the Pages site, and the cost grows
-  with every year added.
-- **The bloom's rotation-by-day currently reads as texture, not information** —
-  color is spent on sport, so a January limb looks like a July one. Open choice:
-  keep sport-color and accept the ground as pure texture, or color the bloom by
-  month and let the clock carry sport alone.
-- **Metric morph is not built** — remapping spoke length to duration, elevation
-  or suffer score. Likely the highest-value next addition, since the shape of
-  *hardest* is probably not the shape of *longest*.
+Tracked in
+[`../2026-09-07-year-art-future-work.md`](../2026-09-07-year-art-future-work.md):
+Douglas–Peucker simplification (the page is ~1.5 MB of bloom path data, and a
+sub-pixel tolerance would remove three quarters of the points), metric morph,
+keyboard access to individual activities, a draw-on animation, ambient mode, a
+deep link to a single activity, and scrub damping.
