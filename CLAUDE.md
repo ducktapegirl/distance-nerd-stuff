@@ -128,13 +128,36 @@ MapLibre and no CDN beyond the two webfonts. It reads `running-log/running_log.c
 `utf-8-sig`) and `strava-data/data/activities.csv` directly, and renders fewer stat lines rather
 than failing when an input is missing.
 
-**The tile art is a placeholder.** `landing/art.py` exposes exactly two functions —
-`college_art(rows)` and `strava_art(rows)`, each returning an inline SVG string — and that
-docstring is the whole contract (inline SVG, theme-aware `var(--art-*, #fallback)`, fluid
-`viewBox`, deterministic, ~40 KB, legible at 240 px). To build the real art, replace those two
-function bodies and nothing else; the twelve candidate directions, their in-repo precedents, and
-the decisions still open are in
-[`Project Docs/Plans/landing-art.md`](Project%20Docs/Plans/landing-art.md).
+**The tile art.** `landing/art.py` exposes exactly two artwork functions — `college_art(rows)`
+(**Ring of Seasons**: four concentric ribbons, one per academic year, thickness = that week's
+mileage) and `strava_art(rows, tracks=…)` (**Route Grid**: 48 GPS routes on an 8×6 sheet of square
+cells, colored by sport family). Its docstring is the whole contract: inline SVG, theme-aware
+`var(--art-*, #fallback)`, fluid `viewBox`, deterministic, ~40 KB, legible at 240 px.
+
+Two constraints that are easy to get wrong:
+
+- **The frame is 4:3 (640×480), not square.** `.tile-art-wrap` is `aspect-ratio: 4 / 3` and
+  `slice`s, so a square artwork silently loses 12.5% off the top and the same off the bottom.
+- **`ART_COLORS` in `art.py` is the single source** of both the SVG's literal fallbacks and the
+  `--art-*` custom properties `template.py` writes into `:root` **and** `:root.light`. Add a color
+  there, never in one place only — a value defined in just one block is how the light theme ships
+  broken.
+
+`strava_art` needs GPS, which `data.load_strava()` supplies via `geometry.track()`. **Reading all
+378 streams costs ~1.5 s** and is the most expensive thing this build does; it loads all of them
+rather than only the 48 drawn because the grid ranks candidates on the *shape* of their bounding
+box, so the selection can't be made before the geometry is in hand.
+
+`landing/geometry.py` **copies** `track()` / `simplify()` / `path()` from
+`strava-data/dashboard/art_year.py` rather than importing them — importing `dashboard.art_year`
+drags in `dashboard.config`, which calls `load_dotenv()` and reads `MAPTILER_KEY`, exactly the
+dependency `landing/` is defined against (and `strava-data` isn't a legal package name anyway).
+Same trade `poster_40for40.py` makes. Change the projection in one, change it in all three.
+
+The ten directions that lost, and the proof sheet that decided it, are under
+[`Project Docs/Plans/landing-art.md`](Project%20Docs/Plans/landing-art.md) and
+`Project Docs/Plans/landing-art/proofs/` — regenerate with
+`uv run python tools/proof_landing_art.py`.
 
 The light/dark/system control is shared across all three pages via `nerd_common/theme_ui.py`,
 which owns the `dns-theme` localStorage key. **Both dashboards still carry their own copies** of

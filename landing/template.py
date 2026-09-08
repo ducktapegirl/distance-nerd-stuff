@@ -21,8 +21,15 @@ from nerd_common.tokens import (
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_TERTIARY,
 )
 
+from .art import art_css
+
 CSS = f"""
 :root {{
+  /* Tile artwork. Owned by landing/art.py, which also supplies the literal
+     fallbacks baked into the SVG — one source, so the two cannot drift. Every
+     one of these needs a value in BOTH blocks below or the light theme ships
+     broken, the same rule the Strava dashboard states for applyChartTheme(). */
+  {art_css()}
   --bg-base: {BG_BASE};
   --bg-surface: {BG_SURFACE};
   --bg-elevated: {BG_ELEVATED};
@@ -41,6 +48,7 @@ CSS = f"""
 }}
 
 :root.light {{
+  {art_css(light=True)}
   --bg-base: #ffffff;
   --bg-surface: #f3f4f6;
   --bg-elevated: #ffffff;
@@ -186,7 +194,76 @@ main {{ flex: 1; max-width: 1100px; margin: 0 auto; padding: 0 32px 64px; width:
 @media (prefers-reduced-motion: reduce) {{
   .tile {{ animation: none; }}
   .tile:hover, .tile:focus-visible {{ transform: none; }}
+  .explainer summary::after {{ transition: none; }}
 }}
+
+/* ─── "What are these graphics?" ──────────────────────────────────────── */
+
+/* A native <details>, so the theme toggle stays the only script on the page.
+   Quieter than the tiles on purpose — it sits under the two doors and must not
+   compete with them for the click. */
+.explainer {{
+  margin-top: 24px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}}
+.explainer summary {{
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  cursor: pointer;
+  font-size: 14px; font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 16px;
+}}
+/* Suppress the UA disclosure triangle in both engines, so ::after is the only
+   marker and it can be positioned at the end of the row. */
+.explainer summary {{ list-style: none; }}
+.explainer summary::-webkit-details-marker {{ display: none; }}
+.explainer summary:hover {{ color: var(--text-primary); }}
+.explainer summary:focus-visible {{
+  outline: 2px solid var(--accent); outline-offset: -2px;
+}}
+/* Chevron drawn from borders rather than set as a glyph — no dependency on the
+   webfont having arrived, or on it carrying the character. */
+.explainer summary::after {{
+  content: ''; flex: none;
+  width: 7px; height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}}
+.explainer[open] summary::after {{ transform: translateY(2px) rotate(-135deg); }}
+
+.explainer-body {{
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px 40px;
+  padding: 4px 24px 24px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: -1px;
+}}
+.explainer-body h3 {{
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 18px 0 8px;
+}}
+.explainer-body p {{
+  margin: 0 0 10px;
+  font-size: 13px; line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}}
+.legend {{
+  display: flex; flex-wrap: wrap; gap: 6px 16px;
+  list-style: none; margin: 12px 0 0; padding: 0;
+  font-family: 'Geist Mono', monospace; font-size: 11px;
+  color: var(--text-tertiary);
+}}
+.legend li {{ display: flex; align-items: center; gap: 7px; }}
+.legend i {{ width: 10px; height: 10px; border-radius: 2px; flex: none; }}
 
 /* ─── Footer ──────────────────────────────────────────────────────────── */
 
@@ -211,5 +288,9 @@ main {{ flex: 1; max-width: 1100px; margin: 0 auto; padding: 0 32px 64px; width:
   .topnav-row, main, .site-footer {{ padding-left: 20px; padding-right: 20px; }}
   .hero {{ padding: 40px 0 28px; }}
   .tiles {{ grid-template-columns: 1fr; gap: 20px; }}
+  .explainer {{ margin-top: 20px; }}
+  .explainer summary {{ padding: 16px 20px; }}
+  /* One column, and the two sections stack in the same order as the tiles */
+  .explainer-body {{ grid-template-columns: 1fr; gap: 0; padding: 4px 20px 22px; }}
 }}
 """

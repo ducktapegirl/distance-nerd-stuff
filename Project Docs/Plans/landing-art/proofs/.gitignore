@@ -1,0 +1,4 @@
+# The proof sheet inlines all fourteen pieces twice over plus a 36-cell pairing
+# matrix, so it is ~290 KB of duplicated SVG. Run proof_landing_art.py to
+# rebuild it; the .svg files beside it are the record.
+proofs.html

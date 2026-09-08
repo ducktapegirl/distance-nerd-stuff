@@ -9,6 +9,7 @@ import csv
 import os
 
 from .config import ACTIVITIES_CSV, RUNNING_LOG_CSV
+from .geometry import track
 
 KM_PER_MILE = 1.609344
 
@@ -37,7 +38,7 @@ def load_college():
     """running_log.csv → {rows, stats}. utf-8-sig: the file carries a BOM."""
     rows = _rows(RUNNING_LOG_CSV, "utf-8-sig")
     if not rows:
-        return {"rows": [], "stats": []}
+        return {"rows": [], "tracks": {}, "stats": []}
 
     dates = sorted(r["date"] for r in rows if r.get("date"))
     miles = sum(_num(r.get("miles")) for r in rows)
@@ -52,16 +53,34 @@ def load_college():
 
 
 def load_strava():
-    """activities.csv → {rows, stats}. Streams are not read here."""
+    """activities.csv → {rows, tracks, stats}.
+
+    `tracks` is the per-activity GPS the Route Grid tile draws — every stream
+    that has one, projected and recentered by geometry.track(). Reading all 378
+    costs about 1.5 s, which is the most expensive thing this build does and
+    still nothing beside `uv sync`; they are committed, so CI, fork PRs and
+    fresh clones all have them and no precomputed asset is needed.
+
+    Loading every track rather than only the 48 that get drawn is deliberate:
+    the grid ranks candidates on the *shape* of their bounding box, so the
+    selection cannot be made before the geometry is in hand.
+    """
     rows = _rows(ACTIVITIES_CSV, "utf-8")
     if not rows:
-        return {"rows": [], "stats": []}
+        return {"rows": [], "tracks": {}, "stats": []}
+
+    tracks = {}
+    for r in rows:
+        t = track(r["id"], step=8)
+        if t:
+            tracks[r["id"]] = t
 
     dates = sorted(r["start_date_local"] for r in rows if r.get("start_date_local"))
     miles = sum(_num(r.get("distance_km")) for r in rows) / KM_PER_MILE
     sports = len({r.get("sport_type") for r in rows if r.get("sport_type")})
     return {
         "rows": rows,
+        "tracks": tracks,
         "kicker": f"{dates[0][:4]} – {dates[-1][:4]}",
         "stats": [
             f"{len(rows):,} activities",

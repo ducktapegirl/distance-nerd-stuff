@@ -9,16 +9,66 @@ from .config import REPO_URL, SITE_BLURB, SITE_TITLE, TILES
 from .data import load_college, load_strava
 from .template import CSS
 
-# One art generator per tile key. Adding a third dashboard means adding a TILES
-# entry and a generator here; nothing else in this module is tile-specific.
+# One art generator per tile key, each taking the whole payload so a tile can
+# ask for more than `rows` — the Route Grid needs the GPS tracks as well.
+# Adding a third dashboard means adding a TILES entry and a generator here;
+# nothing else in this module is tile-specific.
 _ART = {
-    "college": college_art,
-    "strava":  strava_art,
+    "college": lambda p: college_art(p["rows"]),
+    "strava":  lambda p: strava_art(p["rows"], tracks=p.get("tracks")),
 }
 
 
+def _explainer_html():
+    """The "What are these graphics?" panel that sits under the two tiles.
+
+    A native <details>, so it costs no JavaScript — the theme toggle is still
+    the only script on the page — and it gets keyboard support, the disclosure
+    role and find-in-page expansion for free.
+
+    Deliberately explains the two things about each drawing that are not
+    guessable: that the college rings pinch to nothing where the log stops, and
+    that every route in the grid is scaled to its own cell, so a cell shows
+    shape and not distance. It adds no outbound links; the page still has three.
+    """
+    return """      <details class="explainer">
+        <summary>What are these graphics?</summary>
+        <div class="explainer-body">
+          <section>
+            <h3>College &mdash; Ring of Seasons</h3>
+            <p>Four rings, one per academic year: innermost is 2003&ndash;04, outermost
+            2006&ndash;07. Each ring is a single year read clockwise from the top, starting
+            in August, and its thickness at any point is the miles run that week.</p>
+            <p>Where nothing was logged the ring pinches to nothing. That is why the inner
+            ring opens at the top &mdash; the log begins a few weeks into freshman fall &mdash;
+            and why the outer one stops three&#8209;quarters of the way round, at graduation in
+            May 2007. There is no GPS in this era at all; it was a paper log, so the drawing
+            is built from dates and mileage alone.</p>
+          </section>
+          <section>
+            <h3>Strava &mdash; Route Grid</h3>
+            <p>Forty&#8209;eight real GPS tracks, one to a cell, drawn from every activity that
+            recorded a route. Each is scaled to fill its own square, so a cell shows a
+            route's <em>shape</em>, not its size &mdash; a two&#8209;mile loop and a
+            twenty&#8209;mile ride are drawn just as large.</p>
+            <p>The picks are spread across sports in proportion to how often each one
+            appears, and favour routes that fill a square rather than running off in a
+            line. A few near&#8209;straight cells survive that: those are genuine
+            out&#8209;and&#8209;backs.</p>
+            <ul class="legend">
+              <li><i style="background: var(--art-run, #2dd4bf)"></i>run</li>
+              <li><i style="background: var(--art-mtb, #f59e0b)"></i>bike</li>
+              <li><i style="background: var(--art-foot, #a3e635)"></i>hike / walk</li>
+              <li><i style="background: var(--art-snow, #60a5fa)"></i>snow</li>
+              <li><i style="background: var(--art-other, #f472b6)"></i>everything else</li>
+            </ul>
+          </section>
+        </div>
+      </details>"""
+
+
 def _tile_html(meta, payload):
-    art = _ART[meta["key"]](payload["rows"])
+    art = _ART[meta["key"]](payload)
     # Data-derived date range wins over the config default — the Strava log's
     # start date moves as history is backfilled, and a stale hardcoded year on
     # the front door is exactly the kind of thing nobody notices for a year.
@@ -71,6 +121,7 @@ def build_html():
       <div class="tiles">
 {tiles}
       </div>
+{_explainer_html()}
     </main>
     <footer class="site-footer">
       Report problems using the provided
