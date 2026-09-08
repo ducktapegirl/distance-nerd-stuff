@@ -229,17 +229,18 @@ def year_layer(acts, tracks, year, scale, interactive=True, visible=False):
 
     # ground: the bloom, scaled so a typical route fills the frame. The handful
     # of travel days deliberately run off-canvas rather than shrinking
-    # everything else to fit them.
+    # everything else to fit them. Every track keeps its true compass
+    # orientation (north up, east right, per track()) rather than being
+    # rotated to its day-of-year angle -- local routes that share real
+    # streets/trails overlap into recognizable shapes instead of smearing
+    # into a wedge of the ring.
     s = (S * 0.46) / ext
     out.append('<g class="art-bloom" stroke-linejoin="round" fill="none">')
     for a in acts:
         t = tracks.get(a["id"])
         if not t:
             continue
-        th = (a["dt"].timetuple().tm_yday - 1) / nd * 2 * math.pi
-        ct, st = math.cos(th), math.sin(th)
-        pp = simplify([(C + (x * ct - y * st) * s, C + (x * st + y * ct) * s)
-                       for x, y in t])
+        pp = simplify([(C + x * s, C + y * s) for x, y in t])
         tag = ('class="art-trace art-fam-%s" data-id="%s" ' % (a["fam"], a["id"])) \
             if interactive else ""
         out.append('<path %sd="%s" stroke="%s" stroke-width="0.9" opacity="0.38"/>'
