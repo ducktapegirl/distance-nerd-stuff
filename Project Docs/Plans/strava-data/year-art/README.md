@@ -52,10 +52,14 @@ years.
 
 | File | What it is |
 |---|---|
-| `year.html` | the piece standalone — same fragment the Art tab renders, in a bare page |
 | `year.svg` | the 2025 composition, static (what a print export would start from) |
 | `grid.svg`, `spiral.svg`, `bloom.svg`, `clock.svg` | the four exploration proofs |
 | `proofs.html` | contact sheet of all five — gitignored, rebuild to view |
+
+**Theme:** the Art tab follows the dashboard's light/dark/system toggle — every color the piece
+emits is a `--art-*` CSS custom property, themed purely by the cascade (no `applyChartTheme()`
+involvement). `year.svg` and the four proof SVGs above are emitted with literal hex colors instead
+and stay dark and print-ready in any renderer, including ones with no CSS support at all.
 
 ## The composition
 

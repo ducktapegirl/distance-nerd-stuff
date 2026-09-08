@@ -17,7 +17,7 @@ from datetime import date
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dashboard.art_year import (  # noqa: E402
-    ART_BG, COLOR, FAM_LABEL, UNMAPPED, art_fragment, by_year, fmt_day, load,
+    ART_BG, COLOR, FAM_LABEL, UNMAPPED, by_year, fmt_day, load,
     load_tracks, ndays, path, scale_of, static_svg,
 )
 
@@ -263,21 +263,6 @@ section{max-width:1180px;margin:0 auto 56px}
     with open(p, "w", encoding="utf-8") as f:
         f.write(html)
     print("wrote", p)
-
-    # the interactive piece, exactly as the dashboard's Art tab renders it
-    p = os.path.join(OUT, "year.html")
-    page = ('<!doctype html><meta charset="utf-8">'
-            '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            '<title>Years in motion</title>'
-            '<style>:root{--border:#334155;--border-subtle:#1e293b;'
-            '--text-primary:#e2e8f0;--text-secondary:#94a3b8}'
-            'body{background:%s;margin:0;padding:24px;'
-            'font:15px/1.5 system-ui,sans-serif;color:var(--text-secondary)}'
-            '#art-svg{max-width:min(94vw,82vh)}</style>' % BG
-            + art_fragment(load()))
-    with open(p, "w", encoding="utf-8") as f:
-        f.write(page)
-    print("wrote", p, "(%.1f MB)" % (os.path.getsize(p) / 1e6))
 
 
 if __name__ == "__main__":

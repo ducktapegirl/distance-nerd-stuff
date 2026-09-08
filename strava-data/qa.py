@@ -14,6 +14,7 @@ from pathlib import Path
 from dashboard.config import OUT_HTML
 from dashboard.data import load_activities
 from dashboard.charts_places import _passport_data, _away_clusters, _peaks_data
+from dashboard.art_year import prepare as _art_prepare, scale_of as _art_scale_of, year_layer as _art_year_layer
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -227,6 +228,77 @@ def check_peaks_do_not_clobber_trip_fly_box(rows, html):
                   f'trip box wins, loop priority-gated')
 
 
+def check_art_theme_vars(rows, html):
+    """
+    The Art tab's year clock is themed by CSS custom properties (--art-*)
+    cascading into an inline SVG, not by applyChartTheme() -- see
+    dashboard-spec.md "Art tab" > Rules this view has that the others do not.
+    A literal hex slipping back into the interactive path renders as black,
+    which is nearly invisible next to the dark ground in a screenshot but
+    obvious in the source, so this guards the source directly: no literal
+    color attributes inside #art-svg, both theme blocks declare the same
+    --art-* names (a token added to one and forgotten in the other is
+    invisible in a single-theme screenshot), and the static/print path (which
+    must stay literal -- rasterizers don't implement var()) never emits var(.
+    """
+    svg_m = re.search(r'<svg id="art-svg".*?</svg>', html, re.DOTALL)
+    if not svg_m:
+        return False, 'no <svg id="art-svg"> found in built HTML'
+    svg = svg_m.group(0)
+
+    style_m = re.search(r'<style>(.*?--art-run.*?)</style>', html, re.DOTALL)
+    if not style_m:
+        return False, 'no art <style> block found (no --art-run in any <style>)'
+    style = style_m.group(1)
+
+    failures = []
+
+    literal = sorted(set(re.findall(r'(?:stroke|fill|stop-color)="(#[0-9a-fA-F]+)"', svg)))
+    if literal:
+        failures.append(f"literal hex color(s) in #art-svg: {literal}")
+
+    if "--art-" not in svg:
+        failures.append("no --art-* custom property referenced inside #art-svg")
+
+    root_m = re.search(r':root\{([^}]*)\}', style)
+    light_m = re.search(r':root\.light\{([^}]*)\}', style)
+    root_names = set()
+    if not root_m or not light_m:
+        failures.append("could not find both :root and :root.light token blocks")
+    else:
+        root_names = set(re.findall(r'(--art-[\w-]+)\s*:', root_m.group(1)))
+        light_names = set(re.findall(r'(--art-[\w-]+)\s*:', light_m.group(1)))
+        if root_names != light_names:
+            failures.append(
+                f":root and :root.light --art-* sets differ -- "
+                f"only in :root: {sorted(root_names - light_names)}, "
+                f"only in :root.light: {sorted(light_names - root_names)}")
+
+    if "ARTBG" in html:
+        failures.append('"ARTBG" placeholder leaked into the built HTML')
+    if "background:var(--art-bg)" not in html:
+        failures.append("#art-svg background is not background:var(--art-bg)")
+
+    legend_m = re.search(r'<div class="art-bar" id="art-legend">(.*?)</div>', html, re.DOTALL)
+    if legend_m and 'style="background:#' in legend_m.group(1):
+        failures.append("legend swatch still uses an inline literal background")
+
+    acts = _art_prepare(list(rows))
+    if not acts:
+        failures.append("no activities to exercise the static year_layer() path")
+    else:
+        year = acts[0]["yr"]
+        year_acts = [a for a in acts if a["yr"] == year]
+        static = _art_year_layer(year_acts, {}, year, _art_scale_of(year_acts, {}),
+                                 interactive=False, visible=True)
+        if "var(" in static:
+            failures.append("year_layer(interactive=False) leaked var( into its output")
+
+    if failures:
+        return False, '; '.join(failures)
+    return True, f'{len(root_names)} --art-* tokens, equal in :root and :root.light'
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -237,6 +309,7 @@ CHECKS = [
     ("Places Hero -- Trip Data", check_multiday_trip_day_counts),
     ("Places Hero -- Trip Data", check_trip_fly_box_contains_route),
     ("Places Hero -- Trip Data", check_peaks_do_not_clobber_trip_fly_box),
+    ("Art -- Theme",             check_art_theme_vars),
 ]
 
 
