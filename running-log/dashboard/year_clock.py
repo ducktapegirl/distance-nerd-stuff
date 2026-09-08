@@ -1,20 +1,26 @@
 """The "Year Clock" -- a radial year-clock of running-only daily mileage,
 modeled on the Strava dashboard's art_year.py but without the GPS bloom: no
-tracks, no sport families, no legend. Lives on the Overview tab, directly
-above Cumulative Mileage.
+tracks, no sport families. Lives on the Overview tab, directly above
+Cumulative Mileage.
+
+Its Workout Type / Miles Intensity mode toggle reuses the heatmap's own
+`.hm-toggle` buttons/classes and TYPE_COLORS palette, so the two views share
+one color-mode state and one legend (the heatmap's, directly above) rather
+than each carrying a duplicate.
 
 Markup only: the CSS (`.yc-*` rules) and JS (year picker, click-to-highlight,
-calendar-selection sync) live in template.py's CSS/JS constants, matching the
-heatmap's split (SVG built here, styling/behavior centralized there) rather
-than art_year.py's self-contained inline <style>/<script> style.
+calendar-selection sync, mode toggle) live in template.py's CSS/JS constants,
+matching the heatmap's split (SVG built here, styling/behavior centralized
+there) rather than art_year.py's self-contained inline <style>/<script>
+style.
 """
 
 import json
 import math
 from datetime import date
 
-from dashboard.config import MONTH_ABBR
-from dashboard.data import maybe_float
+from dashboard.config import MONTH_ABBR, TYPE_COLORS
+from dashboard.data import map_type, maybe_float
 
 # Workout types that are cross-training, not running -- excluded even on the
 # handful of days where they carry a nonzero miles value.
@@ -29,9 +35,13 @@ R0, R1 = 168, 402    # inner ring, outer reach of the longest spoke
 
 
 def _daily_running_miles(rows):
-    """{date: {"miles": float, "runs": int}} for running-only entries, summed
-    per day (not maxed like heatmap_html -- a two-a-day should add up here)."""
+    """{date: {"miles": float, "runs": int, "type": str}} for running-only
+    entries. "miles" is summed per day (not maxed like heatmap_html -- a
+    two-a-day should add up here); "type" is the design-type (easy/long/
+    tempo/workout/race) of that day's single biggest entry, the same
+    tie-break heatmap_html uses, so the two views agree on a day's color."""
     by_date = {}
+    best_miles = {}
     for r in rows:
         d = r["date"]
         if not d:
@@ -42,9 +52,12 @@ def _daily_running_miles(rows):
         miles = maybe_float(r["miles"]) or 0
         if miles <= 0 and r["is_race"] != "1":
             continue
-        rec = by_date.setdefault(d, {"miles": 0.0, "runs": 0})
+        rec = by_date.setdefault(d, {"miles": 0.0, "runs": 0, "type": "easy"})
         rec["miles"] += miles
         rec["runs"] += 1
+        if miles >= best_miles.get(d, -1):
+            best_miles[d] = miles
+            rec["type"] = map_type(r["workout_type"], r["is_race"] == "1")
     return by_date
 
 
@@ -111,9 +124,11 @@ def _year_layer(year, day_recs, mx, visible):
         else:
             ln = R0 + (R1 - R0) * math.sqrt(min(miles / mx, 1.0)) if mx else R0
             r0, r1 = R0, max(ln, R0 + 4)
+        type_color = TYPE_COLORS[day_recs[d]["type"]]
         spokes.append(
-            '<line class="yc-spoke" data-date="%s" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>'
-            % (d, C + r0 * math.cos(ang), C + r0 * math.sin(ang),
+            '<line class="yc-spoke" data-date="%s" data-type-color="%s" '
+            'x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>'
+            % (d, type_color, C + r0 * math.cos(ang), C + r0 * math.sin(ang),
                C + r1 * math.cos(ang), C + r1 * math.sin(ang)))
         hr0 = R0 - 15
         hits.append(
@@ -163,7 +178,13 @@ def year_clock_html(rows):
 
     return f"""
     <div class="card yc-card">
-      <div class="card-title">Year Clock</div>
+      <div class="card-header">
+        <div class="card-title">Year Clock</div>
+        <div class="hm-mode-toggle">
+          <button class="hm-toggle" data-mode="type">Workout Type</button>
+          <button class="hm-toggle active" data-mode="intensity">Miles Intensity</button>
+        </div>
+      </div>
       <svg id="yc-svg" viewBox="0 0 {S} {S}">
         {layers}
       </svg>
