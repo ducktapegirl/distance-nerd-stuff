@@ -598,6 +598,52 @@ main {{
 .race-card[data-date]:focus {{ outline: 2px solid var(--accent); outline-offset: 2px; }}
 .hm-cell[data-date] {{ cursor: pointer; }}
 
+/* Year Clock */
+#yc-svg {{
+  width: 100%; max-width: 560px; height: auto; display: block;
+  margin: 0 auto;
+}}
+.yc-year {{ transition: opacity 220ms ease; }}
+.yc-tick {{ stroke: var(--border-subtle); stroke-width: 1; }}
+.yc-ring {{ stroke: var(--border-subtle); stroke-width: 1; }}
+.yc-month {{
+  fill: var(--text-tertiary); font-size: 14px;
+  font-family: 'Geist Mono', monospace;
+}}
+.yc-num {{
+  fill: var(--text-primary); font-size: 52px;
+  font-family: 'Geist', sans-serif;
+}}
+.yc-sub {{
+  fill: var(--text-secondary); font-size: 14px;
+  font-family: 'Geist Mono', monospace;
+}}
+.yc-spoke {{
+  stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round;
+  opacity: 0.85; transition: opacity 120ms;
+}}
+#yc-svg.sel .yc-spoke:not(.on) {{ opacity: 0.25; }}
+.yc-spoke.on {{ opacity: 1; filter: drop-shadow(0 0 4px var(--accent)); }}
+.yc-hit {{ stroke: transparent; stroke-width: 13; cursor: pointer; }}
+.yc-bar {{
+  display: flex; gap: 0; flex-wrap: wrap; justify-content: center;
+  margin-top: 4px;
+  border: 1px solid var(--border-subtle); border-radius: 999px;
+  overflow: hidden; padding: 2px; width: fit-content; max-width: 100%;
+  margin-left: auto; margin-right: auto;
+}}
+.yc-bar button {{
+  border: none; background: none; border-radius: 999px;
+  padding: 7px 18px; font-family: 'Geist Mono', monospace; font-size: 13px;
+  letter-spacing: 0.5px; color: var(--text-secondary); cursor: pointer;
+}}
+.yc-bar button:hover {{ color: var(--text-primary); }}
+.yc-bar button[aria-pressed="true"] {{ background: var(--border-subtle); color: var(--text-primary); }}
+.yc-bar button.partial::after {{ content: '•'; color: var(--accent); margin-left: 4px; }}
+@media (max-width: 480px) {{
+  .yc-bar button {{ padding: 6px 10px; font-size: 12px; }}
+}}
+
 /* PR cards */
 .pr-grid {{
   display: grid;
@@ -1208,6 +1254,89 @@ document.querySelectorAll('.hm-toggle').forEach(btn => {
   });
 });
 
+// ─── Year Clock ─────────────────────────────────────────────────────────────
+(function() {
+  var svg = document.getElementById('yc-svg');
+  var dataEl = document.getElementById('yc-data');
+  if (!svg || !dataEl) return;
+  var D = JSON.parse(dataEl.textContent);
+  var layers = {}, spokes = {}, yr = null, cur = null;
+
+  document.querySelectorAll('.yc-year').forEach(g => { layers[g.dataset.year] = g; });
+
+  function updateButtons(y) {
+    document.querySelectorAll('#yc-years button').forEach(b => {
+      b.setAttribute('aria-pressed', b.dataset.year === y ? 'true' : 'false');
+    });
+  }
+
+  function rebuildSpokes(y) {
+    spokes = {};
+    layers[y].querySelectorAll('.yc-spoke').forEach(el => { spokes[el.dataset.date] = el; });
+  }
+
+  function select(dateStr) {
+    if (cur === dateStr) return;
+    if (cur && spokes[cur]) spokes[cur].classList.remove('on');
+    cur = dateStr;
+    if (!dateStr) { svg.classList.remove('sel'); return; }
+    var el = spokes[dateStr];
+    if (el) { el.classList.add('on'); svg.classList.add('sel'); }
+    else { svg.classList.remove('sel'); }
+  }
+
+  function setYear(y) {
+    y = String(y);
+    if (!layers[y] || y === yr) return;
+    select(null);
+    if (yr && layers[yr]) layers[yr].style.display = 'none';
+    layers[y].style.display = '';
+    yr = y;
+    rebuildSpokes(y);
+    updateButtons(y);
+  }
+
+  function fadeToYear(y) {
+    y = String(y);
+    if (!layers[y] || y === yr) return;
+    var prev = yr ? layers[yr] : null;
+    var next = layers[y];
+    yr = y;
+    rebuildSpokes(y);
+    updateButtons(y);
+    next.style.display = '';
+    next.style.opacity = '0';
+    void next.getBoundingClientRect();   // force reflow so the transition replays
+    if (prev) prev.style.opacity = '0';
+    requestAnimationFrame(() => { next.style.opacity = '1'; });
+    setTimeout(() => {
+      if (prev) { prev.style.display = 'none'; prev.style.opacity = ''; }
+      next.style.opacity = '';
+    }, 260);
+  }
+
+  // Calendar / date-chart selection sync: called from openDetail() below.
+  window.__yearClockGoTo = function(dateStr) {
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+    var y = dateStr.slice(0, 4);
+    if (!layers[y]) return;
+    if (y !== yr) fadeToYear(y);
+    select(dateStr);
+  };
+
+  svg.querySelectorAll('.yc-hit').forEach(hit => {
+    hit.addEventListener('click', () => {
+      select(hit.dataset.date);
+      if (window.__openRaceDetail) window.__openRaceDetail(hit.dataset.date);
+    });
+  });
+  document.querySelectorAll('#yc-years button').forEach(b => {
+    b.addEventListener('click', () => setYear(b.dataset.year));
+  });
+
+  setYear(D.start);
+})();
+
 // ─── Note row → highlight calendar cell ─────────────────────────────────────
 function flashHeatmapCell(dateStr) {
   if (!dateStr) return;
@@ -1380,6 +1509,7 @@ DATE_CHART_IDS.forEach(id => {
     panel.classList.add('open');
     panel.setAttribute('aria-hidden', 'false');
     backdrop.classList.add('open');
+    if (window.__yearClockGoTo) window.__yearClockGoTo(dateStr);
   }
   function closeDetail() {
     panel.classList.remove('open');
