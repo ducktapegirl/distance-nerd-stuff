@@ -64,9 +64,17 @@ and stay dark and print-ready in any renderer, including ones with no CSS suppor
 ## The composition
 
 The piece stacks two of the four proofs. **The bloom (C)** is the ground: every
-GPS track from a shared origin, each rotated by its day of year, held back in
-tone so it reads as texture. **The year clock (B)** is the figure: 365 days
-around a ring, bar length = distance, thickness = duration, color = family.
+GPS track from a shared origin, at true compass orientation (north up, east
+right — unrotated), held back in tone so it reads as texture. **The year clock
+(B)** is the figure: 365 days around a ring, bar length = distance, thickness =
+duration, color = family.
+
+An earlier version rotated each track to its day-of-year angle instead, so the
+bloom read as "a year" rather than "a place" — every trace was smeared into its
+own wedge of the ring. North-up reads the other way: routes that share real
+streets or trails overlap into a recognizable knot near the center, and travel
+days branch off toward wherever they actually went rather than toward their
+calendar slot.
 
 Two things had to be true for the stack to work, and neither was obvious from
 the separate proofs:

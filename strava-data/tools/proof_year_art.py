@@ -189,8 +189,8 @@ def concept_year(acts, tracks):
 
 CONCEPTS = [
     ("year", "The piece &#183; year clock on the bloom",
-     "B standing on C: every 2025 track from a shared origin, rotated by day of "
-     "year, held back as ground; the year clock as figure. Bar length = distance, "
+     "B standing on C: every 2025 track from a shared origin, true north up, "
+     "held back as ground; the year clock as figure. Bar length = distance, "
      "thickness = duration, color = sport family.", concept_year),
     ("grid", "A &#183; Calendar grid",
      "12&#215;31 cells, one route per day at true relative scale within its month. "

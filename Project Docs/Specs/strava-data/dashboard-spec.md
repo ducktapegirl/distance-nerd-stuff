@@ -1976,8 +1976,10 @@ Every activity of a calendar year in one figure, with a picker for each year pre
 
 - **Ring (figure):** one spoke per activity at its exact day-of-year angle. Length = distance
   (`sqrt`-scaled), thickness = duration, color = sport family.
-- **Bloom (ground):** every GPS track of that year drawn from a shared origin and rotated to its
-  day-of-year, held at 0.38 opacity so it reads as texture.
+- **Bloom (ground):** every GPS track of that year drawn from a shared origin, at true compass
+  orientation (north up, east right — the same axes `track()` projects into, unrotated), held at
+  0.38 opacity so it reads as texture. Local routes that share real streets or trails overlap into
+  a recognizable knot rather than smearing into a wedge of the ring.
 - **Figure–ground link:** a spoke and its own bloom trace share a `data-id`; pointing at one
   lights both. This is the reason the two views are stacked rather than shown side by side.
 - **Center readout, family filter, drag-to-scrub.** A day is ~7px of arc at the rim, so tapping a
