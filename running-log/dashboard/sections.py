@@ -16,6 +16,7 @@ from dashboard.components import heatmap_html, notes_search_html, pr_card_html, 
 from dashboard.data import map_type, maybe_float
 from dashboard.stats import compute_pr_cards
 from dashboard.theme import fig_html
+from dashboard.year_clock import year_clock_html
 
 
 def section_overview(rows, stats):
@@ -36,6 +37,7 @@ def section_overview(rows, stats):
       <div class="stat-grid">{"".join(cards)}</div>
       {notes_search_html(rows)}
       {heatmap_html(rows)}
+      {year_clock_html(rows)}
       <div class="card">
         <div class="card-title">Cumulative Mileage</div>
         {fig_html(chart_cumulative(rows), height=280, div_id="chart-cumulative")}

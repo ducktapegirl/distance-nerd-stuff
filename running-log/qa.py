@@ -303,6 +303,34 @@ def check_wordmark_font_size(rows, html):
     return True, f'.wordmark-name font-size: {size}px (>= 30px)'
 
 
+def check_year_clock_present(rows, html):
+    """The Year Clock's SVG and year-picker bar should be in the built HTML."""
+    missing = [id_ for id_ in ("yc-svg", "yc-years") if f'id="{id_}"' not in html]
+    if missing:
+        return False, f"Missing Year Clock elements: {', '.join(missing)}"
+    return True, "yc-svg and yc-years present"
+
+
+def check_year_clock_css_vars(rows, html):
+    """.yc-month/.yc-num/.yc-sub should use CSS vars, not hardcoded hex fills."""
+    hex_fill = re.compile(r'fill\s*:\s*#')
+    failures = []
+    for cls in ('.yc-month', '.yc-num', '.yc-sub'):
+        m = re.search(re.escape(cls) + r'\s*\{([^}]+)\}', html)
+        if m is None:
+            failures.append(f'{cls} CSS rule not found')
+            continue
+        block = m.group(1)
+        if 'var(--text-' not in block:
+            failures.append(f'{cls} does not use a var(--text-*) fill')
+        if hex_fill.search(block):
+            failures.append(f'{cls} has hardcoded hex fill color')
+
+    if failures:
+        return False, '; '.join(failures)
+    return True, '.yc-month, .yc-num, .yc-sub use var(--text-*)'
+
+
 def check_heatmap_css_vars(rows, html):
     """.hm-month and .hm-dow should use fill: var(--text-tertiary), not hardcoded hex."""
     hex_fill = re.compile(r'fill\s*:\s*#')
@@ -337,6 +365,8 @@ CHECKS = [
     ("HTML Structure",   check_chart_divs),
     ("HTML Structure",   check_detail_panel_no_hex),
     ("HTML Structure",   check_easy_pace_no_fill),
+    ("HTML Structure",   check_year_clock_present),
+    ("Theme & CSS",      check_year_clock_css_vars),
     ("Theme & CSS",      check_theme_system),
     ("Theme & CSS",      check_stat_card_hover_removed),
     ("Theme & CSS",      check_strava_button_text),

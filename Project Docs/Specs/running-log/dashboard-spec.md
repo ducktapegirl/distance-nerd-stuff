@@ -131,6 +131,18 @@ The dashboard ships six sections. `NAV_VIEWS` (order = tab order; first is defau
   `comments`/`extras` with per-type pills + live highlighting.
 - **Training calendar heatmap** (`heatmap_html`) — hand-rolled SVG, one row per year
   (2003–2007), 7×N cells, two color modes (Workout Type / Miles Intensity) toggled in JS.
+- **Year Clock** (`year_clock_html`, module `dashboard/year_clock.py`) — hand-rolled SVG
+  radial year-clock of running-only daily mileage (modeled on the Strava dashboard's
+  `art_year.py` "Years in motion" piece, minus the GPS bloom/legend/scrub-drag). One
+  spoke per running day (cross-training — bike/elliptical/pool/swim/aquajog — excluded
+  even when it carries miles), length = `sqrt(miles / max-day-across-all-years)`, angle =
+  day-of-year. `#yc-svg` + year-picker bar `#yc-years` (`div_id`-equivalent ids, not a
+  Plotly chart so not in `CHART_IDS`). Year switch is instant on a picker click; clicking
+  a spoke (`.yc-hit` hit targets) highlights it and opens the shared detail panel via the
+  existing `window.__openRaceDetail` bridge; selecting a date anywhere else on the page
+  (calendar cell, `plotly_click` on a date chart) drives the clock back via
+  `window.__yearClockGoTo`, called from `openDetail()` — fading to the right year first
+  (`fadeToYear`) if the picked date isn't in the year currently shown.
 - **Cumulative Mileage** — `chart_cumulative`, `div_id="chart-cumulative"`, h=280.
 
 ### 2. Volume — `section_volume` (eyebrow TRAINING)
@@ -190,4 +202,52 @@ in `template.py`.
      Verify vs recipe (pinned spot-check values dash-developer confirms and running-log-qa
      asserts). Leave nothing "TBD." -->
 
-_None yet — this section grows as the pipeline builds new views._
+### Year Clock (Overview, above Cumulative Mileage)
+
+- **Type**: Hand-rolled SVG radial "year clock" (one `<g class="yc-year">` per year,
+  toggled by the year picker), not a Plotly chart. Modeled on the Strava dashboard's
+  `art_year.py` year-clock, with the GPS bloom, legend, and scrub-drag removed.
+- **Data**: `running_log.csv` `date`/`workout_type`/`miles`/`is_race`. Per-day running
+  miles are **summed** (not maxed, unlike the heatmap — a two-a-day should add up),
+  after excluding cross-training `workout_type`s (`bike`, `elliptical`, `pool`, `swim`,
+  `aquajog`, `aqua jog`) even on the rare day one of those carries a nonzero `miles`
+  value (3 rows total in the CSV, ~2.5 mi combined). A day is admitted if
+  `miles > 0` or `is_race == "1"` (matches `heatmap_html`/`chart_cumulative`'s rule).
+- **X axis**: day-of-year angle (`(day_of_year - 1) / days_in_year * 360 - 90`,
+  leap-year-aware so Dec 31 lands at the same angle every year).
+- **Y axis**: spoke length from the inner ring, `sqrt(miles / mx)` where `mx` is the
+  single largest day's mileage **across every year** (one shared scale, so the year
+  picker is comparing like for like — a 5-miler in a lean year can't out-draw a
+  15-miler in a heavy one). A race day with a blank `miles` field gets a short tick
+  just inside the ring instead of a zero-length spoke (still counted in the center
+  subtitle).
+- **Color by**: nothing — single family (running only), single color (`var(--accent)`),
+  no legend.
+- **Interactivity**: Year picker (`#yc-years` buttons) — instant `display:none`/`''`
+  layer swap + `aria-pressed` update, no animation (same behavior as the Strava art
+  clock's picker). Clicking a spoke's hit target highlights it (`.on` class, dims the
+  rest via `#yc-svg.sel`) and opens the shared detail panel through the existing
+  `window.__openRaceDetail` global. Selecting a date anywhere else on the page (a
+  Training Calendar cell, or a `plotly_click` on any date-axis chart) calls
+  `window.__yearClockGoTo(dateStr)` from inside `openDetail()`: if that date's year
+  isn't the one currently shown, the clock **fades** to it (`fadeToYear`, ~220ms
+  opacity crossfade) before highlighting the day; if it's already the visible year,
+  only the highlight moves. The two directions are mutually idempotent (each of
+  `select`/`setYear`/`fadeToYear` no-ops when its target is already current), so a
+  clock click round-tripping through `openDetail` back to `__yearClockGoTo` cannot
+  loop or fight the highlight it just set.
+- **Edge cases**: A calendar-selected date with no running spoke (a cross-training-only
+  or rest day) clears any existing highlight but shows nothing new — there's no bar to
+  light up, by design. Partial years (2003 starts 31 Aug, 2007 ends 12 May) get a
+  `partial-year` note in the center subtitle and a `•` marker on their picker button,
+  with a `title` tooltip naming the actual date range — same convention as
+  `art_year.py`. Below 480px wide, picker buttons shrink (padding/font-size) so all
+  five years still fit on one line inside the pill without clipping against the
+  card's `overflow: hidden`.
+- **Verify vs recipe**: `2004-10-14` (elliptical, 1.0 mi) produces **no** spoke;
+  `2004-10-11`/`2004-10-16` (adjacent real running days) do. `running-log/qa.py`'s
+  `check_year_clock_present` asserts `#yc-svg`/`#yc-years` exist in the built HTML;
+  `check_year_clock_css_vars` asserts `.yc-month`/`.yc-num`/`.yc-sub` use
+  `var(--text-*)` rather than hardcoded hex (mirrors `check_heatmap_css_vars`).
+
+_This section grows as the pipeline builds new views._
