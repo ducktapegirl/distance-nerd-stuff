@@ -133,12 +133,16 @@ The dashboard ships six sections. `NAV_VIEWS` (order = tab order; first is defau
   (2003–2007), 7×N cells, two color modes (Workout Type / Miles Intensity) toggled in JS.
 - **Year Clock** (`year_clock_html`, module `dashboard/year_clock.py`) — hand-rolled SVG
   radial year-clock of running-only daily mileage (modeled on the Strava dashboard's
-  `art_year.py` "Years in motion" piece, minus the GPS bloom/legend/scrub-drag). One
+  `art_year.py` "Years in motion" piece, minus the GPS bloom/scrub-drag). One
   spoke per running day (cross-training — bike/elliptical/pool/swim/aquajog — excluded
   even when it carries miles), length = `sqrt(miles / max-day-across-all-years)`, angle =
   day-of-year. `#yc-svg` + year-picker bar `#yc-years` (`div_id`-equivalent ids, not a
-  Plotly chart so not in `CHART_IDS`). Year switch is instant on a picker click; clicking
-  a spoke (`.yc-hit` hit targets) highlights it and opens the shared detail panel via the
+  Plotly chart so not in `CHART_IDS`). Shares the heatmap's own Workout Type / Miles
+  Intensity mode toggle (same `.hm-toggle` buttons/classes, `config.TYPE_COLORS`
+  palette, and the heatmap's legend directly above — no duplicate legend on the clock
+  card) — clicking either card's toggle recolors and re-presses both. Year switch is
+  instant on a picker click; clicking a spoke (`.yc-hit` hit targets) highlights it and
+  opens the shared detail panel via the
   existing `window.__openRaceDetail` bridge; selecting a date anywhere else on the page
   (calendar cell, `plotly_click` on a date chart) drives the clock back via
   `window.__yearClockGoTo`, called from `openDetail()` — fading to the right year first
@@ -206,7 +210,7 @@ in `template.py`.
 
 - **Type**: Hand-rolled SVG radial "year clock" (one `<g class="yc-year">` per year,
   toggled by the year picker), not a Plotly chart. Modeled on the Strava dashboard's
-  `art_year.py` year-clock, with the GPS bloom, legend, and scrub-drag removed.
+  `art_year.py` year-clock, with the GPS bloom and scrub-drag removed.
 - **Data**: `running_log.csv` `date`/`workout_type`/`miles`/`is_race`. Per-day running
   miles are **summed** (not maxed, unlike the heatmap — a two-a-day should add up),
   after excluding cross-training `workout_type`s (`bike`, `elliptical`, `pool`, `swim`,
@@ -221,8 +225,14 @@ in `template.py`.
   15-miler in a heavy one). A race day with a blank `miles` field gets a short tick
   just inside the ring instead of a zero-length spoke (still counted in the center
   subtitle).
-- **Color by**: nothing — single family (running only), single color (`var(--accent)`),
-  no legend.
+- **Color by**: Two modes, shared with the Training Calendar heatmap's own toggle
+  (same `.hm-toggle` buttons/classes on both cards — clicking either one drives both):
+  **Miles Intensity** (default) — every spoke `var(--accent)` via CSS, no per-day
+  distinction; **Workout Type** — each spoke's `stroke` is set inline to
+  `config.TYPE_COLORS[type]` (easy/long/tempo/workout/race), where `type` is the
+  design-type of that day's single biggest entry (same tie-break `heatmap_html` uses,
+  so the two views agree on a day's color). No legend on the clock card itself — the
+  heatmap's legend directly above already explains the same palette in the same mode.
 - **Interactivity**: Year picker (`#yc-years` buttons) — instant `display:none`/`''`
   layer swap + `aria-pressed` update, no animation (same behavior as the Strava art
   clock's picker). Clicking a spoke's hit target highlights it (`.on` class, dims the

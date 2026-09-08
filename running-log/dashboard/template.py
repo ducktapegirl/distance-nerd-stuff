@@ -1229,11 +1229,12 @@ activateView(viewFromHash(), true);
 function accentColor() {
   return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#58a6ff';
 }
+// Shared by every .hm-toggle group on the page (the Training Calendar's and
+// the Year Clock's) -- one color-mode state, kept in sync wherever it's shown.
 document.querySelectorAll('.hm-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
     const mode = btn.dataset.mode;
-    document.querySelectorAll('.hm-toggle').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    document.querySelectorAll('.hm-toggle').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
     const accent = accentColor();
     document.querySelectorAll('.hm-cell').forEach(cell => {
       if (cell.classList.contains('hm-rest')) return;
@@ -1250,6 +1251,12 @@ document.querySelectorAll('.hm-toggle').forEach(btn => {
     });
     document.querySelectorAll('.hm-legend').forEach(l => {
       l.hidden = (l.dataset.mode !== mode);
+    });
+    // Year Clock spokes: an inline style (not an attribute, like the heatmap's
+    // fill) so it beats the .yc-spoke{stroke:var(--accent)} CSS rule; clearing
+    // it in "intensity" mode lets that rule apply again.
+    document.querySelectorAll('.yc-spoke').forEach(spoke => {
+      spoke.style.stroke = (mode === 'type') ? spoke.dataset.typeColor : '';
     });
   });
 });
