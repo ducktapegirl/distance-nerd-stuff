@@ -1985,9 +1985,18 @@ Every activity of a calendar year in one figure, with a picker for each year pre
 
 ### Rules this view has that the others do not
 
-- **It keeps its own dark ground in both themes** (`ART_BG = #0b0f14`). The palette is tuned
-  against dark; in light mode it reads as a framed print on the card. `applyChartTheme()` does not
-  touch it and does not need to.
+- **It follows the light/dark/system toggle via CSS custom properties, not `applyChartTheme()`.**
+  `ART_CSS` declares a `--art-*` token set on `:root` (dark) and `:root.light`, and every color the
+  inline SVG emits is `var(--art-<name>, <literal>)` -- the same mechanism the Overview activity
+  heatmap uses (`charts_production.py`). `applyChartTheme()` is still uninvolved; the cascade alone
+  is enough because the SVG is inline in the document. In light mode `--art-bg` equals
+  `--bg-elevated` (`#ffffff`), so the piece sits flush with the card instead of keeping a boxed dark
+  ground. The family palette is retuned for light (Tailwind-700 relatives of the dark 400s), not
+  inverted -- the dark hexes are too low-contrast on white at 0.9px.
+  The **static/print path is the deliberate exception**: `static_svg()` (feeding `year.svg` and the
+  proof sheet) always calls `year_layer(interactive=False)`, which emits literal hex colors, never
+  `var(...)`. That path is consumed by rasterizers (cairosvg, resvg, Inkscape) that don't implement
+  CSS custom properties, so it must stay literal and keeps `ART_BG = #0b0f14` as its dark ground.
 - **Everything it emits is namespaced `art-` / `ART_`.** The page already defines `ACT`; the art's
   activity map is `window.ART_DATA.act`, and every id is `art-*`. Do not drop the prefix.
 - **One scale shared across years** (longest activity in the whole file, and an 85th-percentile
@@ -2031,5 +2040,10 @@ duplication is the trap being avoided. That tool still owns the four exploration
 - Pointing at a hit lights both the spoke and its trace, and fills the center readout.
 - Legend toggles dim spokes, traces **and** hit targets together; the filter survives a year switch.
 - No console errors, and no collision with the page's existing `ACT` global.
-- Light and dark: the art keeps its dark ground in both; the legend and picker chrome resolve via
-  `--border-subtle` / `--text-secondary` and change with the theme.
+- Light and dark: the piece itself is themed via `--art-*` custom properties (ground, family
+  colors, ring/month ink, numeral, opacities all flip); the legend and picker chrome resolve via
+  `--border-subtle` / `--text-secondary`. In light, `--art-bg` equals `--bg-elevated` and the
+  legend swatches, ring, month labels, and center readout all pick up the light token values --
+  none of it renders as a literal hex or a `var()` that failed to substitute (which paints black).
+  The static/print SVGs (`year.svg`, the proof sheet) are unaffected by the toggle and stay literal
+  dark on every rebuild.

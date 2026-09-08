@@ -46,8 +46,22 @@ COLOR = {"run": "#2dd4bf", "mtb": "#f59e0b", "foot": "#a3e635",
 FAM_LABEL = {"run": "run", "mtb": "bike", "foot": "hike / walk",
              "snow": "snow", "other": "other"}
 
-# The piece keeps its own dark ground in both themes -- the colors are tuned
-# against it, and it reads as a framed print rather than a chart card.
+
+def paint(key, interactive):
+    """A family color: themed via --art-<key> when interactive, literal for
+    the static/print path (rasterizers don't implement var())."""
+    return "var(--art-%s, %s)" % (key, COLOR[key]) if interactive else COLOR[key]
+
+
+def ink(token, literal, interactive):
+    """A non-family color (ground, ink, line) behind the same gate."""
+    return "var(--%s, %s)" % (token, literal) if interactive else literal
+
+
+# ART_BG is the dark literal: the ground and every halo/scrim stop on the
+# static/print path, which stays literal because rasterizers (cairosvg, resvg,
+# Inkscape) don't implement var(). On the interactive path it is the dark
+# value of --art-bg, themed by ART_CSS via paint()/ink() at each call site.
 ART_BG = "#0b0f14"
 
 S = 900             # viewBox, square
@@ -229,7 +243,7 @@ def year_layer(acts, tracks, year, scale, interactive=True, visible=False):
         tag = ('class="art-trace art-fam-%s" data-id="%s" ' % (a["fam"], a["id"])) \
             if interactive else ""
         out.append('<path %sd="%s" stroke="%s" stroke-width="0.9" opacity="0.38"/>'
-                   % (tag, path(pp), COLOR[a["fam"]]))
+                   % (tag, path(pp), paint(a["fam"], interactive)))
     out.append('</g>')
     # a tight scrim behind the center type only -- every track shares an origin,
     # so a wide one erases the bloom exactly where it is densest
@@ -237,22 +251,27 @@ def year_layer(acts, tracks, year, scale, interactive=True, visible=False):
                % (C, C, R0 * 1.04))
 
     # figure: the year clock
+    line_color = ink("art-line", "#243244", interactive)
+    bg_color = ink("art-bg", ART_BG, interactive)
+    mon_class = 'class="art-mon" ' if interactive else ""
     for m in range(12):
         deg = (date(year, m + 1, 1).timetuple().tm_yday - 1) / nd * 360 - 90
         a = math.radians(deg)
-        out.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#243244" '
+        out.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" '
                    'stroke-width="1"/>' % (C + R0 * math.cos(a), C + R0 * math.sin(a),
                                            C + (R1 + 16) * math.cos(a),
-                                           C + (R1 + 16) * math.sin(a)))
+                                           C + (R1 + 16) * math.sin(a), line_color))
         am = math.radians(deg + 15)
-        out.append('<text x="%.1f" y="%.1f" fill="#7c8ba1" font-family="system-ui" '
+        out.append('<text %sx="%.1f" y="%.1f" fill="%s" font-family="system-ui" '
                    'font-size="14" letter-spacing="1.5" text-anchor="middle" '
                    'paint-order="stroke" stroke="%s" stroke-width="5" '
                    'stroke-linejoin="round">%s</text>'
-                   % (C + (R1 + 36) * math.cos(am), C + (R1 + 36) * math.sin(am),
-                      ART_BG, calendar.month_abbr[m + 1].upper()))
-    out.append('<circle cx="%.1f" cy="%.1f" r="%d" fill="none" stroke="#243244"/>'
-               % (C, C, R0))
+                   % (mon_class, C + (R1 + 36) * math.cos(am), C + (R1 + 36) * math.sin(am),
+                      ink("art-month", "#7c8ba1", interactive), bg_color,
+                      calendar.month_abbr[m + 1].upper()))
+    ring_class = 'class="art-ring" ' if interactive else ""
+    out.append('<circle %scx="%.1f" cy="%.1f" r="%d" fill="none" stroke="%s"/>'
+               % (ring_class, C, C, R0, line_color))
 
     # Same-day activities land on the identical angle and overlap exactly, so
     # paint order decides which is visible and reachable. Least "serious" first.
@@ -275,20 +294,23 @@ def year_layer(acts, tracks, year, scale, interactive=True, visible=False):
         out.append('<line %sx1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" '
                    'stroke-width="%.1f" stroke-linecap="round" opacity="0.9"/>'
                    % (tag, C + r0 * math.cos(ang), C + r0 * math.sin(ang),
-                      C + r1 * math.cos(ang), C + r1 * math.sin(ang), COLOR[a["fam"]], w))
+                      C + r1 * math.cos(ang), C + r1 * math.sin(ang),
+                      paint(a["fam"], interactive), w))
     out.append('</g>')
 
     out.append('<g class="art-rd-default">')
-    out.append('<text x="%.1f" y="%.1f" fill="#e2e8f0" font-family="system-ui" '
+    out.append('<text x="%.1f" y="%.1f" fill="%s" font-family="system-ui" '
                'font-size="52" letter-spacing="4" text-anchor="middle" '
                'paint-order="stroke" stroke="%s" stroke-width="7" '
-               'stroke-linejoin="round">%d</text>' % (C, C - 4, ART_BG, year))
+               'stroke-linejoin="round">%d</text>'
+               % (C, C - 4, ink("art-num", "#e2e8f0", interactive), bg_color, year))
     for i, line in enumerate(summary_lines(acts, year)):
-        out.append('<text x="%.1f" y="%.1f" fill="#64748b" font-family="system-ui" '
+        out.append('<text x="%.1f" y="%.1f" fill="%s" font-family="system-ui" '
                    'font-size="14" letter-spacing="1" text-anchor="middle" '
                    'paint-order="stroke" stroke="%s" stroke-width="5" '
                    'stroke-linejoin="round">%s</text>'
-                   % (C, C + 28 + i * 21, ART_BG, line))
+                   % (C, C + 28 + i * 21, ink("art-sub", "#64748b", interactive),
+                      bg_color, line))
     out.append('</g>')
 
     if interactive:
@@ -313,21 +335,38 @@ def year_layer(acts, tracks, year, scale, interactive=True, visible=False):
 # ─── page fragment ────────────────────────────────────────────────────────────
 
 ART_CSS = """
+:root{
+  --art-run:#2dd4bf;--art-mtb:#f59e0b;--art-foot:#a3e635;--art-snow:#60a5fa;--art-other:#f472b6;
+  --art-bg:#0b0f14;--art-line:#243244;--art-month:#7c8ba1;--art-num:#e2e8f0;--art-stat:#94a3b8;
+  --art-sub:#64748b;--art-partial:#f59e0b;
+  --art-trace-op:.38;--art-spoke-op:.9;--art-dim-spoke:.24;--art-dim-trace:.13;--art-off:.04;
+  --art-glow:drop-shadow(0 0 5px currentColor);
+}
+:root.light{
+  --art-run:#0d9488;--art-mtb:#b45309;--art-foot:#4d7c0f;--art-snow:#1d4ed8;--art-other:#be185d;
+  --art-bg:#ffffff;--art-line:#cbd5e1;--art-month:#64748b;--art-num:#0f172a;--art-stat:#475569;
+  --art-sub:#64748b;--art-partial:#c2710c;
+  --art-trace-op:.30;--art-spoke-op:1;--art-dim-spoke:.18;--art-dim-trace:.09;--art-off:.05;
+  --art-glow:none;
+}
 /* The piece is square, so at full card width it becomes ~1150px tall and the
    card turns into a scroll. Cap it and center it -- it reads as a framed print
    rather than a chart that should fill the column. */
 /* plain max-width: width:100% already caps it at the container, so min() adds
    nothing here */
 #art-svg{width:100%;max-width:720px;height:auto;display:block;
-  margin:0 auto;background:ARTBG;border-radius:10px;
+  margin:0 auto;background:var(--art-bg);border-radius:10px;
   touch-action:none;-webkit-tap-highlight-color:transparent}
-#art-svg.sel .art-spoke:not(.on){opacity:.24}
-#art-svg.sel .art-trace:not(.on){opacity:.13}
-.art-spoke.on{opacity:1;filter:drop-shadow(0 0 5px currentColor)}
+#art-svg #art-scrim stop{stop-color:var(--art-bg)}
+.art-trace{opacity:var(--art-trace-op)}
+.art-spoke{opacity:var(--art-spoke-op)}
+#art-svg.sel .art-spoke:not(.on){opacity:var(--art-dim-spoke)}
+#art-svg.sel .art-trace:not(.on){opacity:var(--art-dim-trace)}
+.art-spoke.on{opacity:1;filter:var(--art-glow)}
 .art-trace.on{opacity:1;stroke-width:2.4}
 .art-spoke,.art-trace{transition:opacity .12s}
-.art-spoke.off,.art-trace.off{opacity:.04}
-#art-svg.sel .art-spoke.off,#art-svg.sel .art-trace.off{opacity:.04}
+.art-spoke.off,.art-trace.off{opacity:var(--art-off)}
+#art-svg.sel .art-spoke.off,#art-svg.sel .art-trace.off{opacity:var(--art-off)}
 .art-hit{cursor:crosshair}
 .art-hit.off{pointer-events:none}
 .art-bar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px}
@@ -336,14 +375,19 @@ ART_CSS = """
   color:var(--text-secondary);font:inherit;font-size:13px;cursor:pointer}
 .art-bar button:hover{border-color:var(--border);color:var(--text-primary)}
 #art-legend button[aria-pressed=false]{opacity:.4}
-#art-legend i{width:10px;height:10px;border-radius:2px;display:block}
+.art-sw{width:10px;height:10px;border-radius:2px;display:block}
+.art-sw.art-fam-run{background:var(--art-run)}
+.art-sw.art-fam-mtb{background:var(--art-mtb)}
+.art-sw.art-fam-foot{background:var(--art-foot)}
+.art-sw.art-fam-snow{background:var(--art-snow)}
+.art-sw.art-fam-other{background:var(--art-other)}
 #art-years{gap:0;border:1px solid var(--border-subtle);border-radius:999px;
   overflow:hidden;padding:2px;width:max-content;margin-left:auto;margin-right:auto}
 #art-years button{border:none;border-radius:999px;padding:7px 20px;font-size:15px;
   letter-spacing:1px}
 #art-years button[aria-pressed=true]{background:var(--border-subtle);
   color:var(--text-primary)}
-#art-years button.partial::after{content:'\\2022';color:#f59e0b;font-size:15px;
+#art-years button.partial::after{content:'\\2022';color:var(--art-partial);font-size:15px;
   line-height:0}
 #art-hint{font-size:12px;color:var(--text-secondary);opacity:.8;min-height:1.2em;
   text-align:center;margin-top:8px}
@@ -534,24 +578,28 @@ def art_fragment(rows):
             }
 
     layers = "\n".join(year_layer(years[y], tracks, y, scale) for y in sorted(years))
-    halo = 'paint-order="stroke" stroke="%s" stroke-width="5" stroke-linejoin="round"' % ART_BG
+    halo = ('paint-order="stroke" stroke="%s" stroke-width="5" stroke-linejoin="round"'
+            % ink("art-bg", ART_BG, True))
     detail = ('<g id="art-rd-detail" pointer-events="none" style="display:none">'
-              '<text id="art-rd-date" x="%.1f" y="%.1f" fill="#64748b" '
+              '<text id="art-rd-date" x="%.1f" y="%.1f" fill="%s" '
               'font-family="system-ui" font-size="13" letter-spacing="1.5" '
               'text-anchor="middle" %s></text>'
-              '<text id="art-rd-name" x="%.1f" y="%.1f" fill="#e2e8f0" '
+              '<text id="art-rd-name" x="%.1f" y="%.1f" fill="%s" '
               'font-family="system-ui" font-size="21" text-anchor="middle" %s></text>'
-              '<text id="art-rd-stat" x="%.1f" y="%.1f" fill="#94a3b8" '
+              '<text id="art-rd-stat" x="%.1f" y="%.1f" fill="%s" '
               'font-family="system-ui" font-size="15" letter-spacing="0.5" '
               'text-anchor="middle" %s></text>'
-              '<text id="art-rd-sport" x="%.1f" y="%.1f" fill="#64748b" '
+              '<text id="art-rd-sport" x="%.1f" y="%.1f" fill="%s" '
               'font-family="system-ui" font-size="12" letter-spacing="1.5" '
               'text-anchor="middle" %s></text></g>'
-              % (C, C - 40, halo, C, C - 8, halo, C, C + 24, halo, C, C + 50, halo))
+              % (C, C - 40, ink("art-sub", "#64748b", True), halo,
+                 C, C - 8, ink("art-num", "#e2e8f0", True), halo,
+                 C, C + 24, ink("art-stat", "#94a3b8", True), halo,
+                 C, C + 50, ink("art-sub", "#64748b", True), halo))
 
     legend = "".join(
         '<button type="button" data-fam="%s" aria-pressed="true">'
-        '<i style="background:%s"></i>%s</button>' % (k, COLOR[k], FAM_LABEL[k])
+        '<i class="art-sw art-fam-%s"></i>%s</button>' % (k, k, FAM_LABEL[k])
         for k in COLOR)
     # set via textContent, so this needs real characters -- HTML entities would
     # render literally
@@ -561,15 +609,16 @@ def art_fragment(rows):
 
     data = {"act": meta, "ndays": ndays_map, "start": str(start), "hint": hint,
             "years": sorted(years)}
+    scrim_color = ink("art-bg", ART_BG, True)
     return (
-        "<style>" + ART_CSS.replace("ARTBG", ART_BG) + "</style>\n"
+        "<style>" + ART_CSS + "</style>\n"
         '<svg id="art-svg" viewBox="0 0 %d %d" xmlns="http://www.w3.org/2000/svg">\n' % (S, S)
         + '<defs><radialGradient id="art-scrim">'
           '<stop offset="0" stop-color="%s" stop-opacity="0.93"/>'
           '<stop offset="0.62" stop-color="%s" stop-opacity="0.86"/>'
           '<stop offset="1" stop-color="%s" stop-opacity="0"/>'
-          '</radialGradient></defs>\n' % (ART_BG, ART_BG, ART_BG)
-        + '<rect width="%d" height="%d" fill="%s"/>\n' % (S, S, ART_BG)
+          '</radialGradient></defs>\n' % (scrim_color, scrim_color, scrim_color)
+        + '<rect width="%d" height="%d" fill="%s"/>\n' % (S, S, scrim_color)
         + layers + "\n" + detail + "\n</svg>\n"
         '<div class="art-bar" id="art-legend">' + legend + "</div>\n"
         '<div class="art-bar" id="art-years">' + "".join(picker) + "</div>\n"
