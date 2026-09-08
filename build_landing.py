@@ -2,12 +2,10 @@
 """Build the landing page → running-log/index.html
 
 The site's front door: two glass tiles, running log on the left and Strava on
-the right, each fronted by an artistic SVG derived from that dashboard's data.
+the right, each fronted by an artistic SVG derived from that dashboard's data —
+Ring of Seasons and Route Grid, both in landing/art.py.
 
 Usage: uv run python build_landing.py  (from repo root)
-
-The art is currently a placeholder — see Project Docs/Plans/landing-art.md and
-landing/art.py. Everything else about the page is finished.
 """
 
 import os

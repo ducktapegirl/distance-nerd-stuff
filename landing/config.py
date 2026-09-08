@@ -9,9 +9,16 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUBLISH_DIR = os.path.join(_ROOT, "running-log")
 OUT_PATH    = os.path.join(PUBLISH_DIR, "index.html")
 
-# Inputs. Both are read directly; neither dashboard's build package is imported.
+# Inputs. All read directly; neither dashboard's build package is imported.
 RUNNING_LOG_CSV = os.path.join(PUBLISH_DIR, "running_log.csv")   # has a BOM
 ACTIVITIES_CSV  = os.path.join(_ROOT, "strava-data", "data", "activities.csv")
+
+# Per-activity GPS/elevation time-series, for the Strava tile's art. These are
+# committed (379 tracked files, ~42 MB), so CI, fork PRs and fresh clones all
+# have them and the art needs no precomputed asset — reading all 378 costs
+# ~1.5 s, which is nothing beside the rest of a deploy. landing/geometry.py is
+# the only thing that touches them.
+STREAMS_DIR = os.path.join(_ROOT, "strava-data", "data", "streams")
 
 SITE_TITLE = "distance nerd stuff"
 SITE_BLURB = "A project to teach myself agentic coding tools."
