@@ -152,7 +152,7 @@ convention. Assert against the `<svg id="art-svg">` slice and the art `<style>`:
    branch passes every other check
 
 > **Caveat worth knowing:** `strava-data/qa.py` is **not run by CI**. Both workflows run only
-> `running-log/qa.py`, which reads `running-log/index.html` and cannot see the art at all
+> `running-log/qa.py`, which reads `running-log/college.html` and cannot see the art at all
 > (`.github/workflows/pr-checks.yml:78`, `running-log/qa.py:18`). So this check is manual /
 > agent-invoked, like the rest of the Strava suite. Wiring `strava-data/qa.py` into `pr-checks.yml`
 > is a separate, larger decision — flag it, don't bundle it.

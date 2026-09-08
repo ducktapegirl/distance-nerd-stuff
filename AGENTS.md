@@ -7,7 +7,7 @@ pipeline. This is the map; the agents live in `.claude/agents/`, the orchestrato
 ## The two dashboards it serves
 ```
 strava-data   fetch.py → analyze_segments.py → build_dashboard.py → strava.html ┐
-running-log   parse_log.py → running_log.csv → visualize_log.py   → index.html ┤
+running-log   parse_log.py → running_log.csv → visualize_log.py   → college.html ┤
                                                                                 ▼
                             deploy.yml publishes running-log/ → GitHub Pages (pipeline's end)
 ```
@@ -17,7 +17,7 @@ running-log   parse_log.py → running_log.csv → visualize_log.py   → index.
 this pipeline being the point. "Frozen" below describes the data, never the dashboard.
 
 Each build writes a gitignored HTML file into `running-log/` — Strava's `strava.html` and the
-running log's `index.html`. That directory is the GitHub Pages publish root, so
+running log's `college.html`. That directory is the GitHub Pages publish root, so
 `.github/workflows/deploy.yml` rebuilds both from source and publishes the folder. The
 **deployed Pages site is the end of the pipeline**; the local HTML files are transient outputs,
 never committed. The two share `nerd_common/` (design tokens, theme helpers, formatters). One

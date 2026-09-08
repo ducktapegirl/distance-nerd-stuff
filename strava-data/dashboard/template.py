@@ -710,11 +710,19 @@ main {{
 
   /* #1 Topnav: stack title over date, compact switch button */
   .topnav-row {{ padding: 0 14px; }}
-  .topnav-row.row1 {{ height: auto; min-height: 48px; padding-top: 8px; padding-bottom: 8px; }}
+  /* Three controls (home / college log / theme) plus the wordmark no longer fit
+     on one 375px line, and space-between pushed the actions past the right edge
+     rather than shrinking anything. Let them drop to a second line instead. */
+  .topnav-row.row1 {{ height: auto; min-height: 48px; padding-top: 8px; padding-bottom: 8px;
+                      flex-wrap: wrap; row-gap: 8px; }}
+  .topnav-row.row1 .topnav-actions {{ margin-left: auto; }}
   .wordmark {{ flex-direction: column; align-items: flex-start; gap: 1px; }}
   .wordmark-name {{ font-size: clamp(15px, 4.2vw, 20px); }}
   .wordmark-meta {{ font-size: 11px; }}
   .back-link {{ white-space: nowrap; font-size: 10px; padding: 5px 9px; }}
+  /* Narrow nav: two back-links won't both fit their labels — the Home arrow
+     alone carries it, so the College Running Log link keeps its words. */
+  .back-link .home-label {{ display: none; }}
 
   /* #4 Bottom sheet */
   .detail-panel {{

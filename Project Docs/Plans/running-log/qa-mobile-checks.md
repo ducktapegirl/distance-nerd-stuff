@@ -15,7 +15,7 @@ root cause had already bitten the Strava dashboard three times in June. See
 
 Why the existing QA didn't catch them:
 
-- **`running-log/qa.py` is purely static** — it reads `index.html`/CSV as text and
+- **`running-log/qa.py` is purely static** — it reads `college.html`/CSV as text and
   greps. It can confirm a chart `<div>` exists but can't see rendered geometry (axis
   range, legend visibility, overflow), so none of these bugs were visible to it.
 - **The `running-log-qa` agent** (`.claude/agents/running-log-qa.md`) *does* have good
@@ -51,7 +51,7 @@ these failures automatically, reusing the working `tools/mobile_preview.py` engi
 ## What the rendered pass does
 
 Start the in-process `127.0.0.1` server on `running-log/`, launch a mobile-emulated
-Chromium at **375×812**, load `index.html`, then for each of the 6 tabs (**overview,
+Chromium at **375×812**, load `college.html`, then for each of the 6 tabs (**overview,
 volume, mix, performance, races, patterns**): activate the view (URL `#<view>` or click
 `.tab[data-view="<view>"]`), wait out the ~150 ms debounced relayout + any
 `window.__applyMobile()`, and run the checks against each **visible** chart

@@ -41,7 +41,7 @@ The calling agent supplies this parameter block. Nothing dashboard-specific is h
 
 ```
 target:    strava-data | running-log
-page:      the built HTML under running-log/ (strava.html | index.html)
+page:      the built HTML under running-log/ (strava.html | college.html)
 tabs:      the ordered tab list for this target
 chart ids: the expected chart div ids for this target
 exempt:    charts with no cartesian axis or legend — donuts, sparklines,
@@ -111,7 +111,7 @@ Split by strength rather than picking one — that is where the information gain
 
 ```
 --probe                     report usability and exit (0 usable / 2 not)
---page /index.html          which built page to serve (default /strava.html)
+--page /college.html        which built page to serve (default /strava.html)
 --desktop                   TRUE desktop render: 1440x900, DPR 1, no touch.
                             REQUIRED for the desktop pass -- without it a wide
                             viewport is still mobile-emulated, which is not a

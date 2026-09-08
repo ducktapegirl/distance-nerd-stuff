@@ -33,7 +33,7 @@ modules for the target:
   `data.py`, `config.py`, `theme.py`, `template.py`, `page.py`). Add `chart_*` to
   `charts.py` and `section_*` to `sections.py`, wire into `NAV_VIEWS` +
   `page._build_sections`, and add any new chart id to `running-log/qa.py`'s `CHART_IDS`.
-  Writes `running-log/index.html`.
+  Writes `running-log/college.html`.
 
 ## Inputs
 - The spec block(s) for the new view(s) under the target spec's "New views" section.
@@ -86,7 +86,7 @@ modules for the target:
 Run the profile's **build command** and confirm it exits cleanly and regenerates the output
 HTML:
 - `strava-data`: `uv run python strava-data/build_dashboard.py` → `running-log/strava.html`.
-- `running-log`: `uv run python running-log/visualize_log.py` → `running-log/index.html`,
+- `running-log`: `uv run python running-log/visualize_log.py` → `running-log/college.html`,
   then run the static suite `uv run python running-log/qa.py` (expect exit 0).
 
 Then verify the units policy yourself (don't leave it for QA):

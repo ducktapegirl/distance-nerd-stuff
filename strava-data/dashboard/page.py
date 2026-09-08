@@ -397,7 +397,10 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
       <span class="wordmark-meta">{date_range}</span>
     </div>
     <div class="topnav-actions">
-      <a class="back-link" href="index.html" title="College Running Log">
+      <a class="back-link" href="index.html" title="Back to the landing page">
+        <span>↑</span><span class="home-label">Home</span>
+      </a>
+      <a class="back-link" href="college.html" title="College Running Log">
         <span>←</span><span>College Running Log</span>
       </a>
       <div class="theme-toggle" role="group" aria-label="Theme">{theme_buttons}</div>

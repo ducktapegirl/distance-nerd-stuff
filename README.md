@@ -65,9 +65,10 @@ numpy, no pandas).
 
 ```bash
 uv sync                                          # install dependencies
-uv run python running-log/visualize_log.py       # build running-log/index.html
+uv run python running-log/visualize_log.py       # build running-log/college.html
 uv run python strava-data/build_dashboard.py     # build running-log/strava.html
 uv run python strava-data/build_feed.py          # build the e-paper feed
+uv run python build_landing.py                   # build running-log/index.html (landing page)
 ```
 
 Everything builds into `running-log/`, which is also what GitHub Pages
@@ -83,7 +84,8 @@ uv run python -m http.server 8765 --directory running-log
 
 | URL | What it is |
 |---|---|
-| `http://127.0.0.1:8765/index.html` | Running Log dashboard |
+| `http://127.0.0.1:8765/` | landing page — the front door to both dashboards |
+| `http://127.0.0.1:8765/college.html` | Running Log dashboard |
 | `http://127.0.0.1:8765/strava.html` | Strava dashboard |
 | `http://127.0.0.1:8765/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
 | `http://127.0.0.1:8765/epaper.html` | exactly what the panel gets today |

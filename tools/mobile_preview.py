@@ -37,12 +37,12 @@ Examples:
         --eval @tools/qa-checks/width-fill.js
 
     # Light-mode theme audit of the running-log dashboard:
-    uv run python tools/mobile_preview.py --page /index.html --theme light \
+    uv run python tools/mobile_preview.py --page /college.html --theme light \
         --eval @tools/qa-checks/contrast.js
 
     # Where the network blocks cdn.plot.ly, render charts from the installed
     # plotly package instead, so the chart-level checks still run:
-    uv run python tools/mobile_preview.py --page /index.html --offline-plotly \
+    uv run python tools/mobile_preview.py --page /college.html --offline-plotly \
         --click '.tab[data-view="performance"]' \
         --eval @tools/qa-checks/width-fill.js
 
