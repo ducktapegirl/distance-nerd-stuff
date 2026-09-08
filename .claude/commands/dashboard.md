@@ -32,7 +32,7 @@ Invoked as `/dashboard <target> maintenance`. No build pipeline.
 - **`running-log`** → run a light **inline** health-check yourself (no agent — the dataset
   is frozen, so there's no API or new data to watch):
   1. Smoke-run the build: `uv run python running-log/visualize_log.py` (expect clean exit +
-     regenerated `running-log/index.html`).
+     regenerated `running-log/college.html`).
   2. Run the static suite: `uv run python running-log/qa.py` (expect exit 0; surface any
      FAIL verbatim).
   3. Flag doc/prompt drift — e.g. references to an old `src/` layout, or agent/spec text
@@ -85,7 +85,7 @@ Walk these stages, pausing for approval after each:
 7. **Review gate** — run `/code-review` and `/security-review` on the diff. On material
    findings, loop back to Build.
 8. **Ship** — on user approval, ensure the build ran and the target's output HTML is
-   regenerated (`running-log/strava.html` or `running-log/index.html`). Pushing to `main`
+   regenerated (`running-log/strava.html` or `running-log/college.html`). Pushing to `main`
    triggers `.github/workflows/deploy.yml`, which rebuilds both dashboards and publishes to
    GitHub Pages. Offer to run `/reflect` to log the session.
 

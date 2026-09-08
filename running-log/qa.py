@@ -15,7 +15,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 _HERE = Path(__file__).parent   # running-log/
 CSV_PATH  = _HERE / "running_log.csv"
-HTML_PATH = _HERE / "index.html"
+HTML_PATH = _HERE / "college.html"
 
 # ---------------------------------------------------------------------------
 # Constants

@@ -114,7 +114,7 @@ agent passes a small block when it invokes the suite:
 
 ```
 target:      strava-data | running-log
-page:        /strava.html | /index.html
+page:        /strava.html | /college.html
 tabs:        overview, volume, trends, segments, map, exploratory
              | overview, volume, mix, performance, races, patterns
 chart ids:   (strava) enumerate from the built page
@@ -319,7 +319,7 @@ the CDN).
 2. **Suite runs green on both targets, both viewports:**
    ```
    uv run python tools/mobile_preview.py --page /strava.html  --eval @tools/qa-checks/axis-fill.js
-   uv run python tools/mobile_preview.py --page /index.html   --eval @tools/qa-checks/axis-fill.js
+   uv run python tools/mobile_preview.py --page /college.html   --eval @tools/qa-checks/axis-fill.js
    uv run python tools/mobile_preview.py --desktop --page /strava.html --eval @tools/qa-checks/dom-overlap.js
    ```
    …and the same for each check file, at 375/390 and desktop.

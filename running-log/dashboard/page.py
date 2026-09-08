@@ -86,6 +86,9 @@ def _assemble_html(rows, sections, day_index_json):
           <span class="wordmark-meta">{date_range}</span>
         </div>
         <div class="topnav-actions">
+          <a class="home-link" href="index.html" title="Back to the landing page">
+            <span>↑</span><span class="home-label">Home</span>
+          </a>
           <div class="theme-toggle" role="group" aria-label="Theme">
             <button type="button" data-theme="light" title="Light" aria-label="Light theme">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>

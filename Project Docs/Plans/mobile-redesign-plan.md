@@ -45,7 +45,7 @@ Replace the scattered 560/600/700/760/800/900px breakpoints with two tiers, defi
 ## Verification
 
 1. Rebuild both: `uv run python strava-data/build_dashboard.py` and `uv run python "running-log/visualize_log.py"`.
-2. Open `running-log/strava.html` and `running-log/index.html` in a browser with devtools device emulation at 375px (iPhone SE), 390px (iPhone 12/13/14), 414px (Plus/Pro Max), and 768px (tablet, to confirm the 900px tier is untouched).
+2. Open `running-log/strava.html` and `running-log/college.html` in a browser with devtools device emulation at 375px (iPhone SE), 390px (iPhone 12/13/14), 414px (Plus/Pro Max), and 768px (tablet, to confirm the 900px tier is untouched).
 3. Check: tab strip scrolls horizontally without wrapping; tap targets feel reachable; charts visibly resize when the emulated viewport is resized/rotated without a tab switch; Volume/Top-Segments/Heat/Archetypes (Strava) and Pace-Timeline/Monthly-by-Year/Workout-Mix (Running Log) show their simplified mobile variants; tapping a detail point opens a bottom sheet (not a full-screen side panel), dismissible via backdrop tap, Escape, and swipe-down.
 4. Toggle light/dark/system theme at each width to confirm `applyChartTheme()` still works untouched.
 5. Verify desktop (>900px) rendering is pixel-unchanged by diffing before/after screenshots at one wide viewport.

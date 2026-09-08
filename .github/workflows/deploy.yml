@@ -26,6 +26,9 @@ on:
       - "running-log/qa.py"
       - "running-log/running_log.csv"
       - "running-log/running_log_story.html"
+      - "landing/**"
+      - "build_landing.py"
+      - "nerd_common/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/deploy.yml"
@@ -79,6 +82,12 @@ jobs:
 
       - name: Build Running Log dashboard
         run: uv run python running-log/visualize_log.py
+
+      # The site's front door at running-log/index.html. Reads both dashboards'
+      # CSVs for its tile stats, so it comes after them by convention rather
+      # than necessity — it imports neither build package.
+      - name: Build landing page
+        run: uv run python build_landing.py
 
       # E-paper feed for the reTerminal Sticky via SenseCraft HMI. Writes
       # feed.xml / epaper.html / epaper-all.html / feed.json into running-log/,

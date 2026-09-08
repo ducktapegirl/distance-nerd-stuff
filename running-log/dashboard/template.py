@@ -115,6 +115,23 @@ html, body {{
 }}
 .wordmark-meta {{ font-family: 'Geist Mono', monospace; font-size: 16px; color: var(--text-tertiary); }}
 
+/* Up to the landing page. Neutral on purpose — the orange strava-btn beside it
+   is the call to action; this is just the way back out. */
+.home-link {{
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Geist', sans-serif;
+  font-size: 11px; font-weight: 600;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 6px 10px; border-radius: 7px;
+  cursor: pointer; text-decoration: none;
+  transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}}
+.home-link:hover {{
+  color: var(--accent); border-color: var(--accent); background: var(--accent-dim);
+}}
+
 .strava-btn {{
   display: inline-flex; align-items: center; gap: 6px;
   font-family: 'Geist', sans-serif;
@@ -965,11 +982,19 @@ main {{
 
   /* #1 Topnav: stack title over date, compact switch button */
   .topnav-row {{ padding: 0 14px; }}
-  .topnav-row.row1 {{ height: auto; min-height: 48px; padding-top: 8px; padding-bottom: 8px; }}
+  /* Three controls (home / theme / Strava) plus the wordmark no longer fit on
+     one 375px line, and space-between pushed the actions past the right edge
+     rather than shrinking anything. Let them drop to a second line instead. */
+  .topnav-row.row1 {{ height: auto; min-height: 48px; padding-top: 8px; padding-bottom: 8px;
+                      flex-wrap: wrap; row-gap: 8px; }}
+  .topnav-row.row1 .topnav-actions {{ margin-left: auto; }}
   .wordmark {{ flex-direction: column; align-items: flex-start; gap: 1px; }}
   .wordmark-name {{ font-size: clamp(17px, 5vw, 24px); }}
   .wordmark-meta {{ font-size: 11px; }}
   .strava-btn {{ white-space: nowrap; font-size: 10px; padding: 5px 9px; }}
+  /* Narrow nav: the arrow alone carries it, the word doesn't fit. */
+  .home-link {{ font-size: 10px; padding: 5px 8px; }}
+  .home-link .home-label {{ display: none; }}
 
   /* #5 Caption must not ride up into the (shorter) mobile plot */
   .chart-caption {{ margin-top: 0; }}

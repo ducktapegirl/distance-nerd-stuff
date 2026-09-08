@@ -147,7 +147,7 @@ Ordered by dependency. Each milestone ends with its own test point — don't pro
 
 ## Verification checklist
 
-1. **Build cleanly**: `uv run python "running-log/visualize_log.py"` → `running-log/index.html` builds, race counts unchanged (XC=31, Indoor=29, Outdoor=39).
+1. **Build cleanly**: `uv run python "running-log/visualize_log.py"` → `running-log/college.html` builds, race counts unchanged (XC=31, Indoor=29, Outdoor=39).
 2. **Regression suite**: `uv run python "running-log/qa.py"` passes (expectations updated per M7).
 3. **Visual checks** (via the (fixed) `tools/mobile_preview.py`, run un-sandboxed):
    - No season-best dotted lines on combined chart ✓

@@ -26,7 +26,9 @@ Human-facing documents (not agent-facing config) live under **`Project Docs/`**,
 ```
 strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
                     build_feed.py + feed/ → ../running-log/{feed.xml, epaper.html, epaper-all.html, feed.json, epaper/<id>.html} (e-paper output)
-running-log/        index.html, running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
+running-log/        college.html, index.html (landing), running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
+landing/            build_landing.py + landing/ package → running-log/index.html (the site's front door)
+nerd_common/        installed package of shared design tokens, Plotly theme, formatters, theme_ui (the light/dark control)
 Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
   Plans/              proposed/future work + cross-cutting
   Specs/              build specs + design handoffs: strava-data/ (dashboard-spec.md, mocks/), running-log/ (design_handoff_running_log/)
@@ -102,9 +104,43 @@ uv run python strava-data/build_dashboard.py                         # build HTM
 # Regenerate CSV from source HTML logs (only needed if parse_log.py changed):
 uv run python "running-log/parse_log.py"
 
-# Regenerate index.html:
+# Regenerate college.html:
 uv run python "running-log/visualize_log.py"
 ```
+
+## Build the landing page
+
+```bash
+uv run python build_landing.py   # writes running-log/index.html
+```
+
+The site's front door: two glass tiles, running log (`college.html`) on the left and Strava
+(`strava.html`) on the right, each fronted by an artistic SVG derived from that dashboard's own
+data. **Three outbound links and no more** — the two dashboards, plus a footer link to the repo
+for filing issues. It is a door, not a site index: the e-paper proof sheet and the story page
+stay reachable from where they already are.
+
+`build_landing.py` is a thin entrypoint; the work is in the `landing/` package (`config.py`,
+`data.py`, `art.py`, `template.py`, `page.py`). Its dependency rule is tighter than either
+dashboard's: **stdlib + `nerd_common` only.** It never imports `running-log/dashboard/` or
+`strava-data/dashboard/` — those pull in Plotly and a MapTiler key — and it ships no Plotly, no
+MapLibre and no CDN beyond the two webfonts. It reads `running-log/running_log.csv` (BOM,
+`utf-8-sig`) and `strava-data/data/activities.csv` directly, and renders fewer stat lines rather
+than failing when an input is missing.
+
+**The tile art is a placeholder.** `landing/art.py` exposes exactly two functions —
+`college_art(rows)` and `strava_art(rows)`, each returning an inline SVG string — and that
+docstring is the whole contract (inline SVG, theme-aware `var(--art-*, #fallback)`, fluid
+`viewBox`, deterministic, ~40 KB, legible at 240 px). To build the real art, replace those two
+function bodies and nothing else; the twelve candidate directions, their in-repo precedents, and
+the decisions still open are in
+[`Project Docs/Plans/landing-art.md`](Project%20Docs/Plans/landing-art.md).
+
+The light/dark/system control is shared across all three pages via `nerd_common/theme_ui.py`,
+which owns the `dns-theme` localStorage key. **Both dashboards still carry their own copies** of
+that script (theirs are entangled with `applyChartTheme()`, which retints Plotly figures) — so if
+the storage key ever changes, it must change in all three or a visitor's theme choice evaporates
+as they navigate.
 
 ## Build the e-paper feed (reTerminal Sticky / SenseCraft HMI)
 
@@ -236,7 +272,8 @@ uv run python -m http.server 8765 --directory "running-log"
 
 | Page | What it is |
 |---|---|
-| `/index.html`, `/strava.html` | the two dashboards |
+| `/index.html` | landing page — the two dashboards' front door |
+| `/college.html`, `/strava.html` | the two dashboards |
 | `/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
 | `/epaper.html` | exactly what the panel gets today |
 | `/epaper/<id>.html` | one card on its own |
@@ -283,7 +320,7 @@ Sport types in data: `Running`, `TrailRun` (both teal `#2dd4bf`), `MountainBikeR
 
 ## Source-of-truth split (avoid merge conflicts)
 
-The generated dashboards (`running-log/index.html`, `running-log/strava.html`) are **gitignored** — never committed. This keeps two sources of truth cleanly separated:
+The generated pages (`running-log/index.html` (landing), `running-log/college.html`, `running-log/strava.html`) are **gitignored** — never committed. This keeps two sources of truth cleanly separated:
 - **Data** is owned by the fetch workflow → commits only `strava-data/data/`.
 - **Features** (page structure/styling) are owned by the Python build scripts, committed locally.
 
@@ -301,7 +338,7 @@ Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manua
 
 ## CI on pull requests
 
-`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy): `uv sync --no-dev` → build both dashboards → build the e-paper feed → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `index.html` as text.
+`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy): `uv sync --no-dev` → build both dashboards → build the e-paper feed → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `college.html` as text.
 
 Two things it deliberately does **not** do, and shouldn't be "fixed" to do:
 - **It uses `pull_request`, never `pull_request_target`.** The repo is public; `pull_request_target` would run fork-authored code with secrets and a write token.

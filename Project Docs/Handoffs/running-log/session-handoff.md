@@ -15,14 +15,14 @@ the full design spec — colors, type scale, components.
 ## Pipeline
 ```
 source/*.html  →  src/parse_log.py  →  running_log.csv
-running_log.csv  →  src/visualize_log.py  →  index.html
+running_log.csv  →  running-log/visualize_log.py  →  college.html
 ```
 
 Regenerate dashboard:
 ```bash
 cd "running-log"
 C:\Users\Alisha\Anaconda3\python.exe src/visualize_log.py
-start "" index.html
+start "" college.html
 ```
 
 Note: `python` resolves to Anaconda2 (Python 2) on this machine — always use the full Anaconda3 path above.
@@ -35,7 +35,7 @@ C:\Users\Alisha\Anaconda3\python.exe src/parse_log.py
 ## QA
 Two layers: **static** is `src/qa.py` (data quality + HTML/CSS structure, run
 `uv run python "running-log/src/qa.py"`); **visual** is the `running-log-qa` agent (Preview
-MCP) — it renders `index.html` across desktop + mobile viewports and light + dark themes
+MCP) — it renders `college.html` across desktop + mobile viewports and light + dark themes
 (overlap, edge-clipping, contrast, and the mobile bottom-sheet).
 
 ## What's done in this branch
@@ -120,7 +120,7 @@ Font: Geist (body), Geist Mono (numbers)
 
 ## How to verify after changes
 1. `C:\Users\Alisha\Anaconda3\python.exe src/visualize_log.py` — should print `XC=31, Indoor=29, Outdoor=39, total=99`
-2. `start "" index.html` — opens in default browser (don't use `preview_start` for static HTML)
+2. `start "" college.html` — opens in default browser (don't use `preview_start` for static HTML)
 3. Click each top tab: Overview / Volume / Workout Mix / Performance / Races / Patterns
 4. On Overview: zoom a date chart → switch to Volume/Performance → other date charts should match range
 5. Click a chart point, a heatmap cell, and a race card → detail panel slides in with notes

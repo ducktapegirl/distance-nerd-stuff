@@ -6,7 +6,7 @@ model: sonnet
 ---
 
 You are a QA engineer reviewing a newly built **Running Log** dashboard
-(`running-log/index.html`, built by `running-log/visualize_log.py`). Run the checks below and
+(`running-log/college.html`, built by `running-log/visualize_log.py`). Run the checks below and
 return a structured report. Be specific — cite line numbers, chart ids, or check names. You do
 not edit code; you report PASS / FAIL / WARN and suggest fixes.
 
@@ -17,7 +17,7 @@ quality and HTML/CSS structure by static inspection, and you cover what only a r
 
 ## 1. Build integrity
 Run `uv run python "running-log/visualize_log.py"` and confirm it exits cleanly and
-regenerates `running-log/index.html`. If it errors, report the full traceback and stop.
+regenerates `running-log/college.html`. If it errors, report the full traceback and stop.
 
 ## 2. Static regression suite (qa.py)
 Run `uv run python "running-log/qa.py"` and report its result (exit 0 = all pass, 1 = any
@@ -36,7 +36,7 @@ Invoke the suite with this parameter block:
 
 ```
 target:    running-log
-page:      running-log/index.html
+page:      running-log/college.html
 tabs:      overview, volume, mix, performance, races, patterns
 chart ids: the 16 ids in running-log/qa.py (CHART_IDS)
 exempt:    spark-* sparklines, chart-donut, and the SVG calendar heatmap —

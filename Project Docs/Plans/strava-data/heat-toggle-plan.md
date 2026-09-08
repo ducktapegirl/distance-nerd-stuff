@@ -55,7 +55,7 @@ chosen and fully specified, so **Intake and Ideate can be skipped**. Stages to r
 - **QA** — dispatch `strava-qa` (build integrity, units policy, theme audit, toggle works
   in Preview MCP, label/clip checks). Loop back to Build on failures.
 - **Review gate** — `/code-review` + `/security-review` over the diff.
-- **Ship** — rebuild both `strava-data/strava.html` and `running-log/strava.html`.
+- **Ship** — rebuild `running-log/strava.html`.
 
 The orchestrator pauses for user approval between stages (as designed).
 

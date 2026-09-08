@@ -34,7 +34,7 @@ Machine-readable facts every shared `dash-*` agent loads first when the orchestr
   - No GPS, heart rate, elevation, cadence, power, or per-split arrays exist. This is the
     data-poverty contrast with Strava — plan views accordingly.
 - **Build command**: `uv run python running-log/visualize_log.py` (run from repo root).
-- **Output HTML**: `running-log/index.html` (gitignored — rebuilt by `deploy.yml`).
+- **Output HTML**: `running-log/college.html` (gitignored — rebuilt by `deploy.yml`).
 - **Static QA**: `uv run python running-log/qa.py` (exit 0 = pass, 1 = fail).
 - **QA agent**: `running-log-qa` (visual/rendered pass; the counterpart to `qa.py`).
 - **Module map** — `visualize_log.py` is a thin entrypoint. Add `chart_*` functions to

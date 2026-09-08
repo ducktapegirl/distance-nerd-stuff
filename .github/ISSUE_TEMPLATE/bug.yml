@@ -16,7 +16,7 @@ body:
       label: Which dashboard?
       options:
         - Strava dashboard (strava.html)
-        - Running Log (index.html)
+        - Running Log (college.html)
         - Both
         - Not sure
     validations:

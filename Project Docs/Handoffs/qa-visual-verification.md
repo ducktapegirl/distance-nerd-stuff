@@ -43,14 +43,14 @@ Nothing to install or change. From the repo root:
 
 ```bash
 # 1. Is this transport usable here? exit 0 = yes, 2 = no (JSON says why).
-uv run python tools/mobile_preview.py --probe --page /index.html
+uv run python tools/mobile_preview.py --probe --page /college.html
 
 # 2. Build both dashboards.
 uv run python strava-data/build_dashboard.py
 uv run python "running-log/visualize_log.py"
 
 # 3. Confirm charts actually render (this is the bit that was impossible).
-uv run python tools/mobile_preview.py --page /index.html \
+uv run python tools/mobile_preview.py --page /college.html \
   --eval '() => { const v=[...document.querySelectorAll(".js-plotly-plot")].filter(e=>e.offsetParent!==null); return JSON.stringify({plotly: !!window.Plotly, visible: v.length, rendered: v.filter(e=>!!e._fullLayout).length}); }'
 ```
 
@@ -82,11 +82,11 @@ So Playwright can fulfill the CDN request from disk. **This is wired into the CL
 
 ```bash
 # The transport reports usable even with the CDN blocked:
-uv run python tools/mobile_preview.py --probe --offline-plotly --page /index.html
+uv run python tools/mobile_preview.py --probe --offline-plotly --page /college.html
 # -> {"ok": true, "plotly": true, "plotly_local_version": "2.35.2", ...}, exit 0
 
 # Run any suite check against real rendered charts, no network needed:
-uv run python tools/mobile_preview.py --page /index.html --offline-plotly \
+uv run python tools/mobile_preview.py --page /college.html --offline-plotly \
   --click '.tab[data-view="performance"]' --eval @tools/qa-checks/width-fill.js
 ```
 
