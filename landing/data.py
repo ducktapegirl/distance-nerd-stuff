@@ -41,12 +41,25 @@ def load_college():
         return {"rows": [], "tracks": {}, "stats": []}
 
     dates = sorted(r["date"] for r in rows if r.get("date"))
-    miles = sum(_num(r.get("miles")) for r in rows)
+    # The log carries a row per logged day — rest days, pool sessions and blanks
+    # included — so len(rows) is not a run count. It read 1,274 against 1,138
+    # rows that actually recorded distance, overstating the front door by ~12%.
+    # Counting the rows with mileage also makes the two stats describe the same
+    # set, since that is exactly what `miles` sums over.
+    #
+    # Cross-training is deliberately NOT filtered out of that. `workout_type` is
+    # free text with 52 distinct values; only 9 rows with mileage look like
+    # cross-training at all, and 6 of those are hybrids ("run/aquajog") that did
+    # include running. Classifying 52 strings to move 3 rows and 22 miles would
+    # invent a judgement the running-log dashboard itself declines to make — its
+    # WORKOUT_TYPE_MAP folds bike, pool and elliptical in with intervals.
+    ran = [r for r in rows if _num(r.get("miles")) > 0]
+    miles = sum(_num(r.get("miles")) for r in ran)
     return {
         "rows": rows,
         "kicker": f"{dates[0][:4]} – {dates[-1][:4]}",
         "stats": [
-            f"{len(rows):,} runs",
+            f"{len(ran):,} runs",
             f"{miles:,.0f} miles",
         ],
     }
