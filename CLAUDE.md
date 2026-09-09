@@ -49,6 +49,24 @@ All scripts use a single UV-managed venv at the repo root (`pyproject.toml`). Al
 uv sync   # install/update all deps
 ```
 
+## Writing prose — US English
+
+All comments, docstrings, captions, `aria-label`s, and docs use **US spelling**
+(`color`, `center`, `meters`, `neighbor`, `favorite`, `gray`, `labeled` — never
+`colour`, `centre`, `metres`, `neighbour`, `favourite`, `grey`, `labelled`). This applies everywhere
+prose is written, not just in `Project Docs/`: a docstring or a chart caption
+in a new `.py`/`.js` file is just as much "prose" as a markdown doc.
+
+Identifiers are a separate, case-by-case call, not automatically covered by
+this rule — renaming a live function/parameter (e.g. a `colour=` kwarg) changes
+call sites everywhere and is worth its own deliberate pass, not a drive-by fix
+alongside unrelated prose edits.
+
+`Project Docs/Specs/2026-09-07-us-english-follow-ups.md` is a historical
+incident report from the last time this drifted, not a standing rule — this
+section is the rule; CI enforces it (see "CI on pull requests" below) so a
+regression fails the build rather than waiting to be noticed by eye.
+
 ## Editing files — prefer the Write/Edit tools over shell heredocs
 
 **Do not edit files by piping a heredoc through the shell** (`cat > f <<'EOF'`,
@@ -414,7 +432,7 @@ Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manua
 
 ## CI on pull requests
 
-`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy): `uv sync --no-dev` → build both dashboards → build the e-paper feed → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `college.html` as text.
+`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy, plus `Project Docs/**`, `tools/**`, and root `*.md` for the spelling check below): `uv sync --no-dev` → `uv run python tools/check_us_spelling.py` → build both dashboards → build the e-paper feed → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `college.html` as text. The spelling check runs first and needs no build — see "Writing prose — US English" above and the script's own docstring.
 
 Two things it deliberately does **not** do, and shouldn't be "fixed" to do:
 - **It uses `pull_request`, never `pull_request_target`.** The repo is public; `pull_request_target` would run fork-authored code with secrets and a write token.

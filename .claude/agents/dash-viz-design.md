@@ -62,3 +62,7 @@ a block:
 Leave nothing as "TBD." End your message with the complete spec markdown for the orchestrator
 to write into the target's spec file (under its "New views" section), then note it's ready
 for the developer.
+
+Write US English throughout (`color` not `colour`, `center` not `centre`, etc.) — see
+CLAUDE.md's "Writing prose — US English." A spec's caption wording is what the developer
+implements verbatim, so a British spelling here becomes a caption's British spelling too.

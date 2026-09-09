@@ -56,6 +56,10 @@ modules for the target:
 - Safe parsing: wrap float/int conversions; handle empty strings and None. For Running Log,
   `is_race` is the string `"1"`/`"0"`; `miles`/`pace` can be blank on rest days.
 - Match the existing color palette and light/dark theming via CSS variables.
+- Write US English in every docstring, comment, and caption/`aria-label` you add (`color` not
+  `colour`, `center` not `centre`, `meters` not `metres`, `neighbor` not `neighbour`, etc.) —
+  see CLAUDE.md's "Writing prose — US English". `uv run python tools/check_us_spelling.py`
+  catches a slip before you hand off.
 
 ## Units policy — follow the profile
 - **`strava-data`**: data files stay metric; convert at display time only. Every user-facing
@@ -88,6 +92,9 @@ HTML:
 - `strava-data`: `uv run python strava-data/build_dashboard.py` → `running-log/strava.html`.
 - `running-log`: `uv run python running-log/visualize_log.py` → `running-log/college.html`,
   then run the static suite `uv run python running-log/qa.py` (expect exit 0).
+
+Also run `uv run python tools/check_us_spelling.py` (expect exit 0) — it's part of the PR gate,
+so a British-spelling slip here fails CI later instead of now.
 
 Then verify the units policy yourself (don't leave it for QA):
 - `strava-data`: grep the generated `running-log/strava.html` for `min/km`, `km/h`, `kph`,
