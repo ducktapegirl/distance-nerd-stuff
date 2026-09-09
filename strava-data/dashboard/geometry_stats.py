@@ -15,7 +15,7 @@ from .data import fmt_pace, mf
 # ─── Scatter-plot helpers (correlation line + R²) ─────────────────────────────
 
 def _haversine_m(lat1, lon1, lat2, lon2):
-    """Great-circle distance in metres."""
+    """Great-circle distance in meters."""
     R = 6_371_000.0
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)

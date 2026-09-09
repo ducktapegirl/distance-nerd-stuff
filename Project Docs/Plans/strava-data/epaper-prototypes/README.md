@@ -16,7 +16,7 @@ Candidate "cards" for a **reTerminal E1005** (3.97", 800×650, 4-level greyscale
 SenseCraft HMI. This is an **idea picker**, not a build step: every card is rendered from
 the real data in `strava-data/data/` (and `running-log/running_log.csv`) by
 `strava-data/tools/eink_cards.py`, snapped to the panel's four gray levels
-(0 / 85 / 170 / 255), and tiled into `contact-sheet.png`. Pick favourites; the follow-on
+(0 / 85 / 170 / 255), and tiled into `contact-sheet.png`. Pick favorites; the follow-on
 work is a real feed builder (RSS + PNG enclosures) for the chosen views.
 
 Regenerate: `uv run python strava-data/tools/eink_cards.py` (Pillow is a dev dependency).

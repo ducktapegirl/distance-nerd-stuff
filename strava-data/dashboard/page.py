@@ -540,12 +540,12 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   <div class="card">
     <div class="card-title">Signature Route</div>
     {signature_html}
-    <p class="plot-caption">The loops run most often, each drawn solid with every one of its repeats ghosted behind it. Runs are matched by laying a 100&nbsp;m grid over each track after recentring it on its own start and asking how far the two overlap &mdash; which is why the same loop still matches itself when the watch caught a different driveway. All the repeats share one transform, so what you are looking at is the GPS wander between them rather than the shape of the route: the fuzz is twenty runs of the same four miles. The quickest repeat is picked out in amber.</p>
+    <p class="plot-caption">The loops run most often, each drawn solid with every one of its repeats ghosted behind it. Runs are matched by laying a 100&nbsp;m grid over each track after recentering it on its own start and asking how far the two overlap &mdash; which is why the same loop still matches itself when the watch caught a different driveway. All the repeats share one transform, so what you are looking at is the GPS wander between them rather than the shape of the route: the fuzz is twenty runs of the same four miles. The quickest repeat is picked out in amber.</p>
   </div>
   <div class="card">
     <div class="card-title">Tangle</div>
     {tangle_html}
-    <p class="plot-caption">Every looped route in the record laid head to tail as a single unbroken line, each one starting where the last one ended. Because each track is recentred on its own start and most rides and runs come home, the line keeps returning to where it began and knots around a common centre instead of wandering off. One-way activities are left out: a single airport transfer translates everything drawn after it and drags the whole composition into a smear.</p>
+    <p class="plot-caption">Every looped route in the record laid head to tail as a single unbroken line, each one starting where the last one ended. Because each track is recentered on its own start and most rides and runs come home, the line keeps returning to where it began and knots around a common center instead of wandering off. One-way activities are left out: a single airport transfer translates everything drawn after it and drags the whole composition into a smear.</p>
   </div>
 </section>
 

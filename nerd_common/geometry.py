@@ -87,7 +87,7 @@ def _open_stream(aid, *want, streams_dir=None):
 
 
 def track(aid, step=6, streams_dir=None):
-    """Lat/lng track projected to local metres, recentered on its own start.
+    """Lat/lng track projected to local meters, recentered on its own start.
 
     y is negated so the result is already in SVG's y-down space. Returns [] for
     anything with fewer than four usable points.
@@ -120,7 +120,7 @@ def altitude(aid, n=48, streams_dir=None):
     """A stream's `altitude_m` column resampled to n evenly spaced points.
 
     Never parses lat/lng — an elevation-only direction should not pay for the
-    projection. Nearest-neighbour rather than averaging: a ridgeline wants its
+    projection. Nearest-neighbor rather than averaging: a ridgeline wants its
     peaks kept, and an averaging resample rounds them off.
     """
     handle, idx = _open_stream(aid, "altitude_m", streams_dir=streams_dir)

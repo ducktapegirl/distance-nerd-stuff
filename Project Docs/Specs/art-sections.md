@@ -141,7 +141,7 @@ whatever else is on the page.
 
 | Function | What it does |
 |---|---|
-| `track(aid, step=6)` | stream → lat/lng projected to local metres, recentered on its own start, already y-down |
+| `track(aid, step=6)` | stream → lat/lng projected to local meters, recentered on its own start, already y-down |
 | `altitude(aid, n=48)` | `altitude_m` resampled to n points, **never parses lat/lng** |
 | `simplify(pts, eps)` | Douglas-Peucker, iterative so a long track cannot blow the stack |
 | `thin(pts, cap)` | evenly drop to a hard point cap, keeping the ends |
@@ -269,7 +269,7 @@ about the **voids** — summers, taper weeks, injuries — rather than the marks
   definitions and `<use href>` (~25 KB). Still the right call on a dashboard: it keeps the DOM small
   enough to attach handlers to.
 - **Threads must be gated on both axes**, not on date proximity alone. Linking any two runs within
-  three days hangs a near-vertical stem off every dot whose neighbour ran a very different duration,
+  three days hangs a near-vertical stem off every dot whose neighbor ran a very different duration,
   and the field reads as a barcode with drips instead of a constellation. The working gate was
   `|dx| < 14 and |dy| < 34` in user units, *in addition to* the date test.
 - **Only 798 of the 1,138 runs recorded a duration.** A `y = minutes` encoding silently drops 30% of
@@ -343,7 +343,7 @@ the **GPS wander between repeats**, the fuzz of twenty runs of the same four mil
 ~4.5 mi loops each repeated 19–21 times. There is more than one signature route here, which
 suggests a picker rather than a single hardcoded pick.
 
-**Interaction.** Scrub the repeats chronologically and watch the line settle. Colour each ghost by
+**Interaction.** Scrub the repeats chronologically and watch the line settle. Color each ghost by
 pace and the piece becomes "did I get faster on this loop over two years?" — a real question the
 dashboard cannot currently answer.
 
@@ -353,14 +353,14 @@ dashboard cannot currently answer.
 
 **Concept.** Every route laid head to tail as **one unbroken polyline**. Because each is recentered
 on its own start and most are loops, the line keeps returning to where it began — so the activities
-knot around a common centre instead of wandering off the canvas. Rooted in every activity, reads as
+knot around a common center instead of wandering off the canvas. Rooted in every activity, reads as
 pure gesture.
 
 **Cruxes**
 
 - **A single `<path>` is what buys the point budget.** No per-element overhead, integer coordinates,
   ~24 points an activity got 150 routes into 40 KB. Without the cap, all 351 fit comfortably.
-- **Simplify per route, in metres, before concatenating** (`simplify(pts, eps≈22)`), then `fit()`
+- **Simplify per route, in meters, before concatenating** (`simplify(pts, eps≈22)`), then `fit()`
   the finished polyline once at the end. Simplifying after concatenation would cut corners across
   the joins between activities.
 - **Point-to-point activities translate the entire remainder of the line.** Loops return to their

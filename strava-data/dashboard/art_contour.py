@@ -45,7 +45,7 @@ TOP = 120
 BOT = 1660
 # Peak amplitude for the biggest-relief day. Read this against the row pitch
 # (~4.1 units), not in isolation: the proof's 74 units over an 8.8-unit pitch
-# meant a ridge overlapped about eight neighbours, and 34 here reproduces that
+# meant a ridge overlapped about eight neighbors, and 34 here reproduces that
 # ratio.
 AMP = 34.0
 NPT = 64        # points per profile; the tile budget forced this down to 48

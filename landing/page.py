@@ -52,7 +52,7 @@ def _explainer_html():
             route's <em>shape</em>, not its size &mdash; a two&#8209;mile loop and a
             twenty&#8209;mile ride are drawn just as large.</p>
             <p>The picks are spread across sports in proportion to how often each one
-            appears, and favour routes that fill a square rather than running off in a
+            appears, and favor routes that fill a square rather than running off in a
             line. A few near&#8209;straight cells survive that: those are genuine
             out&#8209;and&#8209;backs.</p>
             <ul class="legend">

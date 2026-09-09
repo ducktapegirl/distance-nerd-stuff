@@ -316,7 +316,7 @@ Two things the graph build gets wrong if you are not careful, both of which cost
   routing one: segment endpoints are near-coincident rather than identical. Rounding coordinates to
   a grid leaves two endpoints 1 km apart in different cells, which shattered the network into 229
   components and made obviously reachable cities unroutable. The fix is a spatial hash that
-  searches the 3×3 cell neighbourhood (`Welder`, 0.02° tolerance).
+  searches the 3×3 cell neighborhood (`Welder`, 0.02° tolerance).
 - **Snap only to the largest component.** Even welded, a few hundred orphan clusters remain. Salt
   Lake City and Austin both snapped into one and returned a silent "no route".
 

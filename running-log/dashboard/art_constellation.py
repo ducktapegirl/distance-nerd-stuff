@@ -136,7 +136,7 @@ def art_constellation_html(rows):
 
     # Threads. The gate is on BOTH axes, not on date proximity alone: linking
     # any two runs within three days hangs a near-vertical stem off every dot
-    # whose neighbour ran a very different distance, and the field reads as a
+    # whose neighbor ran a very different distance, and the field reads as a
     # barcode with drips instead of a constellation. The y tolerance is in user
     # units and had to be re-derived for the miles axis. The proof's 34 units
     # was ~10 minutes on a 120-minute axis; 34 units here is only ~0.7 mi,

@@ -82,7 +82,7 @@ def _css():
 def _clusters(acts, tracks):
     """The top signature loops, each as (anchor id, [member ids]).
 
-    Members are the transitive-free neighbour set of the anchor, matching the
+    Members are the transitive-free neighbor set of the anchor, matching the
     proof: a run is in the cluster when it matches the anchor directly, not
     when it matches something that matches the anchor.
     """
