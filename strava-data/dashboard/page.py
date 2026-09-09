@@ -34,6 +34,9 @@ from .rollups_cards import (
 from .template import (
     CSS, THEME_INIT_JS, THEME_TOGGLE_SVGS, build_js, hash_init_js, view_paint_css,
 )
+from .art_contour import art_contour_html
+from .art_signature import art_signature_html
+from .art_tangle import art_tangle_html
 from .art_year import art_fragment
 from .theme import fig_html
 
@@ -367,7 +370,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
                     run_pace_hr, run_hr_temp, run_pace_tort, run_pace_grade,
                     run_hr_grade, mtb_pace_tort, mtb_pace_grade, mtb_hr_grade,
                     cons_cards_html, fast_cards_html, grade_time_html,
-                    art_html,
+                    art_html, contour_html, signature_html, tangle_html,
                     v1, v2, v3, v4, v5, v6, v7, v8, v9, v10):
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -529,6 +532,21 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
     {art_html}
     <p class="plot-caption">Every activity of a calendar year in one figure. Around the ring, one spoke per activity placed at its exact day &mdash; length is distance, thickness is duration, color is the sport family. Activities with no distance recorded (gym, climbing) sit as short ticks just inside the ring rather than vanishing. Behind it, every GPS track of that year drawn from a shared origin and rotated to its day of year: the dense knot is home, and the long limbs are trips. Point at a spoke to light its route in the ground layer, drag to scrub through the year, and use the legend to filter by sport. Years marked with a dot are partial.</p>
   </div>
+  <div class="card">
+    <div class="card-title">Contour Field</div>
+    {contour_html}
+    <p class="plot-caption">Elevation only &mdash; no map, no coordinates. Every recorded activity's altitude profile is drawn as one ridgeline, stacked down the page with the nearer row filled opaque so it hides the one behind. Height is scaled to the fourth root of the day's relief rather than to the relief itself: against the biggest climb in the record, a linear scale would flatten a typical day into a straight line. Sort by date and the poster becomes a seismograph of two years. The sawtooth rows are ski days &mdash; repeated descents, not glitches.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Signature Route</div>
+    {signature_html}
+    <p class="plot-caption">The loops run most often, each drawn solid with every one of its repeats ghosted behind it. Runs are matched by laying a 100&nbsp;m grid over each track after recentring it on its own start and asking how far the two overlap &mdash; which is why the same loop still matches itself when the watch caught a different driveway. All the repeats share one transform, so what you are looking at is the GPS wander between them rather than the shape of the route: the fuzz is twenty runs of the same four miles. The quickest repeat is picked out in amber.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Tangle</div>
+    {tangle_html}
+    <p class="plot-caption">Every looped route in the record laid head to tail as a single unbroken line, each one starting where the last one ended. Because each track is recentred on its own start and most rides and runs come home, the line keeps returning to where it began and knots around a common centre instead of wandering off. One-way activities are left out: a single airport transfer translates everything drawn after it and drags the whole composition into a smear.</p>
+  </div>
 </section>
 
 <section id="view-exploratory" class="view">
@@ -655,6 +673,12 @@ def build_page(rows, segs):
 
     print("  year art...")
     art_html = art_fragment(rows)
+    print("  contour field...")
+    contour_html = art_contour_html(rows)
+    print("  signature route...")
+    signature_html = art_signature_html(rows)
+    print("  tangle...")
+    tangle_html = art_tangle_html(rows)
 
     date_range, stats_html, nav_links, theme_buttons = _build_stats_panel(rows, stats)
     search_html = _build_activity_search_html(len(rows))
@@ -681,6 +705,7 @@ def build_page(rows, segs):
         mtb_pace_grade=mtb_pace_grade, mtb_hr_grade=mtb_hr_grade,
         cons_cards_html=cons_cards_html, fast_cards_html=fast_cards_html,
         grade_time_html=grade_time_html,
-        art_html=art_html,
+        art_html=art_html, contour_html=contour_html,
+        signature_html=signature_html, tangle_html=tangle_html,
         v1=v1, v2=v2, v3=v3, v4=v4, v5=v5, v6=v6, v7=v7, v8=v8, v9=v9, v10=v10,
     )

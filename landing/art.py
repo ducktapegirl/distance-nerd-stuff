@@ -42,8 +42,9 @@ import math
 from collections import defaultdict
 from datetime import date
 
+from nerd_common.geometry import COLOR, FAMILY, bbox, fit, path, simplify, thin
+
 from .config import TILES
-from .geometry import COLOR, FAMILY, bbox, fit, path, simplify, thin
 
 # name -> (dark, light). The single source of truth for both the literal
 # fallbacks in the SVG and the custom properties template.py writes into

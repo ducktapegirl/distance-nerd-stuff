@@ -2049,3 +2049,101 @@ duplication is the trap being avoided. That tool still owns the four exploration
   none of it renders as a literal hex or a `var()` that failed to substitute (which paints black).
   The static/print SVGs (`year.svg`, the proof sheet) are unaffected by the toggle and stay literal
   dark on every rebuild.
+
+---
+
+## Art tab — three pieces promoted from the landing-art proofs (2026-09-09)
+
+Built from `Project Docs/Specs/art-sections.md`, which was the seed spec for these. The Art view
+is now **four stacked cards**: "Years in Motion" (above), then Contour Field, Signature Route and
+Tangle. No new nav entries, no picker between pieces — `#art` still deep-links to the whole view.
+
+Rules all three inherit from "Years in Motion": hand-built SVG at absolute user units, one
+self-contained fragment per piece (its own `<style>`, markup and `<script>`), no Plotly, theme by
+pure CSS cascade with a literal hex fallback in every `var()`, and its own id prefix. They are
+**not** touched by `applyChartTheme()`. `strava-data/qa.py:check_new_art_theme_vars` guards the
+`--co-*` / `--sg-*` / `--tg-*` token sets the way `check_art_theme_vars` guards `--art-*`.
+
+The geometry helpers (`track`, `altitude`, `simplify`, `thin`, `fit`, `path`, `bbox`, `rotate`)
+now live in **`nerd_common/geometry.py`**, promoted out of `landing/geometry.py`. `art_year.py` no
+longer carries its own copies. `nerd_common` is installed and has no notion of repo layout, so the
+stream directory is injected: each art module calls `set_streams_dir(STREAMS_DIR)` at import.
+
+### Contour Field — `dashboard/art_contour.py`, prefix `co-`
+
+**Recipe.** `geometry.altitude(id, 64)` for every activity — reads only the `altitude_m` column, so
+this view never pays for the cos-lat projection. **373 of 378** streams yield a usable profile.
+Each is a ridgeline with its baseline at y=0, placed by a `transform`, filled opaque so the row in
+front occludes the one behind.
+
+- **Fill and stroke are two separate elements**, deliberately. Stroking the closed occluder polygon
+  also draws its baseline and both vertical sides, so every ridge renders boxed and the stack reads
+  as 373 rectangles rather than a horizon. Do not merge them.
+- **Amplitude is `(relief / max) ** 0.4`.** Linear flattens the median 84 m day to ~4% of the frame
+  against the 2,058 m maximum; even `sqrt` is dull.
+- **The frame is 900 × 1720, not square** — the only non-square piece in the set, and for
+  arithmetic rather than taste. The construction needs ~4 user units of pitch between baselines
+  before the strokes touch. 373 rows in a 900-unit square is 1.9 units, and at a 1.2-unit stroke
+  the ink alone fills the band: tried at amplitudes from 78 down to 26 and the low-gain half was a
+  solid mesh every time. `AMP = 34` against the resulting ~4.1-unit pitch reproduces the proof's
+  overlap ratio.
+- Ski days produce genuine sawtooth profiles (repeated descents). They are not glitches; do not
+  filter them.
+
+**Interaction.** Hover/drag reads the nearest baseline (a y-coordinate lookup, not a hit test on
+geometry) → name, date, feet climbed, miles, sport. A gain/date/distance sort toggle re-orders the
+field; sorted by date, 373 rows is a two-year seismograph.
+
+**Why sorting happens in JS.** Each ridge ships once and is positioned by a transform; changing the
+sort moves 373 transforms and re-appends 373 groups (the re-append is what preserves occlusion —
+the nearer row must paint last). Rendering all three orders server-side also works but triples the
+profile data and put **1.7 MB** on the page for a three-button control.
+
+### Signature Route — `dashboard/art_signature.py`, prefix `sg-`
+
+**Recipe.** Cluster detection is a **grid-cell Jaccard on the recentered track**: 100 m cells,
+overlap > 0.5, over candidates in the 1–13 km band (~300 routes). This is `poster_40for40.py`'s
+duplicate test inverted — there it keeps two laps of one loop off the wall, here it finds them on
+purpose. **Recentering on the start point is what makes it work**: two runs of the same loop
+compare equal even when the watch caught a different driveway.
+
+- The record holds **five** signature loops, not one (verified: 4.5 mi × 20, 4.4 mi × 17,
+  3.1 mi × 10, 1.0 mi × 10, 6.6 mi × 10), so the piece ships a **picker** rather than a hardcoded
+  pick. Anchors are chosen greedily by repeat count and skipped when their members are already
+  claimed, or the five entries would be five views of one loop.
+- **One scale shared across the whole cluster.** Fitting each repeat to its own bounds aligns them
+  on the *frame* instead of on *each other*, and the GPS wander — the entire subject — vanishes.
+  Bounds are computed over the union and every track goes through the same transform.
+- The pairwise pass is **O(n²)** over the candidates. Fine at build time; as the record grows the
+  cut is a distance + start-point prefilter before the pass, not a smarter Jaccard.
+- **Known cosmetic artifact:** one ghost in the 4.5 mi cluster shows a straight line across the
+  middle — a real GPS dropout, not a rendering fault. A jump-threshold filter is defensible and is
+  deliberately *not* applied, so the drawing stays faithful to the recorded track.
+
+**Interaction.** A picker over the five clusters. The fastest repeat in each is drawn in amber
+against the ghosts' teal, which answers "did I get faster on this loop?" — a question no other view
+on the dashboard can answer.
+
+### Tangle — `dashboard/art_tangle.py`, prefix `tg-`
+
+**Recipe.** Every route laid head to tail as **one unbroken `<path>`**. Because each track is
+recentered on its own start and most are loops, the line keeps returning to where it began and the
+activities knot around a common centre.
+
+- **Simplify per route, in metres, before concatenating** (`simplify(pts, 14.0)`), then `fit()` the
+  finished polyline once at the end. Simplifying after concatenation cuts corners across the joins
+  between activities.
+- **Non-loops are excluded.** A point-to-point activity translates the entire remainder of the
+  line, so a handful of travel days drag the whole composition into a diagonal smear. A track
+  counts as a loop when its start and end are within `LOOP_TOL` (0.28) of its own bounding-box
+  diagonal; this keeps **314 of the 351** GPS activities. Raising `LOOP_TOL` past 1.0 admits
+  everything and restores the proof's behavior.
+- A single `<path>` is still the right shape even without a byte budget: no per-element overhead,
+  and it is what makes the draw-on animation possible at all.
+
+**Interaction.** A `stroke-dasharray` / `stroke-dashoffset` draw-on animation — the whole two-year
+record drawn in one stroke — plus a "Draw it again" button. **Respects `prefers-reduced-motion`.**
+The path length is measured with `getTotalLength()` on reveal rather than on load: the Art view
+starts `display:none` behind the router, and the path has no layout until the tab is first shown.
+
+_This section grows as the pipeline builds new views._

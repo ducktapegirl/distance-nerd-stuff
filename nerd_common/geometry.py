@@ -1,34 +1,54 @@
-"""Track reading, simplification and fitting for the tile art.
+"""Track reading, simplification and fitting — shared by every art surface.
 
-`track()`, `simplify()` and `path()` are copies of the versions in
-`strava-data/dashboard/art_year.py`, not imports, and that is deliberate:
+This is the canonical home for the cos-lat projection and the geometry helpers
+the hand-built SVG artwork is made of. Before this module existed the same
+`track()` / `simplify()` / `path()` lived in three places at once
+(`strava-data/dashboard/art_year.py`, `landing/geometry.py`,
+`strava-data/tools/poster_40for40.py`), each copy justified by the fact that
+importing `dashboard.art_year` drags in `dashboard.config`, which calls
+`load_dotenv()` and reads `MAPTILER_KEY`.
 
-  * `landing/` is stdlib + `nerd_common` only. Importing `dashboard.art_year`
-    drags in `dashboard.config`, which calls `load_dotenv()` and reads
-    `MAPTILER_KEY` — the exact dependency the landing page is defined against.
-  * `strava-data` is not a legal Python package name, so there is no clean
-    import path regardless; `tools/proof_year_art.py` only reaches that package
-    by inserting onto `sys.path`.
+`nerd_common` is the designated shared package and both dashboards already
+import it, so the duplication is retired here rather than extended.
 
-This is the same trade `strava-data/tools/poster_40for40.py` makes, for the same
-reason — it copies the cos-lat projection and the region clustering rather than
-importing them. If the projection ever changes, change it in all three.
+⚠ Why this module cannot import a path config of its own: `running-log/` and
+`strava-data/` each ship a package literally named `dashboard`, and each build
+puts its own parent on `sys.path[0]`. `nerd_common` is installed and has no
+notion of repo layout. So the per-activity stream directory is **injected** —
+call `set_streams_dir(path)` once at import time, or pass `streams_dir=` per
+call. There is no default and no guess.
 
-The one behavioral difference from `art_year.py`: these read with `csv.reader`
-and header indices rather than `csv.DictReader`. The tile art touches every
-stream on every build (378 files, ~700k rows), and DictReader builds a dict per
-row for columns nobody asked for. Output is identical.
+`poster_40for40.py` deliberately still keeps its own copy: it is a standalone
+print tool outside every build, and folding it in is a separate change.
+
+Reads use `csv.reader` with header indices rather than `csv.DictReader`. The
+art touches every stream on every build (378 files, ~700k rows) and DictReader
+builds a dict per row for columns nobody asked for. Output is identical.
+
+Dependency rule: stdlib only. Nothing here may import plotly, numpy, or either
+dashboard package.
 """
 
 import csv
 import math
 import os
 
-from .config import STREAMS_DIR
+# Set by whichever build is running; see the module docstring. Deliberately
+# None rather than a guessed path — a wrong default reads as "no streams", and
+# every caller here degrades silently on a missing file, so a bad guess would
+# surface as art with no marks rather than as an error.
+STREAMS_DIR = None
 
-# Five sport families, copied from art_year.py. The poster keeps six and splits
-# snow by direction of travel; here all snow is one family and skating sits in
-# "other", so a color is not spent on a handful of activities.
+
+def set_streams_dir(path):
+    """Point the stream readers at strava-data/data/streams for this process."""
+    global STREAMS_DIR
+    STREAMS_DIR = path
+
+
+# Five sport families. The poster keeps six and splits snow by direction of
+# travel; here all snow is one family and skating sits in "other", so a color
+# is not spent on a handful of activities.
 FAMILY = {
     "Run": "run", "TrailRun": "run",
     "MountainBikeRide": "mtb", "Ride": "mtb", "EBikeRide": "mtb",
@@ -43,13 +63,16 @@ COLOR = {"run": "#2dd4bf", "mtb": "#f59e0b", "foot": "#a3e635",
          "snow": "#60a5fa", "other": "#f472b6"}
 
 
-def _open_stream(aid, *want):
+def _open_stream(aid, *want, streams_dir=None):
     """(rows_iter, [column indices]) for one stream, or (None, None).
 
-    A missing stream is normal, not exceptional — the same rule the rest of the
-    landing build follows, so callers degrade to fewer marks rather than raising.
+    A missing stream is normal, not exceptional — callers degrade to fewer
+    marks rather than raising.
     """
-    fp = os.path.join(STREAMS_DIR, str(aid) + ".csv")
+    base = streams_dir or STREAMS_DIR
+    if not base:
+        return None, None
+    fp = os.path.join(base, str(aid) + ".csv")
     if not os.path.exists(fp):
         return None, None
     f = open(fp, newline="", encoding="utf-8-sig")
@@ -63,13 +86,13 @@ def _open_stream(aid, *want):
     return (rd, f), idx
 
 
-def track(aid, step=6):
+def track(aid, step=6, streams_dir=None):
     """Lat/lng track projected to local metres, recentered on its own start.
 
     y is negated so the result is already in SVG's y-down space. Returns [] for
     anything with fewer than four usable points.
     """
-    handle, idx = _open_stream(aid, "lat", "lng")
+    handle, idx = _open_stream(aid, "lat", "lng", streams_dir=streams_dir)
     if handle is None:
         return []
     rd, f = handle
@@ -93,14 +116,14 @@ def track(aid, step=6):
             for lat, lng in pts]
 
 
-def altitude(aid, n=48):
+def altitude(aid, n=48, streams_dir=None):
     """A stream's `altitude_m` column resampled to n evenly spaced points.
 
     Never parses lat/lng — an elevation-only direction should not pay for the
     projection. Nearest-neighbour rather than averaging: a ridgeline wants its
     peaks kept, and an averaging resample rounds them off.
     """
-    handle, idx = _open_stream(aid, "altitude_m")
+    handle, idx = _open_stream(aid, "altitude_m", streams_dir=streams_dir)
     if handle is None:
         return []
     rd, f = handle

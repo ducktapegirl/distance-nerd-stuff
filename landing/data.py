@@ -8,8 +8,14 @@ richer belongs in the dashboard the tile links to.
 import csv
 import os
 
-from .config import ACTIVITIES_CSV, RUNNING_LOG_CSV
-from .geometry import track
+from nerd_common.geometry import set_streams_dir, track
+
+from .config import ACTIVITIES_CSV, RUNNING_LOG_CSV, STREAMS_DIR
+
+# nerd_common is an installed package and has no notion of repo layout, so the
+# stream directory is injected rather than guessed. This is the only landing
+# module that reads streams, so this is the only place it needs saying.
+set_streams_dir(STREAMS_DIR)
 
 KM_PER_MILE = 1.609344
 

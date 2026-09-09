@@ -28,7 +28,7 @@ strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segment
                     build_feed.py + feed/ → ../running-log/{feed.xml, epaper.html, epaper-all.html, feed.json, epaper/<id>.html} (e-paper output)
 running-log/        college.html, index.html (landing), running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
 landing/            build_landing.py + landing/ package → running-log/index.html (the site's front door)
-nerd_common/        installed package of shared design tokens, Plotly theme, formatters, theme_ui (the light/dark control)
+nerd_common/        installed package of shared design tokens, Plotly theme, formatters, theme_ui (the light/dark control), geometry (GPS projection + simplification for all the SVG art)
 Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
   Plans/              proposed/future work + cross-cutting
   Specs/              build specs + design handoffs: strava-data/ (dashboard-spec.md, mocks/), running-log/ (design_handoff_running_log/)
@@ -148,11 +148,22 @@ Two constraints that are easy to get wrong:
 rather than only the 48 drawn because the grid ranks candidates on the *shape* of their bounding
 box, so the selection can't be made before the geometry is in hand.
 
-`landing/geometry.py` **copies** `track()` / `simplify()` / `path()` from
-`strava-data/dashboard/art_year.py` rather than importing them — importing `dashboard.art_year`
-drags in `dashboard.config`, which calls `load_dotenv()` and reads `MAPTILER_KEY`, exactly the
-dependency `landing/` is defined against (and `strava-data` isn't a legal package name anyway).
-Same trade `poster_40for40.py` makes. Change the projection in one, change it in all three.
+The geometry helpers live in **`nerd_common/geometry.py`** — `track()`, `altitude()`,
+`simplify()`, `thin()`, `fit()`, `path()`, `bbox()`, `rotate()`, plus `FAMILY` / `COLOR`. There used
+to be a `landing/geometry.py` that *copied* the projection from `art_year.py`; when the Art views
+arrived and made a fourth consumer, it was promoted into `nerd_common` (the designated shared
+package, which every build already imports) and both copies retired. `poster_40for40.py` still
+keeps its own — it is a standalone print tool outside every build.
+
+`nerd_common` is installed and has no notion of repo layout, so **the stream directory is
+injected, not guessed**: call `set_streams_dir(STREAMS_DIR)` once at import, as `landing/data.py`
+and each `art_*.py` module do. There is no default; a module that forgets reads no streams and
+draws nothing rather than raising.
+
+⚠ **Cross-dashboard imports are still a trap.** `running-log/dashboard/` and
+`strava-data/dashboard/` are *both* packages literally named `dashboard`, and each build puts its
+own parent on `sys.path[0]`, so `import dashboard.art_year` from the Running Log side resolves to
+the **wrong** package and reports a missing submodule. `nerd_common` is the only safe shared path.
 
 The ten directions that lost, and the proof sheet that decided it, are under
 [`Project Docs/Plans/landing-art.md`](Project%20Docs/Plans/landing-art.md) and
@@ -324,11 +335,53 @@ Both dashboards render Plotly charts into fixed-height, `overflow:hidden` cards 
 
 ## Running Log dashboard architecture
 
-`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `running-log/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself.
+`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `running-log/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself. It has **seven** views (`page.py:NAV_VIEWS`): Overview, Volume, Workout Mix, Performance, Races, Patterns, Art. The three art pieces live in their own modules (`year_clock.py`, `art_weave.py`, `art_constellation.py`) — see “The Art views” above, whose rules override this section's.
+
+## The Art views — hand-built SVG, not Plotly
+
+Both dashboards carry an **Art** view, and everything in them breaks the rules the rest of the
+pages follow. Read this before touching one.
+
+| Piece | Page | Module | id prefix |
+|---|---|---|---|
+| Years in Motion | Strava | `strava-data/dashboard/art_year.py` | `art-` |
+| Contour Field | Strava | `strava-data/dashboard/art_contour.py` | `co-` |
+| Signature Route | Strava | `strava-data/dashboard/art_signature.py` | `sg-` |
+| Tangle | Strava | `strava-data/dashboard/art_tangle.py` | `tg-` |
+| Year Clock | Running Log | `running-log/dashboard/year_clock.py` | `yc-` |
+| Woven Weeks | Running Log | `running-log/dashboard/art_weave.py` | `aw-` |
+| Constellation | Running Log | `running-log/dashboard/art_constellation.py` | `ac-` |
+
+- **They are not Plotly figures.** `tidy_dark()` / `fig_html()` do not apply, and
+  **`applyChartTheme()` must never touch them.** Theme is pure CSS cascade.
+- **Every color is a `var(--token, #literalfallback)`**, and every token needs a value in *both*
+  the `:root` and `:root.light` blocks. A token defined only in dark is how the light theme ships
+  broken — `strava-data/qa.py` guards this for `--art-*` and for `--co-*`/`--sg-*`/`--tg-*`.
+- **One self-contained fragment per piece** — its own `<style>`, markup and `<script>`, returned
+  as a single string (`art_year.py:art_fragment` is the shape). The Year Clock predates this and
+  spreads its CSS and JS across `template.py`; that split is what the rule exists to avoid, so do
+  not copy it for anything new.
+- **Namespace every id.** SVG `<defs>` ids share one document namespace with each other *and* with
+  the Plotly chart divs, so an unprefixed id silently cross-wires.
+- **Determinism is a hard requirement.** Same CSV in, same SVG out: no `random()`, no wall clock,
+  sort before slicing, and break sort ties on a stable key. Otherwise every deploy produces a
+  spurious diff and the pages can never be visually regression-tested. Verify by building twice
+  and diffing.
+- **Mobile is a tap-target problem, not a layout one.** These pieces put 300–1,100 marks on one
+  canvas, where a mark is far under a tap target at 375 px. None attaches a handler per mark;
+  they run a **nearest-mark search in JS** against an embedded array, which backs both hover and a
+  touch drag-scrub. Verify by dispatching synthetic events and reading the readout — a screenshot
+  cannot show a dead tap target.
+- Geometry comes from `nerd_common.geometry`; call `set_streams_dir(STREAMS_DIR)` at import.
+
+Build specs (what each piece draws and every constant that was tuned by rendering it) live under
+the Art sections of `Project Docs/Specs/strava-data/dashboard-spec.md` and
+`Project Docs/Specs/running-log/dashboard-spec.md`. The exploration that produced them is
+`Project Docs/Specs/art-sections.md` plus `Project Docs/Plans/landing-art/`.
 
 ## Strava dashboard architecture
 
-`build_dashboard.py` is a thin entrypoint; the actual chart builders, data helpers, and page assembly live in the `strava-data/dashboard/` package (`config.py`, `data.py`, `geometry_stats.py`, `theme.py`, `charts_production.py`, `charts_exploratory.py`, `rollups_cards.py`, `template.py`, `page.py`) — add new `chart_*` functions there, not in `build_dashboard.py` itself. It renders all charts with Plotly in dark-theme defaults. At runtime, page JS (`applyChartTheme()`) re-styles charts via CSS custom properties for the light/dark/system toggle. Key conventions:
+`build_dashboard.py` is a thin entrypoint; the actual chart builders, data helpers, and page assembly live in the `strava-data/dashboard/` package (`config.py`, `data.py`, `geometry_stats.py`, `theme.py`, `charts_production.py`, `charts_exploratory.py`, `rollups_cards.py`, `template.py`, `page.py`) — add new `chart_*` functions there, not in `build_dashboard.py` itself. The Art view's four pieces are the exception to every convention below — see “The Art views” above. It renders all charts with Plotly in dark-theme defaults. At runtime, page JS (`applyChartTheme()`) re-styles charts via CSS custom properties for the light/dark/system toggle. Key conventions:
 - Every figure must use `tidy_dark(fig)` then per-chart overrides, wrapped with `fig_html(fig, H, div_id=...)`.
 - Any color introduced in a chart must be covered by `applyChartTheme()` so both themes work.
 - `Project Docs/Specs/strava-data/dashboard-spec.md` is the source of truth for what views exist and their build recipes.

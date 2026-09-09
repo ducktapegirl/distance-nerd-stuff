@@ -260,4 +260,94 @@ in `template.py`.
   `check_year_clock_css_vars` asserts `.yc-month`/`.yc-num`/`.yc-sub` use
   `var(--text-*)` rather than hardcoded hex (mirrors `check_heatmap_css_vars`).
 
+
+---
+
+## Art view — a seventh view, and two pieces promoted from the landing-art proofs (2026-09-09)
+
+Built from `Project Docs/Specs/art-sections.md`, which was the seed spec for this. The Running Log
+previously had six views and no Art among them; it now has **seven**, with `("art", "Art")`
+appended to `NAV_VIEWS` in `running-log/dashboard/page.py`. `VIEW_NAMES`, `hash_init_js` and
+`view_paint_css` all derive from that list, so nothing else needed touching.
+
+**The Year Clock moved.** It used to render inside `section_overview`; it is the log's original art
+piece and now sits as the first card of the Art view, mirroring the Strava dashboard where "Years
+in Motion" lives in that page's own Art view. Overview keeps its stat grid, notes search, heatmap
+and cumulative chart. Both `#overview` and `#art` deep-link correctly. The clock's CSS
+(`template.py`) and JS were left where they are — the three-file split is what the packaging rule
+says not to *inherit* for new pieces, not a mandate to refactor the existing one.
+
+Art view order: **Year Clock &middot; Woven Weeks &middot; Constellation**.
+
+Both new pieces follow the `art_year.py` packaging pattern rather than the Year Clock's: one
+self-contained fragment carrying its own `<style>`, markup and `<script>`, in its own module beside
+`year_clock.py`. Neither is a Plotly figure, so `tidy_dark()` / `fig_html()` do not apply and
+`applyChartTheme()` must not touch them; theme is pure CSS cascade with a literal hex fallback in
+every `var()`, and every token has a value in **both** the `:root` and `:root.light` blocks.
+
+The five workout-type colors are **not** redefined by either piece: they reuse the page's existing
+`--easy` / `--long` / `--tempo` / `--workout` / `--race` custom properties, which `template.py`
+already declares in both themes.
+
+### Woven Weeks — `dashboard/art_weave.py`, prefix `aw-`
+
+**Recipe.** A warp of seven day-of-week columns against a weft of **193 ISO-week rows**, at
+S = 900. Each run with `miles > 0` is a slub whose length is its mileage and whose color is
+`data.map_type()` — the raw `workout_type` is free text with 52 distinct values and must never be
+encoded directly. Marks ship as **one `<path>` per workout type** (five paths, not ~1,138
+elements); stroke width is constant, so grouping by type costs nothing over grouping by width and
+buys the coloring and the filter for free.
+
+- **The fine 193-row version is the right one here.** The proof was forced to a coarse
+  two-weeks-to-a-row variant because 193 rows over 440 tile units is 2.29 units a row — a moire at
+  240 px. At S = 900 a row is ~4.1 units.
+- **The weft must be a real, continuous thread** at `min(rowheight * 0.34, 1.2)`, and it must be
+  *visible* where no run crosses it. Drawn at `#2a3344` it vanished against the card and the seven
+  day columns read as seven separate barcodes with dark gutters — the exact opposite of cloth.
+  `--aw-weft` is `#44536b` / `#c2cad8`.
+- **Slubs must overrun their column.** The proof's curve (`0.15*colw` floor, exponent 0.75) only
+  overran for the very longest runs, so at dashboard size the gutters were still visible.
+  `ln = 0.34*colw + 0.95*colw * (mi/mx) ** 0.6` puts a *typical* run at roughly one column width,
+  which is where the cloth closes up.
+- The left margin is **118 units**, not 56: the academic-year labels ("2003–04") clipped off the
+  frame at the narrower margin.
+- **Weeks are ISO weeks** (Monday-anchored). A1 Ring of Seasons buckets by academic-year week and
+  gets a slightly different peak, so state the bucketing wherever a number is shown — the caption
+  does.
+
+**Interaction.** Hover/drag → date, distance, mapped type. Per-type filter buttons.
+
+### Constellation — `dashboard/art_constellation.py`, prefix `ac-`
+
+**Recipe.** A dot per run at **(day of year, miles)**, sized by miles, all four years overlaid on
+one calendar. Dots ship as `<use>` of five `<symbol>`s — 1,138 `<circle>` elements is ~57 KB, and
+even without a byte budget a small DOM is what keeps the page responsive. Races (`is_race == "1"`)
+are ringed as a highlight layer.
+
+- **y is miles, not minutes, and this is the piece's most important decision.** The proof plotted
+  minutes and in doing so silently dropped **340 of the 1,138** runs — only 798 recorded a
+  duration. Every run has a distance, so every run appears. Do not "fix" this back; the caption
+  states the reason.
+- **Threads are gated on both axes**, not on date proximity alone. The proof's 34 units was ~10
+  minutes on a 120-minute axis; 34 units here is only ~0.7 mi, which almost no consecutive pair
+  clears, so at that gate **no thread draws at all**. Opened to 62 they came back as exactly the
+  failure the proof describes — long near-vertical drips, because a three-day span is under 7 units
+  wide so every link is nearly vertical by construction. **44 units (~0.94 mi)** is where they read
+  as connective texture. The date test (&le; 3 days) still applies on top.
+- The y axis is clamped at a **16 mi ceiling** rather than the raw maximum: a handful of very long
+  runs would otherwise push the median run into the bottom fifth of the frame.
+- The subject is the **voids** — the summer break shows as a clean vertical gap, and the races
+  cluster into spring and fall.
+
+**Interaction.** Hover/drag → that run's `comments` field. 968 of the 1,138 runs left a note; this
+is the log's least-exploited asset and a far better reveal than a mileage.
+
+### Mobile
+
+Both pieces put ~1,138 marks on one canvas, where a mark is well under a tap target at 375 px.
+Neither attaches a handler per mark — there is nothing per-run in the DOM to attach to. Both run a
+**nearest-mark search in JS** against an embedded array, backing mouse hover and a touch drag-scrub
+from the same code path. Verified: 8/8 synthetic probes resolve to a run on each piece, both SVGs
+fill their card at 375 px, and neither page scrolls horizontally.
+
 _This section grows as the pipeline builds new views._

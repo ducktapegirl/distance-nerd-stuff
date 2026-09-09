@@ -6,8 +6,8 @@ import json
 from dashboard.config import PLOTLY_CDN
 from dashboard.components import build_day_index
 from dashboard.sections import (
-    section_overview, section_patterns, section_performance, section_races,
-    section_volume, section_workout_mix,
+    section_art, section_overview, section_patterns, section_performance,
+    section_races, section_volume, section_workout_mix,
 )
 from dashboard.stats import build_race_records, compute_stats
 from dashboard.template import (
@@ -23,6 +23,7 @@ NAV_VIEWS = [
     ("performance", "Performance"),
     ("races",       "Races"),
     ("patterns",    "Patterns"),
+    ("art",         "Art"),
 ]
 VIEW_NAMES = [v for v, _ in NAV_VIEWS]
 
@@ -42,6 +43,7 @@ def _build_sections(rows, stats, races_by_cat):
         + section_performance(rows, races_by_cat)
         + section_races(races_by_cat)
         + section_patterns(rows, stats)
+        + section_art(rows)
     )
 
 
