@@ -55,11 +55,9 @@ def _paint(key):
 
 _TG_CSS_BODY = """
 #tg-svg { display:block; width:100%; max-width:720px; margin:0 auto; }
-#tg-path { stroke-dasharray: var(--tg-len); stroke-dashoffset: var(--tg-len);
-           animation: tg-draw 14s ease-out forwards; }
-@keyframes tg-draw { to { stroke-dashoffset: 0; } }
+#tg-path { stroke-dasharray: var(--tg-len); stroke-dashoffset: var(--tg-len); }
 @media (prefers-reduced-motion: reduce) {
-  #tg-path { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+  #tg-path { stroke-dasharray: none; stroke-dashoffset: 0; }
 }
 .tg-bar { display:flex; justify-content:center; margin:12px 0 0; }
 .tg-bar button { font:inherit; font-size:12px; line-height:1; cursor:pointer;
@@ -139,22 +137,39 @@ TG_JS = r"""
   var svg = document.getElementById('tg-svg');
   var p = document.getElementById('tg-path');
   if (!svg || !p) return;
+  var len = 0;
+  var reduceMotion = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function measure() {
     try {
       var n = p.getTotalLength();
-      if (n > 0) svg.style.setProperty('--tg-len', n.toFixed(0));
+      if (n > 0) { len = n; svg.style.setProperty('--tg-len', n.toFixed(0)); }
     } catch (e) { /* getTotalLength can throw while the tab is hidden */ }
+  }
+
+  // Driven by the Web Animations API rather than a CSS @keyframes animation
+  // restarted via a style="none"-then-reflow trick, so "Draw it again" is a
+  // fresh, cancellable Animation object each time -- not dependent on the
+  // browser re-triggering a `forwards`-filled CSS animation from a same-tick
+  // property toggle.
+  function draw() {
+    if (reduceMotion || !len) return;
+    p.getAnimations().forEach(function (a) { a.cancel(); });
+    p.animate(
+      [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
+      { duration: 14000, easing: 'ease-out', fill: 'forwards' }
+    );
   }
 
   // The Art view starts display:none behind the router, so the path has no
   // layout until the tab is first shown and getTotalLength() is meaningless
-  // before then. Measure on reveal, not on load.
-  if (svg.getBoundingClientRect().width > 0) measure();
+  // before then. Measure (and draw) on reveal, not on load.
+  if (svg.getBoundingClientRect().width > 0) { measure(); draw(); }
   else if (window.IntersectionObserver) {
     var io = new IntersectionObserver(function (es) {
       if (es.some(function (e) { return e.isIntersecting; })) {
-        measure(); io.disconnect();
+        measure(); draw(); io.disconnect();
       }
     });
     io.observe(svg);
@@ -164,9 +179,7 @@ TG_JS = r"""
   if (btn) {
     btn.addEventListener('click', function () {
       measure();
-      p.style.animation = 'none';
-      void p.getBoundingClientRect();      // force a reflow so it restarts
-      p.style.animation = '';
+      draw();
     });
   }
 })();

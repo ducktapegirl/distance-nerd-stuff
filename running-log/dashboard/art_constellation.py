@@ -193,10 +193,11 @@ def art_constellation_html(rows):
         "<style>%s</style>" % _css()
         + '<svg id="ac-svg" viewBox="0 0 %d %d" role="img" '
           'aria-label="All %d runs of four years plotted on one calendar year: '
-          'horizontal is day of year, vertical is distance. The gaps are the '
-          'subject.">%s</svg>' % (S, S, len(runs), "".join(parts))
-        + '<p id="ac-readout">Hover a star for that day’s log entry. '
-          '%d of %d runs left a note.</p>' % (n_note, len(runs))
+          'horizontal is day of year, vertical is distance. A ring around a '
+          'dot marks a race. The gaps are the subject.">%s</svg>'
+          % (S, S, len(runs), "".join(parts))
+        + '<p id="ac-readout">Drag a finger across the field for that day’s '
+          'log entry. %d of %d runs left a note.</p>' % (n_note, len(runs))
         + '<script id="ac-data" type="application/json">%s</script>' % blob
         + "<script>%s</script>" % AC_JS
     )
@@ -205,6 +206,9 @@ def art_constellation_html(rows):
 # Same nearest-mark search as the weave, and for the same reason: the dots ship
 # as <use> inside five groups, so there is nothing per-run to attach a handler
 # to, and at 375 px a dot is well under a tap target. Touch drags the readout.
+# Desktop mouse hover is deliberately not wired up (removed as a UX decision --
+# a static field of dots read better without a hover readout on desktop); the
+# nearest-mark search stays because touch drag-scrub still depends on it.
 AC_JS = r"""
 (function () {
   var svg = document.getElementById('ac-svg');
@@ -261,8 +265,6 @@ AC_JS = r"""
 
   function at(ev) { var p = toUser(ev); show(nearest(p[0], p[1])); }
 
-  svg.addEventListener('mousemove', at);
-  svg.addEventListener('mouseleave', function () { show(null); });
   svg.addEventListener('touchstart', function (e) { at(e); e.preventDefault(); },
                        { passive: false });
   svg.addEventListener('touchmove', function (e) { at(e); e.preventDefault(); },
