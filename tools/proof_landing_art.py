@@ -38,10 +38,15 @@ from collections import Counter, defaultdict
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from landing.config import ACTIVITIES_CSV, RUNNING_LOG_CSV, TILES  # noqa: E402
-from landing.geometry import (  # noqa: E402
-    COLOR, FAMILY, altitude, bbox, fit, path, rotate, simplify, thin, track,
+from landing.config import (  # noqa: E402
+    ACTIVITIES_CSV, RUNNING_LOG_CSV, STREAMS_DIR, TILES,
 )
+from nerd_common.geometry import (  # noqa: E402
+    COLOR, FAMILY, altitude, bbox, fit, path, rotate, set_streams_dir,
+    simplify, thin, track,
+)
+
+set_streams_dir(STREAMS_DIR)
 
 import csv  # noqa: E402
 

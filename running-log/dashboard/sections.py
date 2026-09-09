@@ -1,5 +1,10 @@
-"""The six page-section assemblers (Overview, Volume, Workout Mix, Performance,
-Races, Patterns) that combine charts, cards, and components into HTML."""
+"""The seven page-section assemblers (Overview, Volume, Workout Mix,
+Performance, Races, Patterns, Art) that combine charts, cards, and components
+into HTML.
+
+Art is the odd one out: its three pieces are hand-built SVG, not Plotly, and
+each arrives as one self-contained fragment carrying its own style and script.
+"""
 
 import json
 from collections import defaultdict
@@ -16,6 +21,8 @@ from dashboard.components import heatmap_html, notes_search_html, pr_card_html, 
 from dashboard.data import map_type, maybe_float
 from dashboard.stats import compute_pr_cards
 from dashboard.theme import fig_html
+from dashboard.art_constellation import art_constellation_html
+from dashboard.art_weave import art_weave_html
 from dashboard.year_clock import year_clock_html
 
 
@@ -37,7 +44,6 @@ def section_overview(rows, stats):
       <div class="stat-grid">{"".join(cards)}</div>
       {notes_search_html(rows)}
       {heatmap_html(rows)}
-      {year_clock_html(rows)}
       <div class="card">
         <div class="card-title">Cumulative Mileage</div>
         {fig_html(chart_cumulative(rows), height=280, div_id="chart-cumulative")}
@@ -280,5 +286,54 @@ def section_patterns(rows, stats):
             <div class="streak-label">Total miles</div>
           </div>
         </div>
+      </div>
+    </section>"""
+
+
+def section_art(rows):
+    """The Art view: the log as pictures rather than as charts.
+
+    Three hand-built SVG pieces, each self-contained (its own style, markup and
+    script in one fragment). None of them is a Plotly figure, so none is touched
+    by applyChartTheme(); they theme purely by CSS cascade.
+
+    The Year Clock lives here rather than in Overview: it is art, and grouping
+    it with the other two mirrors the Strava dashboard, where "Years in Motion"
+    sits in that page's own Art view.
+    """
+    return f"""
+    <section id="view-art" class="view">
+      <div class="page-header">
+        <div class="eyebrow">DASHBOARD</div>
+        <h1>Art</h1>
+      </div>
+      {year_clock_html(rows)}
+      <div class="card">
+        <div class="card-title">Woven Weeks</div>
+        {art_weave_html(rows)}
+        <p class="plot-caption">
+          Every run of four years as a bolt of cloth. The warp is the seven days
+          of the week; the weft is one thread per calendar week, top to bottom.
+          Each run is a slub whose length is its mileage and whose colour is its
+          workout type &mdash; a big week deliberately overruns its column and
+          bleeds into the days either side, which is what makes the seven columns
+          read as one fabric rather than as seven charts. Weeks are ISO weeks
+          (Monday&ndash;Sunday), so they do not line up with the academic-year
+          weeks used elsewhere on this page.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">Constellation</div>
+        {art_constellation_html(rows)}
+        <p class="plot-caption">
+          All four years collapsed onto a single calendar: horizontal is the day
+          of the year, vertical is the distance, and dot size is the distance
+          again. Threads join runs within three days of each other that were also
+          close in distance. The subject is the <em>voids</em> &mdash; the summers
+          at home, the taper weeks, the injuries. Races are ringed in coral.
+          Distance is the vertical axis rather than duration because every run
+          recorded a distance and only 798 of them recorded a time; plotting
+          minutes would drop 340 runs without saying so.
+        </p>
       </div>
     </section>"""

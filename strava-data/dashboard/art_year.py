@@ -22,7 +22,15 @@ import os
 from collections import defaultdict
 from datetime import date, datetime
 
+from nerd_common.geometry import path, set_streams_dir, simplify, track
+
 from .config import DATA_DIR, STREAMS_DIR
+
+# The cos-lat projection, Douglas-Peucker and the path formatter now live in
+# nerd_common.geometry -- they were copied into three modules before the Art
+# views arrived and made it four. nerd_common takes the stream directory by
+# injection because it is an installed package with no notion of repo layout.
+set_streams_dir(STREAMS_DIR)
 
 # Five families. The poster keeps six and splits snow by direction of travel
 # (downhill against nordic); here all snow is one family, and skating -- which
@@ -98,28 +106,6 @@ def load(year=None):
     return prepare(rows)
 
 
-def track(aid, step=6):
-    """Lat/lng track projected to local meters, recentered on its own origin."""
-    p = os.path.join(STREAMS_DIR, str(aid) + ".csv")
-    if not os.path.exists(p):
-        return []
-    pts = []
-    with open(p, encoding="utf-8-sig") as f:
-        for i, row in enumerate(csv.DictReader(f)):
-            if i % step or not row.get("lat"):
-                continue
-            try:
-                pts.append((float(row["lat"]), float(row["lng"])))
-            except ValueError:
-                pass
-    if len(pts) < 4:
-        return []
-    lat0 = sum(p[0] for p in pts) / len(pts)
-    k = math.cos(math.radians(lat0))
-    return [((lng - pts[0][1]) * k * 111320.0, -(lat - pts[0][0]) * 110540.0)
-            for lat, lng in pts]
-
-
 def load_tracks(acts):
     out = {}
     for a in acts:
@@ -163,43 +149,6 @@ def by_year(acts):
 SIMPLIFY_EPS = 0.5
 
 
-def simplify(pts, eps=SIMPLIFY_EPS):
-    """Douglas-Peucker, iterative so a long track cannot blow the stack.
-
-    Must run on points already projected into user units -- a tolerance in
-    meters means nothing until the points are in the space they are drawn in.
-    """
-    n = len(pts)
-    if n < 3 or eps <= 0:
-        return pts
-    keep = [False] * n
-    keep[0] = keep[n - 1] = True
-    stack = [(0, n - 1)]
-    while stack:
-        i, j = stack.pop()
-        if j <= i + 1:
-            continue
-        x1, y1 = pts[i]
-        x2, y2 = pts[j]
-        dx, dy = x2 - x1, y2 - y1
-        norm = math.hypot(dx, dy) or 1e-9
-        far, fi = -1.0, -1
-        for k in range(i + 1, j):
-            x, y = pts[k]
-            d = abs(dy * x - dx * y + x2 * y1 - y2 * x1) / norm
-            if d > far:
-                far, fi = d, k
-        if far > eps:
-            keep[fi] = True
-            stack.append((i, fi))
-            stack.append((fi, j))
-    return [p for p, k in zip(pts, keep) if k]
-
-
-def path(pts):
-    return "M" + "L".join("%.1f %.1f" % (x, y) for x, y in pts)
-
-
 def fmt_day(d):
     return "%d %s" % (d.day, calendar.month_abbr[d.month])
 
@@ -240,7 +189,7 @@ def year_layer(acts, tracks, year, scale, interactive=True, visible=False):
         t = tracks.get(a["id"])
         if not t:
             continue
-        pp = simplify([(C + x * s, C + y * s) for x, y in t])
+        pp = simplify([(C + x * s, C + y * s) for x, y in t], SIMPLIFY_EPS)
         tag = ('class="art-trace art-fam-%s" data-id="%s" ' % (a["fam"], a["id"])) \
             if interactive else ""
         out.append('<path %sd="%s" stroke="%s" stroke-width="0.9" opacity="0.38"/>'

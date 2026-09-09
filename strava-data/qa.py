@@ -303,6 +303,51 @@ def check_art_theme_vars(rows, html):
 # Runner
 # ---------------------------------------------------------------------------
 
+def check_new_art_theme_vars(rows, html):
+    """
+    The same both-themes guard as check_art_theme_vars, for the three pieces
+    added alongside the year clock: Contour Field (--co-*), Signature Route
+    (--sg-*) and Tangle (--tg-*).
+
+    Each ships its own <style> carrying a :root / :root.light pair. A token
+    declared in only one of them is invisible in a single-theme screenshot and
+    ships the light theme broken, which is exactly the failure this catches.
+    Every piece must also actually reference its own custom properties in the
+    SVG rather than falling back to literals.
+    """
+    failures = []
+    for prefix, svg_id in (("co", "co-svg"), ("sg", "sg-svg"), ("tg", "tg-svg")):
+        probe = "--%s-" % prefix
+        style_m = re.search(r"<style>([^<]*?%s[\w-]+\s*:.*?)</style>" % probe,
+                            html, re.DOTALL)
+        if not style_m:
+            failures.append("no <style> block declaring %s* tokens" % probe)
+            continue
+        style = style_m.group(1)
+        root_m = re.search(r":root \{([^}]*)\}", style)
+        light_m = re.search(r":root\.light \{([^}]*)\}", style)
+        if not root_m or not light_m:
+            failures.append("%s: missing :root or :root.light block" % prefix)
+            continue
+        pat = r"(--%s-[\w-]+)\s*:" % prefix
+        root_names = set(re.findall(pat, root_m.group(1)))
+        light_names = set(re.findall(pat, light_m.group(1)))
+        if root_names != light_names:
+            failures.append(
+                "%s: :root and :root.light token sets differ -- "
+                "only in :root: %s, only in :root.light: %s"
+                % (prefix, sorted(root_names - light_names),
+                   sorted(light_names - root_names)))
+        if not re.search(r'<svg id="%s"' % svg_id, html):
+            failures.append("no <svg id=\"%s\"> in the built HTML" % svg_id)
+        elif probe not in html:
+            failures.append("%s never referenced in the page" % probe)
+
+    if failures:
+        return False, "; ".join(failures)
+    return True, "co/sg/tg tokens declared in both :root and :root.light"
+
+
 CHECKS = [
     ("Places Hero -- HTML/JS",   check_places_no_duplicate_route),
     ("Places Hero -- HTML/JS",   check_places_terrain_pitch_baked_into_fit),
@@ -310,6 +355,7 @@ CHECKS = [
     ("Places Hero -- Trip Data", check_trip_fly_box_contains_route),
     ("Places Hero -- Trip Data", check_peaks_do_not_clobber_trip_fly_box),
     ("Art -- Theme",             check_art_theme_vars),
+    ("Art -- Theme",             check_new_art_theme_vars),
 ]
 
 
