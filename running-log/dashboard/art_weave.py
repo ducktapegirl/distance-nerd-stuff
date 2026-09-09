@@ -220,7 +220,7 @@ def art_weave_html(rows):
           'columns crossed by %d week rows, each run a slub whose length is its '
           'mileage.">%s</svg>' % (S, S, nrow, "".join(parts))
         + '<div class="aw-bar" id="aw-legend">%s</div>' % legend
-        + '<p id="aw-readout">Hover the cloth for a single run.</p>'
+        + '<p id="aw-readout"></p>'
         + '<script id="aw-data" type="application/json">%s</script>' % blob
         + "<script>%s</script>" % AW_JS
     )
@@ -274,7 +274,7 @@ AW_JS = r"""
   function show(m) {
     if (!m) {
       hi.setAttribute('opacity', '0');
-      out.innerHTML = 'Hover the cloth for a single run.';
+      out.innerHTML = '';
       return;
     }
     hi.setAttribute('cx', m[0]);

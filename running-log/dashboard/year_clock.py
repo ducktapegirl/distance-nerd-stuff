@@ -200,7 +200,7 @@ def year_clock_html(rows):
       </svg>
       <div class="yc-legend yc-legend-type" data-mode="type" hidden>{legend_type}</div>
       <div class="yc-legend yc-legend-intensity" data-mode="intensity">Spoke length is mileage.</div>
-      <p id="yc-readout">Hover a spoke for a single day.</p>
+      <p id="yc-readout"></p>
       <div class="yc-bar" id="yc-years">{"".join(picker)}</div>
       <script id="yc-data" type="application/json">{data_json}</script>
     </div>"""
