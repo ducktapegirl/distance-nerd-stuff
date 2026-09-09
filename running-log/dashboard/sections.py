@@ -330,7 +330,9 @@ def section_art(rows):
           of the year, vertical is the distance, and dot size is the distance
           again. Threads join runs within three days of each other that were also
           close in distance. The subject is the <em>voids</em> &mdash; the summers
-          at home, the taper weeks, the injuries. Races are ringed in coral.
+          at home, the taper weeks, the injuries. A ring around a dot marks a
+          race, in the same coral used for races elsewhere on this page &mdash;
+          dots without a ring are training runs.
           Distance is the vertical axis rather than duration because every run
           recorded a distance and only 798 of them recorded a time; plotting
           minutes would drop 340 runs without saying so.

@@ -146,26 +146,6 @@ def art_weave_html(rows):
     parts.append('<path d="%s" stroke="%s" stroke-width="0.6" fill="none" '
                  'opacity="0.35"/>' % (warp, _paint("aw-weft")))
 
-    # Day-of-week headers and a year tick down the left edge. Chrome only --
-    # kept off the cloth itself so the weave stays uninterrupted.
-    lab = []
-    for c, name in enumerate(DOW):
-        lab.append('<text x="%.1f" y="%d" text-anchor="middle" font-size="15" '
-                   'fill="%s" letter-spacing="1.5">%s</text>'
-                   % (L + (c + 0.5) * colw, T - 22, _paint("aw-ink"), name.upper()))
-    seen = set()
-    for d, _mi, _t in runs:
-        ay = d.year if d.month >= 8 else d.year - 1        # academic year, Aug 1
-        if ay in seen:
-            continue
-        seen.add(ay)
-        i = (d - start).days // 7
-        lab.append('<text x="%d" y="%.1f" text-anchor="end" font-size="14" '
-                   'fill="%s">%s</text>'
-                   % (L - 12, T + (i + 0.5) * rh + 5, _paint("aw-ink"),
-                      "%d–%02d" % (ay, (ay + 1) % 100)))
-    parts.append("".join(lab))
-
     # One <path> per workout type rather than ~1,138 elements. Stroke width is
     # constant here, so grouping by type costs nothing over grouping by width
     # and buys both the coloring and the filter for free.
@@ -197,6 +177,28 @@ def art_weave_html(rows):
                      'stroke-width="%.2f" fill="none" stroke-linecap="round" '
                      'opacity="0.92"/></g>'
                      % (t, "".join(segs[t]), _type_paint(t), sw))
+
+    # Day-of-week headers and a year tick down the left edge. Chrome only --
+    # kept off the cloth itself so the weave stays uninterrupted. Drawn after
+    # the threads (not before) so a long Monday-column slub's leftward bleed
+    # can never paint over a year label -- labels always sit on top.
+    lab = []
+    for c, name in enumerate(DOW):
+        lab.append('<text x="%.1f" y="%d" text-anchor="middle" font-size="15" '
+                   'fill="%s" letter-spacing="1.5">%s</text>'
+                   % (L + (c + 0.5) * colw, T - 22, _paint("aw-ink"), name.upper()))
+    seen = set()
+    for d, _mi, _t in runs:
+        ay = d.year if d.month >= 8 else d.year - 1        # academic year, Aug 1
+        if ay in seen:
+            continue
+        seen.add(ay)
+        i = (d - start).days // 7
+        lab.append('<text x="%d" y="%.1f" text-anchor="end" font-size="14" '
+                   'fill="%s">%s</text>'
+                   % (L - 12, T + (i + 0.5) * rh + 5, _paint("aw-ink"),
+                      "%d–%02d" % (ay, (ay + 1) % 100)))
+    parts.append("".join(lab))
 
     # Hover highlight, drawn last so it sits over the cloth.
     parts.append('<circle id="aw-hi" r="%.1f" fill="none" stroke="%s" '

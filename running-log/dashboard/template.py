@@ -641,7 +641,37 @@ main {{
 }}
 #yc-svg.sel .yc-spoke:not(.on) {{ opacity: 0.25; }}
 .yc-spoke.on {{ opacity: 1; filter: drop-shadow(0 0 4px var(--accent)); }}
+.yc-spoke.yc-hover {{ opacity: 1; filter: drop-shadow(0 0 4px var(--accent)); }}
 .yc-hit {{ stroke: transparent; stroke-width: 13; cursor: pointer; }}
+.yc-toggle {{
+  background: none; border: none;
+  color: var(--text-secondary);
+  font-family: 'Geist', sans-serif;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 120ms;
+}}
+.yc-toggle:hover {{ color: var(--text-primary); }}
+.yc-toggle.active {{
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}}
+.yc-legend {{
+  margin: 4px 0 6px;
+  display: flex; gap: 14px; align-items: center; justify-content: center;
+  flex-wrap: wrap;
+  font-size: 10px; color: var(--text-tertiary);
+  font-family: 'Geist Mono', monospace;
+}}
+.yc-legend[hidden] {{ display: none; }}
+#yc-readout {{
+  text-align: center; min-height: 2.4em; margin: 6px 0 0;
+  font-size: 13px; color: var(--text-secondary);
+}}
+#yc-readout b {{ color: var(--text-primary); font-weight: 600; }}
 .yc-bar {{
   display: flex; gap: 0; flex-wrap: wrap; justify-content: center;
   margin-top: 4px;
@@ -1254,8 +1284,10 @@ activateView(viewFromHash(), true);
 function accentColor() {
   return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#58a6ff';
 }
-// Shared by every .hm-toggle group on the page (the Training Calendar's and
-// the Year Clock's) -- one color-mode state, kept in sync wherever it's shown.
+// Shared by every .hm-toggle group on the page (currently just the Training
+// Calendar's -- the Year Clock has its own separate .yc-toggle group below,
+// deliberately not wired into this one, so the two views' color modes don't
+// stay in lockstep).
 document.querySelectorAll('.hm-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
     const mode = btn.dataset.mode;
@@ -1277,12 +1309,6 @@ document.querySelectorAll('.hm-toggle').forEach(btn => {
     document.querySelectorAll('.hm-legend').forEach(l => {
       l.hidden = (l.dataset.mode !== mode);
     });
-    // Year Clock spokes: an inline style (not an attribute, like the heatmap's
-    // fill) so it beats the .yc-spoke{stroke:var(--accent)} CSS rule; clearing
-    // it in "intensity" mode lets that rule apply again.
-    document.querySelectorAll('.yc-spoke').forEach(spoke => {
-      spoke.style.stroke = (mode === 'type') ? spoke.dataset.typeColor : '';
-    });
   });
 });
 
@@ -1292,9 +1318,57 @@ document.querySelectorAll('.hm-toggle').forEach(btn => {
   var dataEl = document.getElementById('yc-data');
   if (!svg || !dataEl) return;
   var D = JSON.parse(dataEl.textContent);
-  var layers = {}, spokes = {}, yr = null, cur = null;
+  var layers = {}, spokes = {}, yr = null, cur = null, hovered = null;
+  var readout = document.getElementById('yc-readout');
+  var card = svg.closest('.yc-card');
 
   document.querySelectorAll('.yc-year').forEach(g => { layers[g.dataset.year] = g; });
+
+  function fmtDate(iso) {
+    var p = iso.split('-');
+    var M = ['Jan','Feb','Mar','Apr','May','Jun',
+             'Jul','Aug','Sep','Oct','Nov','Dec'];
+    return (+p[2]) + ' ' + M[+p[1] - 1] + ' ' + p[0];
+  }
+
+  function showHover(hit) {
+    if (hovered) { hovered.classList.remove('yc-hover'); hovered = null; }
+    if (!hit) {
+      if (readout) readout.innerHTML = 'Hover a spoke for a single day.';
+      return;
+    }
+    var spoke = spokes[hit.dataset.date];
+    if (spoke) { spoke.classList.add('yc-hover'); hovered = spoke; }
+    if (readout) {
+      readout.innerHTML = '<b>' + fmtDate(hit.dataset.date) + '</b> · ' +
+        (+hit.dataset.miles).toFixed(1) + ' mi · ' +
+        (D.labels[hit.dataset.type] || hit.dataset.type);
+    }
+  }
+
+  svg.addEventListener('mousemove', e => showHover(e.target.closest('.yc-hit')));
+  svg.addEventListener('mouseleave', () => showHover(null));
+
+  // Year Clock's own color-mode toggle -- deliberately separate from the
+  // Training Calendar's .hm-toggle group (see the comment above it) so the
+  // two views' color modes don't stay in lockstep.
+  if (card) {
+    var toggleBtns = card.querySelectorAll('.yc-toggle');
+    var legends = card.querySelectorAll('.yc-legend');
+    toggleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        var mode = btn.dataset.mode;
+        toggleBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        legends.forEach(l => { l.hidden = (l.dataset.mode !== mode); });
+        // An inline style (not an attribute) so it beats the
+        // .yc-spoke{stroke:var(--accent)} CSS rule; clearing it in
+        // "intensity" mode lets that rule apply again.
+        svg.querySelectorAll('.yc-spoke').forEach(spoke => {
+          spoke.style.stroke = (mode === 'type') ? spoke.dataset.typeColor : '';
+        });
+      });
+    });
+  }
 
   function updateButtons(y) {
     document.querySelectorAll('#yc-years button').forEach(b => {
@@ -1357,10 +1431,7 @@ document.querySelectorAll('.hm-toggle').forEach(btn => {
   };
 
   svg.querySelectorAll('.yc-hit').forEach(hit => {
-    hit.addEventListener('click', () => {
-      select(hit.dataset.date);
-      if (window.__openRaceDetail) window.__openRaceDetail(hit.dataset.date);
-    });
+    hit.addEventListener('click', () => { select(hit.dataset.date); });
   });
   document.querySelectorAll('#yc-years button').forEach(b => {
     b.addEventListener('click', () => setYear(b.dataset.year));

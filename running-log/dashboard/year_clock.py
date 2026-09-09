@@ -1,25 +1,24 @@
 """The "Year Clock" -- a radial year-clock of running-only daily mileage,
 modeled on the Strava dashboard's art_year.py but without the GPS bloom: no
-tracks, no sport families. Lives on the Overview tab, directly above
-Cumulative Mileage.
+tracks, no sport families. Lives on the Art tab.
 
-Its Workout Type / Miles Intensity mode toggle reuses the heatmap's own
-`.hm-toggle` buttons/classes and TYPE_COLORS palette, so the two views share
-one color-mode state and one legend (the heatmap's, directly above) rather
-than each carrying a duplicate.
+Its Workout Type / Miles Intensity mode toggle uses the same TYPE_COLORS
+palette as the Overview heatmap (for dashboard-wide visual consistency) but
+its own `.yc-toggle` buttons and its own legend -- clicking one view's toggle
+does not affect the other, and each carries its own legend rather than
+sharing the heatmap's.
 
 Markup only: the CSS (`.yc-*` rules) and JS (year picker, click-to-highlight,
-calendar-selection sync, mode toggle) live in template.py's CSS/JS constants,
-matching the heatmap's split (SVG built here, styling/behavior centralized
-there) rather than art_year.py's self-contained inline <style>/<script>
-style.
+hover readout, mode toggle) live in template.py's CSS/JS constants, matching
+the heatmap's split (SVG built here, styling/behavior centralized there)
+rather than art_year.py's self-contained inline <style>/<script> style.
 """
 
 import json
 import math
 from datetime import date
 
-from dashboard.config import MONTH_ABBR, TYPE_COLORS
+from dashboard.config import MONTH_ABBR, TYPE_COLORS, TYPE_LABELS
 from dashboard.data import map_type, maybe_float
 
 # Workout types that are cross-training, not running -- excluded even on the
@@ -132,8 +131,10 @@ def _year_layer(year, day_recs, mx, visible):
                C + r1 * math.cos(ang), C + r1 * math.sin(ang)))
         hr0 = R0 - 15
         hits.append(
-            '<line class="yc-hit" data-date="%s" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>'
-            % (d, C + hr0 * math.cos(ang), C + hr0 * math.sin(ang),
+            '<line class="yc-hit" data-date="%s" data-miles="%.2f" data-type="%s" '
+            'x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>'
+            % (d, miles, day_recs[d]["type"],
+               C + hr0 * math.cos(ang), C + hr0 * math.sin(ang),
                C + (R1 + 8) * math.cos(ang), C + (R1 + 8) * math.sin(ang)))
     out.append('<g class="yc-spokes">' + "".join(spokes) + "</g>")
     # hit targets last so they sit on top and are as easy to reach as a real spoke
@@ -174,20 +175,32 @@ def year_clock_html(rows):
 
     layers = "\n".join(_year_layer(y, years_map[y], mx, visible=(y == start)) for y in years)
 
-    data_json = json.dumps({"years": years, "start": str(start)}).replace("</", "<\\/")
+    labels = {t: TYPE_LABELS.get(t, t.title())
+              for t in ("easy", "long", "tempo", "workout", "race")}
+    data_json = json.dumps(
+        {"years": years, "start": str(start), "labels": labels}
+    ).replace("</", "<\\/")
+
+    legend_type = "".join(
+        '<span class="hm-legend-item"><span class="swatch" '
+        'style="background:%s"></span>%s</span>' % (TYPE_COLORS[t], labels[t])
+        for t in ("easy", "long", "tempo", "workout", "race"))
 
     return f"""
     <div class="card yc-card">
       <div class="card-header">
         <div class="card-title">Year Clock</div>
         <div class="hm-mode-toggle">
-          <button class="hm-toggle" data-mode="type">Workout Type</button>
-          <button class="hm-toggle active" data-mode="intensity">Miles Intensity</button>
+          <button class="yc-toggle" data-mode="type">Workout Type</button>
+          <button class="yc-toggle active" data-mode="intensity">Miles Intensity</button>
         </div>
       </div>
       <svg id="yc-svg" viewBox="0 0 {S} {S}">
         {layers}
       </svg>
+      <div class="yc-legend yc-legend-type" data-mode="type" hidden>{legend_type}</div>
+      <div class="yc-legend yc-legend-intensity" data-mode="intensity">Spoke length is mileage.</div>
+      <p id="yc-readout">Hover a spoke for a single day.</p>
       <div class="yc-bar" id="yc-years">{"".join(picker)}</div>
       <script id="yc-data" type="application/json">{data_json}</script>
     </div>"""
