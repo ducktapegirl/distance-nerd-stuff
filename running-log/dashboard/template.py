@@ -1334,7 +1334,7 @@ document.querySelectorAll('.hm-toggle').forEach(btn => {
   function showHover(hit) {
     if (hovered) { hovered.classList.remove('yc-hover'); hovered = null; }
     if (!hit) {
-      if (readout) readout.innerHTML = 'Hover a spoke for a single day.';
+      if (readout) readout.innerHTML = '';
       return;
     }
     var spoke = spokes[hit.dataset.date];
