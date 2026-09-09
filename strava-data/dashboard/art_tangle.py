@@ -3,7 +3,7 @@
 Every route is laid head to tail into a single polyline. Because each track is
 recentered on its own start and most of them are loops, the line keeps
 returning to where it began instead of wandering off, so the activities knot
-around a common centre. Rooted in every activity, and it reads as pure gesture.
+around a common center. Rooted in every activity, and it reads as pure gesture.
 
 Promoted from `tools/proof_landing_art.py:b5_tangle`, which drew 150 of the
 351 usable tracks at ~24 points each to stay under a ~40 KB tile budget. This
@@ -12,7 +12,7 @@ draws **all** of them at a far higher point count.
 **Point-to-point activities translate the entire remainder of the line.** A
 loop returns to its origin and costs nothing; a one-way ride shifts everything
 drawn after it, and a handful of travel days visibly drag the composition off
-centre. The decision taken here is to **exclude non-loops** -- a track whose
+center. The decision taken here is to **exclude non-loops** -- a track whose
 end is further from its start than a fraction of its own extent is dropped --
 because the piece is explicitly about the knot, and a few airport transfers
 otherwise stretch the whole tangle into a diagonal smear. `LOOP_TOL` is the
@@ -34,7 +34,7 @@ set_streams_dir(STREAMS_DIR)
 S = 900
 PAD = 34
 
-# Per-route simplification tolerance, in metres, applied BEFORE concatenation.
+# Per-route simplification tolerance, in meters, applied BEFORE concatenation.
 # Simplifying the finished polyline instead would cut corners across the joins
 # between activities, straightening away the very returns that make the knot.
 EPS_M = 14.0

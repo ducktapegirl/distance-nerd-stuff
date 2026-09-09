@@ -293,7 +293,7 @@ def a3_ribbon(D):
         b[1] += r["mins"]
     n = max(bins) + 1
     raw = {i: v[1] / v[0] for i, v in bins.items()}
-    # A three-week centered mean over whatever neighbours exist. Unsmoothed,
+    # A three-week centered mean over whatever neighbors exist. Unsmoothed,
     # week-to-week pace swings further than the whole plotted range, so the
     # ribbon shreds into vertical spikes and reads as noise rather than as a
     # training block. Smoothing is the difference between a ribbon and a graph
@@ -358,7 +358,7 @@ def a4_constellation(D):
                 B - min(r["mins"], 120.0) / 120.0 * (B - T))
 
     # A link only when the two runs are near in both axes. Linking on date
-    # alone drops a near-vertical stem from every dot whose neighbour ran a very
+    # alone drops a near-vertical stem from every dot whose neighbor ran a very
     # different duration, and the field stops reading as a constellation and
     # starts reading as a barcode with drips.
     thread = []
@@ -566,7 +566,7 @@ def b3_grid(D):
     square cells, where 6x6 would be 100x73 and quietly distort every route that
     filled one. Picks are a proportional quota per family, then the largest
     routes within each family, so a sheet of 48 is not 48 identical
-    neighbourhood loops.
+    neighborhood loops.
     """
     keep = [a for a in D["acts"] if D["tracks"].get(a["id"])]
     if not keep:
@@ -690,7 +690,7 @@ def b5_tangle(D):
     Every route laid head to tail as one unbroken line. Because each is
     recentered on its own start and most of them are loops, the line keeps
     returning to where it began instead of wandering off — so 150 activities
-    knot into one dense scribble around a common centre.
+    knot into one dense scribble around a common center.
 
     One <path> rather than 150, which is what buys the point budget: no
     per-element overhead, integer coordinates, ~24 points an activity.
@@ -817,7 +817,7 @@ CONCEPTS = [
      "wander between repeats becomes the texture.", b4b_signature),
     ("strava", "b5", "B5 &middot; Tangle",
      "150 routes laid head to tail as one unbroken line. Because most are loops, it "
-     "knots around a centre instead of wandering off.", b5_tangle),
+     "knots around a center instead of wandering off.", b5_tangle),
     ("strava", "b6", "B6 &middot; Sport Palette Bands",
      "Band widths are the five families&rsquo; shares; each is filled with a fragment "
      "of a real route from that sport. Works with no streams at all.", b6_bands),

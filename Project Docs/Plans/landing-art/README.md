@@ -106,7 +106,7 @@ out-and-back that drifts sideways has a square box and one stroke.
 
 The metric that does catch it is **tortuosity** (path length ÷ box diagonal,
 where ~1.4 means out-and-back), but ranking by it selects for lapping a small
-area: the sheet fills with the same neighbourhood loop three times and the same
+area: the sheet fills with the same neighborhood loop three times and the same
 track oval three times, and only 8 of 48 picks stay the same. A proper fix is
 tortuosity **plus** a duplicate test — `poster_40for40.py`'s 100 m grid-cell
 Jaccard comparison, applied in reverse. Weighed against a handful of honest

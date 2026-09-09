@@ -2128,9 +2128,9 @@ on the dashboard can answer.
 
 **Recipe.** Every route laid head to tail as **one unbroken `<path>`**. Because each track is
 recentered on its own start and most are loops, the line keeps returning to where it began and the
-activities knot around a common centre.
+activities knot around a common center.
 
-- **Simplify per route, in metres, before concatenating** (`simplify(pts, 14.0)`), then `fit()` the
+- **Simplify per route, in meters, before concatenating** (`simplify(pts, 14.0)`), then `fit()` the
   finished polyline once at the end. Simplifying after concatenation cuts corners across the joins
   between activities.
 - **Non-loops are excluded.** A point-to-point activity translates the entire remainder of the

@@ -207,7 +207,7 @@ def strava_art(rows, *, tracks=None, size=480):
     **shape before size** — sorting by distance alone fills the sheet with the
     longest rides, which are point-to-point and draw as near-identical
     diagonals. And the per-family quota is proportional, so a sheet of 48 is not
-    48 neighbourhood running loops.
+    48 neighborhood running loops.
 
     **Known and accepted: about 11 of the 48 still draw as near-straight.** The
     quota is not what causes it — all 48 clear the 0.38 bar with room to spare,
@@ -217,7 +217,7 @@ def strava_art(rows, *, tracks=None, size=480):
     square box and one stroke ("Silver Strand 12k" scores 0.71). The metric that
     does catch it is tortuosity — path length over box diagonal, where ~1.4 means
     out-and-back — but ranking by it selects for lapping a small area, and the
-    sheet fills with the same neighbourhood loop three times and the same track
+    sheet fills with the same neighborhood loop three times and the same track
     oval three times. Fixing it properly means tortuosity *plus* a duplicate
     test, i.e. poster_40for40.py's 100 m grid-cell Jaccard comparison applied in
     reverse. Weighed against a handful of honest point-to-point cells, that was

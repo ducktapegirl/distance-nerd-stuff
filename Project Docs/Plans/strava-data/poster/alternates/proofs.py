@@ -92,7 +92,7 @@ def simplify(pts, n=240):
 
 
 def project(pts):
-    """Equirectangular with cos(lat) correction, in metres, origin at bbox min."""
+    """Equirectangular with cos(lat) correction, in meters, origin at bbox min."""
     lat0 = sum(p[1] for p in pts) / len(pts)
     k = math.cos(math.radians(lat0)) * 111_320
     xs = [(p[0]) * k for p in pts]

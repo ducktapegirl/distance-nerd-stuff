@@ -314,7 +314,7 @@ def section_art(rows):
         <p class="plot-caption">
           Every run of four years as a bolt of cloth. The warp is the seven days
           of the week; the weft is one thread per calendar week, top to bottom.
-          Each run is a slub whose length is its mileage and whose colour is its
+          Each run is a slub whose length is its mileage and whose color is its
           workout type &mdash; a big week deliberately overruns its column and
           bleeds into the days either side, which is what makes the seven columns
           read as one fabric rather than as seven charts. Weeks are ISO weeks

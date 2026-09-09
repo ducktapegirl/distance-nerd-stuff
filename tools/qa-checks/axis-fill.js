@@ -28,7 +28,7 @@
                          // padding is well under this)
   var TOL_CAT = 0.6;     // category: allowed slack beyond [-0.5, n-0.5]
   // Plot-area floor, calibrated against both dashboards at 375px rather than
-  // guessed: a labelled mobile chart bottoms out around 0.59 (a ~65px left
+  // guessed: a labeled mobile chart bottoms out around 0.59 (a ~65px left
   // margin for "5:30"-style tick text on a ~297px figure is unavoidable), and
   // typical charts sit at 0.70-0.76. 0.55 therefore flags only charts paying
   // for something extra -- the dual-axis (secondary_y) case where a wide

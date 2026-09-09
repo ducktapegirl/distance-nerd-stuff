@@ -40,7 +40,7 @@
 
   var pageLum = lum(getComputedStyle(document.body).backgroundColor);
   var theme = document.documentElement.classList.contains('light') ? 'light' : 'dark';
-  // A surface is "inverted" when it sits on the wrong side of mid-grey for the
+  // A surface is "inverted" when it sits on the wrong side of mid-gray for the
   // current theme: a dark pill on a light page, or vice versa.
   var MID = 0.18;
   function verdict(surfaceLum) {
