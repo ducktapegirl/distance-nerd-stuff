@@ -1,7 +1,8 @@
 name: PR checks
 
-# Static quality gate for pull requests. Builds both dashboards from source and
-# runs the running-log regression suite. Previously PRs had no checks at all —
+# Static quality gate for pull requests. Checks US-English spelling repo-wide,
+# builds both dashboards from source, and runs the running-log regression
+# suite. Previously PRs had no checks at all —
 # deploy.yml only runs on push to main, and neither workflow executed qa.py — so
 # a PR could only be validated by hand.
 #
@@ -37,6 +38,12 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/pr-checks.yml"
+      # US-English spelling check reads every tracked .py/.js/.md/.html file,
+      # not just the build-related paths above -- Project Docs/ and tools/
+      # are exactly where the last regression was found.
+      - "Project Docs/**"
+      - "tools/**"
+      - "*.md"
   workflow_dispatch: {}
 
 permissions:
@@ -56,6 +63,12 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --no-dev  # runtime deps only; Playwright is dev-only and unused here
+
+      # Stdlib-only and independent of the builds below -- runs first so a
+      # spelling regression fails fast. See CLAUDE.md -> "Writing prose - US
+      # English" and the script's own docstring for scope and rationale.
+      - name: Check US-English spelling
+        run: uv run python tools/check_us_spelling.py
 
       - name: Build Strava dashboard
         run: uv run python strava-data/build_dashboard.py
