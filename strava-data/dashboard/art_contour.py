@@ -74,9 +74,19 @@ _CO_CSS_BODY = """
   background:transparent; border:1px solid var(--border,#243044); }
 .co-bar button.co-on { color:var(--text-primary,#e2e8f0);
   border-color:var(--accent,#2dd4bf); }
-#co-readout { text-align:center; min-height:2.4em; margin:10px 0 0;
-  font-size:13px; color:var(--text-secondary,#94a3b8); }
-#co-readout b { color:var(--text-primary,#e2e8f0); font-weight:600; }
+.co-tip { position:fixed; top:0; left:0; z-index:40; pointer-events:none;
+  max-width:260px; padding:8px 12px; border-radius:10px;
+  background:var(--bg-surface); border:1px solid var(--border,#243044);
+  box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  font-size:13px; line-height:1.4; color:var(--text-secondary,#94a3b8);
+  opacity:0; transition:opacity 120ms ease;
+}
+.co-tip.co-tip-show { opacity:1; }
+.co-tip b { color:var(--text-primary,#e2e8f0); font-weight:600; }
+@media (max-width:640px) {
+  .co-tip { top:auto !important; left:12px !important; right:12px !important;
+    bottom:12px !important; max-width:none !important; width:auto; }
+}
 """
 
 
@@ -171,7 +181,6 @@ def art_contour_html(rows):
           'one behind.">%s%s</svg>'
           % (W, H, len(have), "".join(layers), hi)
         + '<div class="co-bar" id="co-sort">%s</div>' % buttons
-        + '<p id="co-readout">Hover a ridge for the day it came from.</p>'
         + '<script id="co-data" type="application/json">%s</script>' % blob
         + "<script>%s</script>" % CO_JS
     )
@@ -188,11 +197,40 @@ CO_JS = r"""
   if (!svg || !dataEl || !host) return;
   var D = JSON.parse(dataEl.textContent);
   var hi = document.getElementById('co-hi');
-  var out = document.getElementById('co-readout');
-  var idle = out.innerHTML;
   var rows = [].slice.call(host.children);   // in build order, index = mark id
   var sort = 'gain';
   var placed = [];                           // [baselineY, markIndex] per slot
+
+  // Portal: appended to <body>, not left nested in the card, because the
+  // card has both overflow:hidden and backdrop-filter -- backdrop-filter
+  // creates a containing block for position:fixed descendants, so a tooltip
+  // left inside the card would be clipped by the card's overflow:hidden.
+  var tip = document.createElement('div');
+  tip.className = 'co-tip';
+  tip.setAttribute('role', 'status');
+  tip.setAttribute('aria-live', 'polite');
+  document.body.appendChild(tip);
+  function isMobile() { return window.matchMedia('(max-width:640px)').matches; }
+
+  function positionTip(clientX, clientY) {
+    if (isMobile()) return;      // mobile CSS pins it; skip inline positioning
+    var margin = 12;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var r = svg.getBoundingClientRect();
+    var mid = r.left + r.width / 2;
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+
+    var left = (clientX < mid) ? (r.left - tw - margin) : (r.right + margin);
+    // Clamp so it never renders off-screen; overlapping the card/SVG edge
+    // when horizontal space is tight is fine (pointer-events:none).
+    left = Math.max(margin, Math.min(left, vw - tw - margin));
+
+    var top = clientY - th / 2;
+    top = Math.max(margin, Math.min(top, vh - th - margin));
+
+    tip.style.left = left.toFixed(0) + 'px';
+    tip.style.top = top.toFixed(0) + 'px';
+  }
 
   function apply(key) {
     var order = D.orders[key];
@@ -219,9 +257,11 @@ CO_JS = r"""
             (t.clientY - r.top) / r.height * vb.height];
   }
 
-  function show(slot) {
+  function show(slot, clientX, clientY) {
     if (slot == null) {
-      hi.setAttribute('opacity', '0'); out.innerHTML = idle; return;
+      hi.setAttribute('opacity', '0');
+      tip.classList.remove('co-tip-show');
+      return;
     }
     var y = placed[slot][0], m = D.marks[placed[slot][1]];
     // Reuse the row's own stroke geometry for the highlight rather than
@@ -230,16 +270,19 @@ CO_JS = r"""
     hi.setAttribute('d', stroke.getAttribute('d'));
     hi.setAttribute('transform', 'translate(0 ' + y.toFixed(1) + ')');
     hi.setAttribute('opacity', '0.95');
-    out.innerHTML = '<b>' + m[0] + '</b> · ' + m[1] + ' · ' +
+    tip.innerHTML = '<b>' + m[0] + '</b> · ' + m[1] + ' · ' +
                     m[2].toLocaleString() + ' ft climbed · ' +
                     m[3].toFixed(1) + ' mi · ' + m[4];
+    tip.classList.add('co-tip-show');
+    positionTip(clientX, clientY);
   }
 
   function at(ev) {
     var p = toUser(ev);
+    var t = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
     var slot = Math.round((p[1] - D.top) / D.dy);
     if (slot < 0 || slot >= placed.length) { show(null); return; }
-    show(Math.abs(p[1] - placed[slot][0]) < 14 ? slot : null);
+    show(Math.abs(p[1] - placed[slot][0]) < 14 ? slot : null, t.clientX, t.clientY);
   }
 
   svg.addEventListener('mousemove', at);
@@ -263,5 +306,15 @@ CO_JS = r"""
   }
 
   apply('gain');
+
+  // The tooltip lives on <body>, not inside this view's own shown/hidden
+  // section, so it won't auto-hide via the page's router when switching
+  // tabs. Hide it whenever the SVG itself stops intersecting the viewport
+  // -- covers a tab switch without coupling to the router's JS at all.
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) { show(null); }
+    }, { threshold: 0 }).observe(svg);
+  }
 })();
 """
