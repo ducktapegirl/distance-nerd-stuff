@@ -218,17 +218,31 @@ CO_JS = r"""
     var vw = window.innerWidth, vh = window.innerHeight;
     var r = svg.getBoundingClientRect();
     var mid = r.left + r.width / 2;
-    var tw = tip.offsetWidth, th = tip.offsetHeight;
 
-    var left = (clientX < mid) ? (r.left - tw - margin) : (r.right + margin);
-    // Clamp so it never renders off-screen; overlapping the card/SVG edge
-    // when horizontal space is tight is fine (pointer-events:none).
-    left = Math.max(margin, Math.min(left, vw - tw - margin));
+    // Anchor by a fixed edge (`left` XOR `right`), never by the tooltip's
+    // own measured width. Below ~850px the SVG's edge sits close enough to
+    // the viewport edge that the natural position can overflow; clamping
+    // that overflow by measured width (the previous approach) made the
+    // tooltip visibly creep sideways as each hovered row's text length
+    // changed, because the clamp pins one edge and the *other* edge -- the
+    // one next to the cursor -- moves with the width. Capping width instead
+    // of repositioning keeps the anchored edge exactly fixed regardless of
+    // content; the far edge is free to move, but nothing is anchored there.
+    if (clientX < mid) {
+      var availL = Math.max(80, r.left - margin * 2);
+      tip.style.maxWidth = Math.min(260, availL) + 'px';
+      tip.style.right = (vw - r.left + margin).toFixed(0) + 'px';
+      tip.style.left = 'auto';
+    } else {
+      var availR = Math.max(80, vw - r.right - margin * 2);
+      tip.style.maxWidth = Math.min(260, availR) + 'px';
+      tip.style.left = (r.right + margin).toFixed(0) + 'px';
+      tip.style.right = 'auto';
+    }
 
+    var th = tip.offsetHeight;   // measured after maxWidth, which affects wrap/height
     var top = clientY - th / 2;
     top = Math.max(margin, Math.min(top, vh - th - margin));
-
-    tip.style.left = left.toFixed(0) + 'px';
     tip.style.top = top.toFixed(0) + 'px';
   }
 
