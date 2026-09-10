@@ -153,8 +153,13 @@ TG_JS = r"""
   // fresh, cancellable Animation object each time -- not dependent on the
   // browser re-triggering a `forwards`-filled CSS animation from a same-tick
   // property toggle.
-  function draw() {
-    if (reduceMotion || !len) return;
+  //
+  // `force` lets an explicit "Draw it again" click play the animation even
+  // under prefers-reduced-motion: that setting is about suppressing motion
+  // the page starts on its own, not about disabling a control the visitor
+  // just pressed. The automatic on-reveal draw still respects it.
+  function draw(force) {
+    if ((reduceMotion && !force) || !len) return;
     p.getAnimations().forEach(function (a) { a.cancel(); });
     p.animate(
       [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
@@ -179,7 +184,7 @@ TG_JS = r"""
   if (btn) {
     btn.addEventListener('click', function () {
       measure();
-      draw();
+      draw(true);
     });
   }
 })();

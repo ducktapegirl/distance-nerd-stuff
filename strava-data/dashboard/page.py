@@ -540,7 +540,7 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   <div class="card">
     <div class="card-title">Signature Route</div>
     {signature_html}
-    <p class="plot-caption">The loops run most often, each drawn solid with every one of its repeats ghosted behind it. Runs are matched by laying a 100&nbsp;m grid over each track after recentering it on its own start and asking how far the two overlap &mdash; which is why the same loop still matches itself when the watch caught a different driveway. All the repeats share one transform, so what you are looking at is the GPS wander between them rather than the shape of the route: the fuzz is twenty runs of the same four miles. The quickest repeat is picked out in amber.</p>
+    <p class="plot-caption">The routes repeated most often across every sport &mdash; not just runs &mdash; each drawn solid with every one of its repeats ghosted behind it. Repeats are matched by laying a 100&nbsp;m grid over each track after recentering it on its own start and asking how far the two overlap &mdash; which is why the same loop still matches itself when the watch caught a different driveway. All the repeats share one transform, so what you are looking at is the GPS wander between them rather than the shape of the route: the fuzz is twenty repeats of the same four miles. The quickest repeat is picked out in amber.</p>
   </div>
   <div class="card">
     <div class="card-title">Tangle</div>
