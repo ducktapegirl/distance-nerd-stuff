@@ -1,9 +1,9 @@
-"""B4b — Signature Route: one loop, and every time it was run.
+"""B4b — Signature Route: one loop, and every time it was repeated.
 
-The most-repeated loop in the record drawn solid, with all of its
-near-identical siblings ghosted behind it on a shared scale. The subject is not
-the route -- it is the **GPS wander between repeats**, the fuzz of twenty runs
-of the same four miles.
+The most-repeated loop in the record -- across every sport, not just running
+-- drawn solid, with all of its near-identical siblings ghosted behind it on a
+shared scale. The subject is not the route -- it is the **GPS wander between
+repeats**, the fuzz of twenty repeats of the same four miles.
 
 Promoted from `tools/proof_landing_art.py:_signature` / `b4b_signature`. Two
 things change on a dashboard. There is more than one signature route here (five
@@ -16,7 +16,7 @@ otherwise answer.
 **Cluster detection is a grid-cell Jaccard on the recentered track** (100 m
 cells, overlap > 0.5). It is `poster_40for40.py`'s duplicate test inverted:
 there it keeps two laps of one loop off the wall, here it finds them on
-purpose. Recentering on the start point is what makes it work -- two runs of
+purpose. Recentering on the start point is what makes it work -- two repeats of
 the same loop compare equal even when the watch caught a different driveway.
 
 The comparison is O(n^2) over the ~300 candidates left after the distance
@@ -83,8 +83,8 @@ def _clusters(acts, tracks):
     """The top signature loops, each as (anchor id, [member ids]).
 
     Members are the transitive-free neighbor set of the anchor, matching the
-    proof: a run is in the cluster when it matches the anchor directly, not
-    when it matches something that matches the anchor.
+    proof: an activity is in the cluster when it matches the anchor directly,
+    not when it matches something that matches the anchor.
     """
     cand = [a for a in acts
             if tracks.get(a["id"]) and KM_LO < a["km"] < KM_HI]
@@ -208,9 +208,9 @@ def art_signature_html(rows):
     return (
         "<style>%s</style>" % _css()
         + '<svg id="sg-svg" viewBox="0 0 %d %d" role="img" '
-          'aria-label="The most-repeated loop in the record drawn solid, with '
-          'every other run of the same loop ghosted behind it on a shared '
-          'scale.">%s</svg>' % (S, S, "".join(layers))
+          'aria-label="The most-repeated loop in the record, across every '
+          'sport, drawn solid with every other repeat of the same loop '
+          'ghosted behind it on a shared scale.">%s</svg>' % (S, S, "".join(layers))
         + '<div class="sg-bar" id="sg-pick">%s</div>' % "".join(buttons)
         + '<p id="sg-readout"></p>'
         + '<script id="sg-data" type="application/json">%s</script>' % blob
@@ -229,7 +229,7 @@ SG_JS = r"""
 
   function describe(i) {
     var m = meta[i];
-    var s = '<b>' + m.n + ' runs</b> of the same ' + m.mi.toFixed(1) +
+    var s = '<b>' + m.n + ' repeats</b> of the same ' + m.mi.toFixed(1) +
             '-mile loop, ' + m.from + ' to ' + m.to + '.';
     if (m.fast && m.slow) {
       s += ' Fastest ' + m.fast + '/mi, slowest ' + m.slow +
