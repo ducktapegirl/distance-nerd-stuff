@@ -44,12 +44,12 @@ from .theme import fig_html
 # hash). Drives the tab bar, the pre-paint hash resolver, and the paint CSS.
 NAV_VIEWS = [
     ("overview",    "Overview"),
+    ("art",         "Art"),
+    ("places",      "Places"),
     ("volume",      "Volume"),
     ("trends",      "Trends"),
     ("segments",    "Segments"),
-    ("places",      "Places"),
     ("exploratory", "Exploratory"),
-    ("art",         "Art"),
 ]
 VIEW_NAMES = [v for v, _ in NAV_VIEWS]
 
