@@ -18,12 +18,12 @@ from dashboard.template import (
 # hash). Drives the tab bar, the pre-paint hash resolver, and the paint CSS.
 NAV_VIEWS = [
     ("overview",    "Overview"),
-    ("volume",      "Volume"),
-    ("mix",         "Workout Mix"),
+    ("art",         "Art"),
     ("performance", "Performance"),
     ("races",       "Races"),
+    ("volume",      "Volume"),
+    ("mix",         "Workout Mix"),
     ("patterns",    "Patterns"),
-    ("art",         "Art"),
 ]
 VIEW_NAMES = [v for v, _ in NAV_VIEWS]
 
