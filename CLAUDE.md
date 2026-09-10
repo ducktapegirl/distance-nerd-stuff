@@ -322,6 +322,14 @@ manually — both dashboards' HTML lives under `running-log/`:
 uv run python -m http.server 8765 --directory "running-log"
 ```
 
+**Any change made outside `main` (a feature branch, an uncommitted working-tree edit, a PR
+under review) must be validated by serving it locally, not just by reading the diff.** Rebuild
+the affected dashboard(s) and start/confirm the preview server above so the user can open
+`http://127.0.0.1:8765/...` and look at the actual change themselves before it merges to
+`main`. This applies whenever the change is observable in a browser (a chart, a caption, an
+interaction) — skip it only for changes a browser can't show anything for (pure data pipeline
+code, CI config, docs).
+
 | Page | What it is |
 |---|---|
 | `/index.html` | landing page — the two dashboards' front door |

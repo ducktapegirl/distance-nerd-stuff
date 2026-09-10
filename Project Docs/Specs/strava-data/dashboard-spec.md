@@ -2091,8 +2091,13 @@ front occludes the one behind.
   filter them.
 
 **Interaction.** Hover/drag reads the nearest baseline (a y-coordinate lookup, not a hit test on
-geometry) → name, date, feet climbed, miles, sport. A gain/date/distance sort toggle re-orders the
-field; sorted by date, 373 rows is a two-year seismograph.
+geometry) → name, date, feet climbed, miles, sport, shown in a floating tooltip appended to
+`document.body` (a portal, so the card's `overflow:hidden` plus `backdrop-filter` containing block
+can't clip it) rather than inline below the 1720-unit-tall SVG. On desktop the tooltip sits to the
+left or right of the SVG depending on which half was hovered; below the 640px breakpoint it pins to
+the bottom of the viewport instead. An `IntersectionObserver` on `#co-svg` hides it once the SVG
+leaves the viewport, so it can't outlive a tab switch. A gain/date/distance sort toggle re-orders
+the field; sorted by date, 373 rows is a two-year seismograph.
 
 **Why sorting happens in JS.** Each ridge ships once and is positioned by a transform; changing the
 sort moves 373 transforms and re-appends 373 groups (the re-append is what preserves occlusion —

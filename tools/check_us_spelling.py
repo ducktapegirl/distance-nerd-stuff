@@ -50,6 +50,9 @@ SKIP_FILES = {
     # Intentionally quotes already-renamed identifiers as its own subject
     # matter -- see the module docstring.
     "Project Docs/Specs/2026-09-07-us-english-follow-ups.md",
+    # This file's own STEMS list is a set of string literals *naming* the
+    # British spellings it detects -- necessarily contains every one of them.
+    "tools/check_us_spelling.py",
 }
 CHECKED_SUFFIXES = {".py", ".js", ".md", ".html"}
 
