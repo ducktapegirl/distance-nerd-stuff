@@ -219,28 +219,30 @@ CO_JS = r"""
     var r = svg.getBoundingClientRect();
     var mid = r.left + r.width / 2;
 
-    // Anchor by a fixed edge (`left` XOR `right`), never by the tooltip's
-    // own measured width. Below ~850px the SVG's edge sits close enough to
-    // the viewport edge that the natural position can overflow; clamping
-    // that overflow by measured width (the previous approach) made the
-    // tooltip visibly creep sideways as each hovered row's text length
-    // changed, because the clamp pins one edge and the *other* edge -- the
-    // one next to the cursor -- moves with the width. Capping width instead
-    // of repositioning keeps the anchored edge exactly fixed regardless of
-    // content; the far edge is free to move, but nothing is anchored there.
-    if (clientX < mid) {
-      var availL = Math.max(80, r.left - margin * 2);
-      tip.style.maxWidth = Math.min(260, availL) + 'px';
-      tip.style.right = (vw - r.left + margin).toFixed(0) + 'px';
-      tip.style.left = 'auto';
-    } else {
-      var availR = Math.max(80, vw - r.right - margin * 2);
-      tip.style.maxWidth = Math.min(260, availR) + 'px';
-      tip.style.left = (r.right + margin).toFixed(0) + 'px';
-      tip.style.right = 'auto';
-    }
+    // Fixed width, not shrink-to-fit -- a *constant* tw is what makes the
+    // viewport clamp below safe. Measuring the box's own width from content
+    // (tip.offsetWidth) meant the clamped edge held steady while the other
+    // edge -- the one next to the cursor -- crept sideways by however much
+    // a row's text width changed between hovers, whenever the clamp engaged
+    // (narrow desktop widths). Capping *width* to the gutter instead (a
+    // second attempt) fixed the drift but then either clipped off-screen
+    // (when the true gutter was narrower than the floor) or force-wrapped
+    // the text into an unreadably narrow column. A constant width sidesteps
+    // both: it can't drift (nothing about it depends on content), and it's
+    // never narrower than comfortable.
+    var tw = 260;
+    tip.style.width = tw + 'px';
 
-    var th = tip.offsetHeight;   // measured after maxWidth, which affects wrap/height
+    var left = (clientX < mid) ? (r.left - tw - margin) : (r.right + margin);
+    // Clamp against the viewport, not the SVG's own gutter -- when the
+    // space beside the plot is too narrow for the tooltip, letting it slide
+    // to overlap the plot/card edge (pointer-events:none, so this is
+    // harmless) beats clipping it off-screen.
+    left = Math.max(margin, Math.min(left, vw - tw - margin));
+    tip.style.left = left.toFixed(0) + 'px';
+    tip.style.right = 'auto';
+
+    var th = tip.offsetHeight;
     var top = clientY - th / 2;
     top = Math.max(margin, Math.min(top, vh - th - margin));
     tip.style.top = top.toFixed(0) + 'px';
