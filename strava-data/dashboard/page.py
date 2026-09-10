@@ -535,17 +535,17 @@ def _assemble_html(*, date_range, stats_html, nav_links, theme_buttons, js,
   <div class="card">
     <div class="card-title">Contour Field</div>
     {contour_html}
-    <p class="plot-caption">Elevation only &mdash; no map, no coordinates. Every recorded activity's altitude profile is drawn as one ridgeline, stacked down the page with the nearer row filled opaque so it hides the one behind. Height is scaled to the fourth root of the day's relief rather than to the relief itself: against the biggest climb in the record, a linear scale would flatten a typical day into a straight line. Sort by date and the poster becomes a seismograph of two years. The sawtooth rows are ski days &mdash; repeated descents, not glitches.</p>
+    <p class="plot-caption">Every recorded activity's altitude profile is drawn as one ridgeline, normalized to the same length and stacked down the page with the nearer row filled opaque so it hides the one behind. Height is scaled to the fourth root of the day's relief rather than to the relief itself: against the biggest climb in the record, a linear scale would flatten a typical day into a straight line. Sort by date and the poster becomes a seismograph of two years. The sawtooth rows are ski days, not glitches.</p>
   </div>
   <div class="card">
     <div class="card-title">Signature Route</div>
     {signature_html}
-    <p class="plot-caption">The routes repeated most often across every sport &mdash; not just runs &mdash; each drawn solid with every one of its repeats ghosted behind it. Repeats are matched by laying a 100&nbsp;m grid over each track after recentering it on its own start and asking how far the two overlap &mdash; which is why the same loop still matches itself when the watch caught a different driveway. All the repeats share one transform, so what you are looking at is the GPS wander between them rather than the shape of the route: the fuzz is twenty repeats of the same four miles. The quickest repeat is picked out in amber.</p>
+    <p class="plot-caption">The routes repeated most often (across every sport, although most are runs). Each drawn route is drawn solid with every one of its repeats ghosted behind it. Repeats are matched by laying a 100&nbsp;m grid over each track after recentering it on its own start and asking how far the two overlap based on the Jaccard similarity (threshold 0.5). This means that GPS variation as well as minor details/alternatives all get selected as a match. The fastest repeat is picked out in amber.</p>
   </div>
   <div class="card">
     <div class="card-title">Tangle</div>
     {tangle_html}
-    <p class="plot-caption">Every looped route in the record laid head to tail as a single unbroken line, each one starting where the last one ended. Because each track is recentered on its own start and most rides and runs come home, the line keeps returning to where it began and knots around a common center instead of wandering off. One-way activities are left out: a single airport transfer translates everything drawn after it and drags the whole composition into a smear.</p>
+    <p class="plot-caption">Every looped route in the record laid head to tail as a single unbroken line, each one starting where the last one ended. One-way activities are left out to maintain a common center. However, a few frequently repeated routes where the finish is 20-60 meters away from the start contribute to an overall southeasterly drift.</p>
   </div>
 </section>
 
