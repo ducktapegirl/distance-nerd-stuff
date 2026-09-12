@@ -29,6 +29,18 @@ committed.
 
 63 cards build; 16 of them rotate.
 
+**The second panel** (2.9″ four-color XIAO, 296×128) is built by the same run into the same root:
+
+| File | Who reads it |
+|---|---|
+| `epaper_xiao.html` | The XIAO panel, via SenseCraft's **Web** function. One card, exactly 296×128, four colors, no JS. |
+| `epaper_xiao/<id>.html` | The XIAO panel, to pin **one fixed card**. Same ids as the Sticky's. |
+| `epaper_xiao-all.html` | You. Audit, every card at panel size, the "as the panel sees it" toggle, and the mockup pairs. |
+
+15 of the Sticky's 16 rotate there (`mosaic` is dropped); verify with
+`uv run python tools/epaper_check.py --panel xiao`. Design notes and the open decisions:
+`Project Docs/Plans/strava-data/epaper-xiao.md`.
+
 Base URL: `https://ducktapegirl.github.io/distance-nerd-stuff/`
 
 ---
@@ -183,6 +195,17 @@ count would describe the cron schedule rather than the athlete.
 | Card has not changed for many hours | The hourly `deploy.yml` schedule, not the device. Check Actions: scheduled workflows are delayed under load and are auto-disabled after 60 days of repo inactivity. A faster device poll cannot fix this. |
 | Text is tiny / layout is wrong | The panel is being served something other than `epaper.html` — check the Web function URL. `epaper-all.html` is the proof sheet and will look wrong on the device. |
 | 404 at the Pages URL | The branch has not merged to `main`, or the Pages deploy failed. |
+
+### The XIAO panel
+
+Pair the XIAO ePaper Display Board the same way (its SenseCraft firmware is per panel — pick the
+2.9″ four-color entry under Tools), then point its Web function at
+`https://ducktapegirl.github.io/distance-nerd-stuff/epaper_xiao.html`, or at
+`…/epaper_xiao/<id>.html` to pin one card. The same three clocks apply, with one more caveat: a
+full refresh on this panel takes ~25 s and flashes, so the hourly rebuild is the right cadence and
+the device poll should not go below it. How SenseCraft quantizes a page to four colors (nearest
+color vs dithered) is undocumented — the cards use only pure black / white / red / yellow so
+either gives the same result; note here what the device actually does once it is on the desk.
 
 ## Changing what shows
 

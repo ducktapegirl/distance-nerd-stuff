@@ -5,6 +5,11 @@ physically invisible at 235 PPI, below 3 px a stroke does not survive e-ink,
 and the panel neither scrolls nor runs JavaScript. Those are cheap to check and
 expensive to discover on the device, so this checks them for every card.
 
+``--panel xiao`` runs the same checks against the 2.9" four-color panel's pages
+(296x128, 14 px / 2 px floors) plus one it alone needs: every rendered color must
+be one of the four the panel can show. feed.xml is device-agnostic and is checked
+only with the Sticky.
+
 Three groups:
 
 1. **feed.xml** - well-formed, enough items, unique GUIDs, and no metric or
@@ -37,6 +42,7 @@ Examples:
     uv run python tools/epaper_check.py
     uv run python tools/epaper_check.py --only latest,haiku,wildlife
     uv run python tools/epaper_check.py --no-screenshots
+    uv run python tools/epaper_check.py --panel xiao
 """
 
 import argparse
@@ -53,12 +59,21 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_DIR = os.path.join(_REPO, "running-log")
-SHOT_DIR = os.path.join(_REPO, "tools", "preview-output", "epaper")
+SHOT_ROOT = os.path.join(_REPO, "tools", "preview-output")
 
-W, H = 800, 480
-MIN_TEXT = 26
-MIN_STROKE = 3
 MIN_ITEMS = 17          # the rotation's size; the catalog is far larger
+
+# Two panels, one checker. The Sticky is the original; the XIAO is the 2.9"
+# four-color strip (strava-data/feed/xiao/), whose floors are the Sticky's
+# translated through the pixel density, and which adds a rule the Sticky never
+# needed: every rendered color must be one of the four the panel can show.
+PANELS = {
+    "sticky": dict(w=800, h=480, min_text=26, min_stroke=3, page="epaper.html",
+                   card_dir="epaper", feed=True, palette=None, shots="epaper"),
+    "xiao": dict(w=296, h=128, min_text=14, min_stroke=2, page="epaper_xiao.html",
+                 card_dir="epaper_xiao", feed=False, shots="epaper_xiao",
+                 palette={"#000000", "#ffffff", "#ff0000", "#ffff00"}),
+}
 
 # Display-units policy. Word-boundary matched so "5km" is caught but
 # "Kilometre Road" as a segment name is not mistaken for a unit.
@@ -67,6 +82,7 @@ BANNED_UNITS = re.compile(r"\b\d+(\.\d+)?\s*(km|km/h|kph)\b|\b\d+\s*°\s*C\b|\bk
 # Measure the rendered SVG in the page. Returns every violation rather than
 # the first, so one run reports the whole card.
 _MEASURE_JS = r"""() => {
+  const MIN_TEXT = __MIN_TEXT__, MIN_STROKE = __MIN_STROKE__, W = __W__, H = __H__;
   const out = {texts: [], strokes: [], svgs: document.querySelectorAll('svg').length,
                scrollW: document.documentElement.scrollWidth,
                scrollH: document.documentElement.scrollHeight};
@@ -84,14 +100,23 @@ _MEASURE_JS = r"""() => {
   };
   for (const t of document.querySelectorAll('text')) {
     const size = parseFloat(getComputedStyle(t).fontSize) * scaleOf(t);
-    if (size < 25.5) out.texts.push({size: +size.toFixed(2),
+    if (size < MIN_TEXT - 0.5) out.texts.push({size: +size.toFixed(2),
                                      text: (t.textContent || '').slice(0, 40)});
   }
   for (const el of document.querySelectorAll('[stroke-width]')) {
     if ((el.getAttribute('stroke') || 'none') === 'none') continue;
     const w = parseFloat(el.getAttribute('stroke-width')) * scaleOf(el);
-    if (w < 2.95) out.strokes.push({w: +w.toFixed(2), tag: el.tagName});
+    if (w < MIN_STROKE - 0.05) out.strokes.push({w: +w.toFixed(2), tag: el.tagName});
   }
+  // Every color actually painted, for the panels that can only show a few.
+  const colors = new Set();
+  for (const el of document.querySelectorAll('svg *')) {
+    const cs = getComputedStyle(el);
+    for (const c of [cs.fill, cs.stroke]) {
+      if (c && c !== 'none' && !c.startsWith('url(')) colors.add(c);
+    }
+  }
+  out.colors = [...colors];
   // Overlap and clipping. Every layout here is hand-placed at absolute user
   // units with no reflow, so a card that gains a longer name or a second row
   // silently draws one label on top of another - invisible to a font-size
@@ -120,8 +145,8 @@ _MEASURE_JS = r"""() => {
         out.overlaps.push({a: texts[i].t, b: texts[j].t,
                            w: +ox.toFixed(0), h: +oy.toFixed(0)});
     }
-  out.clipped = texts.filter(o => o.raw.left < -1 || o.raw.right > 801 ||
-                                  o.raw.top < -1 || o.raw.bottom > 481)
+  out.clipped = texts.filter(o => o.raw.left < -1 || o.raw.right > W + 1 ||
+                                  o.raw.top < -1 || o.raw.bottom > H + 1)
                      .map(o => o.t);
   // Ellipsis is legitimate for a name or a description, but never for the
   // headline slot, which exists to carry the fact itself.
@@ -210,8 +235,21 @@ def check_feed(path):
 
 # ── group 2 + 3: the pages ────────────────────────────────────────────────
 
-def check_pages(page, urls, shot_dir):
+def _rgb_to_hex(c):
+    """``rgb(255, 0, 0)`` -> ``#ff0000``; hex passes through lowercased."""
+    m = re.match(r"rgba?\((\d+),\s*(\d+),\s*(\d+)", c)
+    if m:
+        return "#%02x%02x%02x" % tuple(int(v) for v in m.groups())
+    return c.lower()
+
+
+def check_pages(page, urls, shot_dir, panel):
     """Load each page at panel size, measure it, and screenshot it."""
+    W, H = panel["w"], panel["h"]
+    MIN_TEXT, MIN_STROKE = panel["min_text"], panel["min_stroke"]
+    js = (_MEASURE_JS.replace("__MIN_TEXT__", str(MIN_TEXT))
+          .replace("__MIN_STROKE__", str(MIN_STROKE))
+          .replace("__W__", str(W)).replace("__H__", str(H)))
     results = []
     for name, url in urls:
         errors = []
@@ -222,7 +260,7 @@ def check_pages(page, urls, shot_dir):
         page.on("pageerror", lambda e: console.append(str(e)))
         page.goto(url, wait_until="load")
 
-        m = page.evaluate(_MEASURE_JS)
+        m = page.evaluate(js)
         if m["scrollW"] != W or m["scrollH"] != H:
             errors.append(f"page is {m['scrollW']}x{m['scrollH']}, not {W}x{H}")
         if m["svgs"] != 1:
@@ -242,6 +280,10 @@ def check_pages(page, urls, shot_dir):
             errors.append(f"...and {len(m['overlaps']) - 4} more overlaps")
         for t in m["clipped"][:4]:
             errors.append(f"text outside the panel: {t!r}")
+        if panel["palette"]:
+            off = sorted({_rgb_to_hex(c) for c in m["colors"]} - panel["palette"])
+            if off:
+                errors.append(f"colors outside the panel's palette: {off[:4]}")
         for c in console[:3]:
             errors.append(f"console: {c[:80]}")
 
@@ -263,8 +305,11 @@ def main() -> int:
     ap.add_argument("--only", default="",
                     help="comma-separated card ids to check instead of all")
     ap.add_argument("--no-screenshots", action="store_true")
-    ap.add_argument("--shot-dir", default=SHOT_DIR)
+    ap.add_argument("--shot-dir", default="")
+    ap.add_argument("--panel", choices=sorted(PANELS), default="sticky",
+                    help="which device's pages and floors to check (default: sticky)")
     args = ap.parse_args()
+    panel = PANELS[args.panel]
 
     # Card titles carry em dashes and some carry emoji; a cp1252 Windows
     # console raises UnicodeEncodeError on the first failing card, which would
@@ -277,8 +322,8 @@ def main() -> int:
         return _fail("playwright-not-installed", str(exc),
                      "uv add --dev playwright && uv run playwright install chromium")
 
-    card_dir = os.path.join(args.dir, "epaper")
-    device_page = os.path.join(args.dir, "epaper.html")
+    card_dir = os.path.join(args.dir, panel["card_dir"])
+    device_page = os.path.join(args.dir, panel["page"])
     if not os.path.exists(device_page) or not os.path.isdir(card_dir):
         return _fail("feed-not-built", f"missing {device_page} or {card_dir}",
                      "uv run python strava-data/build_feed.py")
@@ -292,15 +337,16 @@ def main() -> int:
             return _fail("unknown-card", f"no page for {sorted(missing)}")
         cards = [c for c in cards if c in wanted]
 
-    shot_dir = "" if args.no_screenshots else args.shot_dir
+    shot_dir = "" if args.no_screenshots else (
+        args.shot_dir or os.path.join(SHOT_ROOT, panel["shots"]))
     if shot_dir:
         os.makedirs(shot_dir, exist_ok=True)
 
     port = _free_port()
     httpd = _serve(args.dir, port)
     base = f"http://127.0.0.1:{port}"
-    urls = ([("epaper", f"{base}/epaper.html")] if not wanted else []) + \
-           [(c, f"{base}/epaper/{c}.html") for c in cards]
+    urls = ([("device", f"{base}/{panel['page']}")] if not wanted else []) + \
+           [(c, f"{base}/{panel['card_dir']}/{c}.html") for c in cards]
 
     try:
         with sync_playwright() as p:
@@ -323,20 +369,21 @@ def main() -> int:
                 browser.close()
                 return 0
 
-            ctx = browser.new_context(viewport={"width": W, "height": H},
+            ctx = browser.new_context(viewport={"width": panel["w"], "height": panel["h"]},
                                       device_scale_factor=1)
             page = ctx.new_page()
-            results = check_pages(page, urls, shot_dir)
+            results = check_pages(page, urls, shot_dir, panel)
             browser.close()
     finally:
         httpd.shutdown()
 
-    feed_bad = check_feed(os.path.join(args.dir, "feed.xml"))
-
-    print(f"feed.xml   {'FAIL' if feed_bad else 'pass'}")
-    for b in feed_bad:
-        print(f"           - {b}")
-    print()
+    # feed.xml is device-agnostic text, so it is checked once, with the Sticky.
+    feed_bad = check_feed(os.path.join(args.dir, "feed.xml")) if panel["feed"] else []
+    if panel["feed"]:
+        print(f"feed.xml   {'FAIL' if feed_bad else 'pass'}")
+        for b in feed_bad:
+            print(f"           - {b}")
+        print()
     failed = [r for r in results if r[1]]
     for name, errors, cut in results:
         note = f"   ({len(cut)} ellipsized)" if cut else ""
