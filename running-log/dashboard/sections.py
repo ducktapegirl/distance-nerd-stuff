@@ -22,7 +22,7 @@ from dashboard.data import map_type, maybe_float
 from dashboard.stats import compute_pr_cards
 from dashboard.theme import fig_html
 from dashboard.art_constellation import art_constellation_html
-from dashboard.art_relief import art_relief_html
+from dashboard.art_weave import art_weave_html
 from dashboard.year_clock import year_clock_html
 
 
@@ -309,17 +309,17 @@ def section_art(rows):
       </div>
       {year_clock_html(rows)}
       <div class="card">
-        <div class="card-title">Low Relief</div>
-        {art_relief_html(rows)}
+        <div class="card-title">Woven Weeks</div>
+        {art_weave_html(rows)}
         <p class="plot-caption">
-          Every run of four years as a raised form on a flat ground: seven
-          day-of-week columns, one row per calendar week from top to bottom.
-          Each mound is as wide as its mileage and colored by its workout type,
-          lit from the upper left, so a heavy week reads as a ridge and a rest
-          week as level ground. The mounds are translucent, and a short run
-          always sits on top of a long one, so nothing is buried. Weeks are ISO
-          weeks (Monday&ndash;Sunday), so they do not line up with the
-          academic-year weeks used elsewhere on this page.
+          Every run of four years as a bolt of cloth. The warp is the seven days
+          of the week; the weft is one thread per calendar week, top to bottom.
+          Each run is a slub whose length is its mileage and whose color is its
+          workout type &mdash; a big week deliberately overruns its column and
+          bleeds into the days either side, which is what makes the seven columns
+          read as one fabric rather than as seven charts. Weeks are ISO weeks
+          (Monday&ndash;Sunday), so they do not line up with the academic-year
+          weeks used elsewhere on this page.
         </p>
       </div>
       <div class="card">
