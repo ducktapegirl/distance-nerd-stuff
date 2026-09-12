@@ -311,6 +311,14 @@ buys the coloring and the filter for free.
   which is where the cloth closes up.
 - The left margin is **118 units**, not 56: the academic-year labels ("2003–04") clipped off the
   frame at the narrower margin.
+- **The gap between the year labels and the cloth is derived, not hardcoded.** A max-length
+  Monday slub starts at `L + (colw - ln_max)/2 ≈ L - 15`, and with the round cap reaches ≈ `L - 17`;
+  at the original fixed `L - 12` a long Monday run crossed "2005–06". The labels now sit at
+  `L - (max(0, (ln_max - colw)/2) + sw/2) - 10` — the worst-case overrun plus half the stroke plus
+  10 units of air, ≈ 91 — so re-tuning the length curve or stroke width can never push a thread
+  back over them. Drawing labels after the threads only decides who paints on top. The
+  exploration that surfaced this, and the redesigns it tried, are pinned under
+  `Project Docs/Plans/running-log/woven update/`.
 - **Weeks are ISO weeks** (Monday-anchored). A1 Ring of Seasons buckets by academic-year week and
   gets a slightly different peak, so state the bucketing wherever a number is shown — the caption
   does.

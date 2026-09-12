@@ -180,8 +180,17 @@ def art_weave_html(rows):
 
     # Day-of-week headers and a year tick down the left edge. Chrome only --
     # kept off the cloth itself so the weave stays uninterrupted. Drawn after
-    # the threads (not before) so a long Monday-column slub's leftward bleed
-    # can never paint over a year label -- labels always sit on top.
+    # the threads so labels always sit on top, but that only decides who wins
+    # an overlap; the gap below is what removes it.
+    #
+    # How far past L a Monday slub can reach: half its overrun past the column
+    # plus half the stroke and its round cap. Deriving the label gap from this
+    # means re-tuning the length curve above can never push a thread back over
+    # the year labels -- at the old fixed L - 12 a long Monday run crossed
+    # "2005–06".
+    max_ln = 0.34 * colw + 0.95 * colw
+    bleed = max(0.0, (max_ln - colw) / 2) + sw / 2
+    label_x = L - bleed - 10
     lab = []
     for c, name in enumerate(DOW):
         lab.append('<text x="%.1f" y="%d" text-anchor="middle" font-size="15" '
@@ -194,9 +203,9 @@ def art_weave_html(rows):
             continue
         seen.add(ay)
         i = (d - start).days // 7
-        lab.append('<text x="%d" y="%.1f" text-anchor="end" font-size="14" '
+        lab.append('<text x="%.1f" y="%.1f" text-anchor="end" font-size="14" '
                    'fill="%s">%s</text>'
-                   % (L - 12, T + (i + 0.5) * rh + 5, _paint("aw-ink"),
+                   % (label_x, T + (i + 0.5) * rh + 5, _paint("aw-ink"),
                       "%d–%02d" % (ay, (ay + 1) % 100)))
     parts.append("".join(lab))
 
