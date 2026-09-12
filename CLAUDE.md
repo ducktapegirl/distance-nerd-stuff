@@ -361,7 +361,7 @@ Both dashboards render Plotly charts into fixed-height, `overflow:hidden` cards 
 
 ## Running Log dashboard architecture
 
-`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `running-log/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself. It has **seven** views (`page.py:NAV_VIEWS`): Overview, Volume, Workout Mix, Performance, Races, Patterns, Art. The three art pieces live in their own modules (`year_clock.py`, `art_relief.py`, `art_constellation.py`) — see “The Art views” above, whose rules override this section's.
+`visualize_log.py` is a thin entrypoint; the actual chart builders, data helpers, page sections, and HTML/CSS/JS templates live in the `running-log/dashboard/` package (`config.py`, `data.py`, `stats.py`, `theme.py`, `charts.py`, `components.py`, `sections.py`, `template.py`, `page.py`) — add new `chart_*`/`section_*` functions there, not in `visualize_log.py` itself. It has **seven** views (`page.py:NAV_VIEWS`): Overview, Volume, Workout Mix, Performance, Races, Patterns, Art. The three art pieces live in their own modules (`year_clock.py`, `art_weave.py`, `art_constellation.py`) — see “The Art views” above, whose rules override this section's.
 
 ## The Art views — hand-built SVG, not Plotly
 
@@ -375,7 +375,7 @@ pages follow. Read this before touching one.
 | Signature Route | Strava | `strava-data/dashboard/art_signature.py` | `sg-` |
 | Tangle | Strava | `strava-data/dashboard/art_tangle.py` | `tg-` |
 | Year Clock | Running Log | `running-log/dashboard/year_clock.py` | `yc-` |
-| Low Relief | Running Log | `running-log/dashboard/art_relief.py` | `lr-` |
+| Woven Weeks | Running Log | `running-log/dashboard/art_weave.py` | `aw-` |
 | Constellation | Running Log | `running-log/dashboard/art_constellation.py` | `ac-` |
 
 - **They are not Plotly figures.** `tidy_dark()` / `fig_html()` do not apply, and

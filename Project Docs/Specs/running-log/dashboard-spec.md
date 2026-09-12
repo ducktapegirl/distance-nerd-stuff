@@ -277,7 +277,7 @@ and cumulative chart. Both `#overview` and `#art` deep-link correctly. The clock
 (`template.py`) and JS were left where they are — the three-file split is what the packaging rule
 says not to *inherit* for new pieces, not a mandate to refactor the existing one.
 
-Art view order: **Year Clock &middot; Low Relief &middot; Constellation**.
+Art view order: **Year Clock &middot; Woven Weeks &middot; Constellation**.
 
 Both new pieces follow the `art_year.py` packaging pattern rather than the Year Clock's: one
 self-contained fragment carrying its own `<style>`, markup and `<script>`, in its own module beside
@@ -289,52 +289,33 @@ The five workout-type colors are **not** redefined by either piece: they reuse t
 `--easy` / `--long` / `--tempo` / `--workout` / `--race` custom properties, which `template.py`
 already declares in both themes.
 
-### Low Relief — `dashboard/art_relief.py`, prefix `lr-`
+### Woven Weeks — `dashboard/art_weave.py`, prefix `aw-`
 
-Replaced **Woven Weeks** (`art_weave.py`, prefix `aw-`) in September 2026. Same grid, different
-mark: the threads read as ruled lines rather than anything tactile, and after a round of sample
-sheets (thread treatments, then non-textile concepts, then "raised center, beveled sides"
-variants) the mound won. The old module is gone; its exploration survives in
-`Project Docs/Specs/art-sections.md` §A2 and `Project Docs/Plans/landing-art*`.
-
-**Recipe.** Seven day-of-week columns against **~193 ISO-week rows** at S = 900. Each run with
-`miles > 0` is one `<ellipse>`: `rx = ln/2` where `ln = 0.34*colw + 0.95*colw * (mi/mx) ** 0.6`
-(the length curve Woven Weeks tuned, kept as-is — a typical run is about one column wide, a long one
-overruns into the days either side), `ry = rowheight * 0.62`, centered on its column. Color is
+**Recipe.** A warp of seven day-of-week columns against a weft of **193 ISO-week rows**, at
+S = 900. Each run with `miles > 0` is a slub whose length is its mileage and whose color is
 `data.map_type()` — the raw `workout_type` is free text with 52 distinct values and must never be
-encoded directly.
+encoded directly. Marks ship as **one `<path>` per workout type** (five paths, not ~1,138
+elements); stroke width is constant, so grouping by type costs nothing over grouping by width and
+buys the coloring and the filter for free.
 
-- **The fill is one radial gradient per type**, in objectBoundingBox units so one def scales to
-  every ellipse of that type: gradient center at `(.42, .36)`, `r = .62`, so the crown sits toward an
-  upper-left light. Stops: `0 → #fff @ .96` (crown), `.30 → var(--type) @ .93`, `.78 → var(--type)
-  @ .78`, `1 → #000 @ 0` (rim, fading to nothing — there is no outline). The crown and rim
-  interpolate toward theme-neutral white and black rather than from precomputed lighter/darker
-  hexes, which is what lets the same five gradients serve both themes while the type colors stay the
-  page's own custom properties (written as `style="stop-color:var(--easy, #hex)"`).
-- **One shadow for everything**: all marks sit in a single `<g filter="url(#lr-sh)">` — Gaussian
-  blur `.9`, offset `(.6, 1)`, flattened to black at `.28`, merged under the source. The classic
-  chain, not `feDropShadow`, for support.
-- **Draw order is global, widest first** (`sort key = (-ln, date, type)`), so a short run always
-  sits on top of a long one in the same week. This is why marks are **not** grouped by type the
-  way Woven Weeks' five paths were, and why there is one element per run (~1,138 ellipses, ~100 KB
-  of markup plus ~48 KB of marks JSON): a per-mark gradient fill cannot be concatenated into a path.
-  The legend filter therefore keys on `data-t="<type>"` plus a class on the `<svg>`
-  (`#lr-svg.lr-off-easy ellipse[data-t="easy"] { opacity:.08 }`), not on a `<g>` per type.
-- **The gap between the year labels and the marks is derived, not hardcoded.** Woven Weeks placed
-  the labels at `L - 12`, and a max-length Monday run started at `L + (colw - ln_max)/2 ≈ L - 15`,
-  so the two collided (the "2005–06" label). Now
-  `label_x = L - (max(0, (ln_max - colw)/2) + 2) - 10` — the mark's maximum overrun plus the
-  shadow's throw plus 10 units of air — so re-tuning the length curve can never push a mark back
-  over the labels. Day headers sit at `T - 30`. `L` stays 118 and the viewBox is unchanged.
-- The ground is one faint `<path>` of week-row guides in `--lr-ground` (`#243044` / `#dfe4ec`);
-  labels and the hover ring use `--lr-ink` (`#64748b` both themes). There are no column guides.
+- **The fine 193-row version is the right one here.** The proof was forced to a coarse
+  two-weeks-to-a-row variant because 193 rows over 440 tile units is 2.29 units a row — a moire at
+  240 px. At S = 900 a row is ~4.1 units.
+- **The weft must be a real, continuous thread** at `min(rowheight * 0.34, 1.2)`, and it must be
+  *visible* where no run crosses it. Drawn at `#2a3344` it vanished against the card and the seven
+  day columns read as seven separate barcodes with dark gutters — the exact opposite of cloth.
+  `--aw-weft` is `#44536b` / `#c2cad8`.
+- **Slubs must overrun their column.** The proof's curve (`0.15*colw` floor, exponent 0.75) only
+  overran for the very longest runs, so at dashboard size the gutters were still visible.
+  `ln = 0.34*colw + 0.95*colw * (mi/mx) ** 0.6` puts a *typical* run at roughly one column width,
+  which is where the cloth closes up.
+- The left margin is **118 units**, not 56: the academic-year labels ("2003–04") clipped off the
+  frame at the narrower margin.
 - **Weeks are ISO weeks** (Monday-anchored). A1 Ring of Seasons buckets by academic-year week and
   gets a slightly different peak, so state the bucketing wherever a number is shown — the caption
   does.
 
-**Interaction.** Hover/drag → date, distance, mapped type, via the same nearest-mark search
-(x weighted `0.35`) Woven Weeks used; marks are `[cx, cy, rx, iso, miles, type]` and the highlight
-`#lr-hi` is an ellipse resized to the hovered mark. Per-type filter buttons.
+**Interaction.** Hover/drag → date, distance, mapped type. Per-type filter buttons.
 
 ### Constellation — `dashboard/art_constellation.py`, prefix `ac-`
 
