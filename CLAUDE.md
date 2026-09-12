@@ -280,8 +280,11 @@ Panel rules — these are constraints, not preferences, and `svg.py` enforces th
 
 The same rotation on Seeed's 2.9″ Quadruple Color ePaper (296×128, black / white / red / yellow, 112
 PPI, ~25 s refresh) via the XIAO ePaper Display Board and the same SenseCraft Web function.
-`build_feed.py` builds it in the same run, into `running-log/{epaper_xiao.html, epaper_xiao-all.html,
-epaper_xiao/<id>.html}` (gitignored). It is a **sibling package, not a parameterization**: the data
+`build_feed.py` builds it in the same run, into `running-log/{epaper_xiao.html, epaper_xiao.png,
+epaper_xiao.bin, feed_xiao.xml, epaper_xiao-all.html, epaper_xiao/<id>.{html,png,bin}}` (gitignored).
+The PNG / framebuffer / one-item RSS exist because SenseCraft's Image widget wants pixels (URL or
+base64) and its RSS widget is the one source documented to re-fetch; `xiao/raster.py` renders with
+`resvg-py` and snaps every pixel to the four colors, so nothing downstream dithers. It is a **sibling package, not a parameterization**: the data
 layer (`metrics`, `places`, `journey`, `geo`) and the glyph builders are shared; `xiao/{config,svg,
 layouts,cards,page}.py` are the drawing surface. Rules that differ from the Sticky's:
 

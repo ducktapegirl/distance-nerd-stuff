@@ -25,19 +25,27 @@ from feed.page import render_contact_sheet, render_page
 from feed.rss import build_rss
 from feed.xiao import cards as xiao_cards
 from feed.xiao import page as xiao_page
+from feed.xiao import raster
+from feed.xiao import rss as xiao_rss
 from feed.xiao.config import (OUT_CARD_DIR as XIAO_CARD_DIR, OUT_PAGE as XIAO_PAGE,
-                              OUT_SHEET as XIAO_SHEET)
+                              OUT_PNG as XIAO_PNG, OUT_RAW as XIAO_RAW,
+                              OUT_RSS as XIAO_RSS, OUT_SHEET as XIAO_SHEET)
 
 
-def _write_card_pages(card_dir, cards, render):
+def _write_card_pages(card_dir, cards, render, exts=(".html",)):
     """One static page per card, and drop the pages of cards that no longer
-    exist - a retired card must stop being pinnable by URL."""
+    exist - a retired card must stop being pinnable by URL. ``render`` maps a
+    card to ``{ext: body}``; text for .html, bytes for anything else."""
     os.makedirs(card_dir, exist_ok=True)
     for c in cards:
-        with open(os.path.join(card_dir, f"{c.id}.html"), "w", encoding="utf-8") as f:
-            f.write(render(c))
-    live = {f"{c.id}.html" for c in cards}
-    stale = [f for f in os.listdir(card_dir) if f.endswith(".html") and f not in live]
+        for ext, body in render(c).items():
+            mode = "w" if isinstance(body, str) else "wb"
+            with open(os.path.join(card_dir, f"{c.id}{ext}"), mode,
+                      **({"encoding": "utf-8"} if mode == "w" else {})) as f:
+                f.write(body)
+    live = {f"{c.id}{ext}" for c in cards for ext in exts}
+    stale = [f for f in os.listdir(card_dir)
+             if f.endswith(exts) and f not in live]
     for f in stale:
         os.remove(os.path.join(card_dir, f))
     return stale
@@ -49,17 +57,30 @@ def build_xiao(bundle, today, now):
     cards = xiao_cards.build_cards(bundle, today)
     today_card = xiao_cards.card_of_the_hour(cards, now)
     mockups = xiao_cards.build_mockups(bundle, today)
+    # Pixels as well as markup: SenseCraft's Image widget wants a PNG (URL or
+    # base64), and a XIAO on its own firmware wants the raw framebuffer. Both
+    # are quantized to the four colors here, so nothing downstream dithers.
+    pngs = {c.id: raster.png(c) for c in cards}
+    raws = {c.id: raster.raw(c) for c in cards}
     outputs = {
         XIAO_PAGE: xiao_page.render_page(today_card),
         XIAO_SHEET: xiao_page.render_sheet(cards, mockups, bundle["asof"],
                                            xiao_cards.ROTATION, today_card),
+        XIAO_PNG: pngs[today_card.id],
+        XIAO_RAW: raws[today_card.id],
+        XIAO_RSS: xiao_rss.build_rss(today_card, raster.b64(pngs[today_card.id]), now,
+                                     bundle["athlete"]),
     }
     for path, body in outputs.items():
-        with open(path, "w", encoding="utf-8") as f:
+        mode = "w" if isinstance(body, str) else "wb"
+        with open(path, mode, **({"encoding": "utf-8"} if mode == "w" else {})) as f:
             f.write(body)
         print(f"-> {os.path.basename(path):18s} {len(body):>8,} bytes")
-    stale = _write_card_pages(XIAO_CARD_DIR, cards, xiao_page.render_page)
-    print(f"-> epaper_xiao/      {len(cards):>4} card pages"
+    stale = _write_card_pages(
+        XIAO_CARD_DIR, cards,
+        lambda c: {".html": xiao_page.render_page(c), ".png": pngs[c.id], ".bin": raws[c.id]},
+        exts=(".html", ".png", ".bin"))
+    print(f"-> epaper_xiao/      {len(cards):>4} cards x (html, png, bin)"
           + (f" ({len(stale)} stale removed)" if stale else ""))
     print(f"   xiao card this hour: {today_card.id} — {today_card.title}")
     return cards, today_card
@@ -102,6 +123,7 @@ def main():
             # The second panel, keyed on the same hour. Its cards reuse the
             # Sticky's ids, so this is the rotation and which of it shows.
             "xiao": {"card_of_the_hour": xiao_today.id,
+                     "png": f"{SITE}/epaper_xiao.png", "feed": f"{SITE}/feed_xiao.xml",
                      "rotation": list(xiao_cards.ROTATION),
                      "cards": [c.id for c in xiao]},
         }, indent=2) + "\n",
@@ -115,7 +137,7 @@ def main():
     # One static page per card, so a single card can be pinned in SenseCraft
     # by URL, or checked locally, without waiting for its turn in the rotation.
     # The panel runs no JavaScript, so a "?card=" query could never work.
-    stale = _write_card_pages(OUT_CARD_DIR, cards, lambda c: render_page(c, asof))
+    stale = _write_card_pages(OUT_CARD_DIR, cards, lambda c: {".html": render_page(c, asof)})
     print(f"-> epaper/           {len(cards):>4} card pages"
           + (f" ({len(stale)} stale removed)" if stale else ""))
     print(f"   card this hour: {today_card.id} — {today_card.title}")

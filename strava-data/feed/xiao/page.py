@@ -143,6 +143,9 @@ body.zoom2 .proof svg{width:592px;height:256px}
 body.zoom2 .sheet{grid-template-columns:repeat(auto-fill,minmax(620px,1fr))}
 body.zoom2 .sheet.pairs{grid-template-columns:1fr}
 body.quant .proof svg{filter:url(#quant)}
+.proof img.shipped{display:none;image-rendering:pixelated}
+body.png .proof img.shipped{display:block;width:100%;height:100%}
+body.png .proof:has(img.shipped) svg{display:none}
 figcaption{padding:11px 2px 0;max-width:296px}
 body.zoom2 figcaption{max-width:592px}
 figcaption h3{margin:0;font-size:15px;font-weight:600;line-height:1.3;letter-spacing:-.01em}
@@ -188,6 +191,7 @@ _SHEET_JS = """
   function apply() {
     document.body.classList.toggle('zoom2', state.zoom === '2');
     document.body.classList.toggle('quant', state.quant === '1');
+    document.body.classList.toggle('png', state.quant === '2');
     document.querySelectorAll('.filter button').forEach(function (b) {
       var k = b.dataset.key, v = b.dataset.val;
       b.setAttribute('aria-pressed', String(state[k] === v));
@@ -214,7 +218,7 @@ _QUANT_FILTER = """<svg width="0" height="0" style="position:absolute" aria-hidd
 </filter></svg>"""
 
 
-def _figure(card, label=None, note=None, badge=""):
+def _figure(card, label=None, note=None, badge="", png=False):
     if card is None:
         return (f'<figure><div class="frame"><span>{esc(label or "")}</span>'
                 f'<span class="tick"></span></div>'
@@ -229,7 +233,12 @@ def _figure(card, label=None, note=None, badge=""):
         cap += (f'<p class="rss">{esc(card.summary)}</p>'
                 f'<p class="recipe">{esc(card.recipe or "")}</p>')
     cap += "</figcaption>"
-    return f'<figure id="{esc(label or card.id)}">{head}<div class="proof">{card.svg()}</div>{cap}</figure>'
+    # Rotation proofs also carry the shipped PNG, hidden until the "PNG" render
+    # mode: the filter approximates the four-color collapse, the PNG *is* it.
+    img = (f'<img class="shipped" src="epaper_xiao/{esc(card.id)}.png" width="{W}" height="{H}" '
+           f'alt="">' if png else "")
+    return (f'<figure id="{esc(label or card.id)}">{head}<div class="proof">{card.svg()}{img}</div>'
+            f"{cap}</figure>")
 
 
 def render_sheet(cards, mockups, asof, rotation, today_card):
@@ -246,8 +255,8 @@ def render_sheet(cards, mockups, asof, rotation, today_card):
         f"<td>{esc(why)}</td></tr>"
         for cid, idea, v, why in AUDIT)
 
-    proofs = "".join(_figure(c, badge='<span class="v">in rotation</span>' if c.id in rot else "")
-                     for c in cards)
+    proofs = "".join(_figure(c, badge='<span class="v">in rotation</span>' if c.id in rot else "",
+                             png=True) for c in cards)
 
     mock_sections = []
     for group, pairs in mockups:
@@ -299,6 +308,7 @@ def render_sheet(cards, mockups, asof, rotation, today_card):
   <span class="filter-label">Render</span>
   <button type="button" data-key="quant" data-val="0" aria-pressed="true">Browser</button>
   <button type="button" data-key="quant" data-val="1" aria-pressed="false">As the panel sees it</button>
+  <button type="button" data-key="quant" data-val="2" aria-pressed="false">Shipped PNG</button>
 </div>
 
 <section><div class="roll"><span class="letter">1</span><h2>Audit of the Sticky rotation</h2>
@@ -321,12 +331,16 @@ white → yellow → red → black where a card needs one.</p>
 
 <p class="foot">
 Built by <code>strava-data/build_feed.py</code> from the same data as the Sticky feed.
-Point SenseCraft's Web function at <code>epaper_xiao.html</code> for the rotation, or at
-<code>epaper_xiao/&lt;id&gt;.html</code> to pin one card. The rotation advances hourly with the
+Every rotation card ships four ways, all quantized to the four colors at build time:
+<code>epaper_xiao.html</code> (page), <code>epaper_xiao.png</code> (2-bit indexed PNG for the
+Image widget), <code>epaper_xiao.bin</code> (packed 2-bit framebuffer for a XIAO on its own
+firmware) and <code>feed_xiao.xml</code> (one RSS item: the fact as text, the PNG as an
+enclosure and as base64, for the RSS widget the cloud is documented to re-fetch). Per-card
+copies live under <code>epaper_xiao/&lt;id&gt;.*</code>. The rotation advances hourly with the
 site rebuild, exactly as the Sticky's does.<br>
-Palette: {' · '.join(PALETTE)}. "As the panel sees it" thresholds every channel at one half —
-the same collapse the device's quantizer makes, give or take its dithering, which Seeed does not
-document.
+Palette: {' · '.join(PALETTE)}. "As the panel sees it" thresholds the browser render at one
+half per channel; "Shipped PNG" shows the actual file — the two should agree, and the PNG is
+what the panel gets.
 </p>
 </div>
 <script>{_SHEET_JS}</script>
