@@ -33,12 +33,17 @@ committed.
 
 | File | Who reads it |
 |---|---|
-| `epaper_xiao.html` | The XIAO panel, via SenseCraft's **Web** function. One card, exactly 296×128, four colors, no JS. |
-| `epaper_xiao/<id>.html` | The XIAO panel, to pin **one fixed card**. Same ids as the Sticky's. |
-| `epaper_xiao-all.html` | You. Audit, every card at panel size, the "as the panel sees it" toggle, and the mockup pairs. |
+| `epaper_xiao.png` | The XIAO panel, via an **Image widget** (URL). The hour's card as a 2-bit indexed PNG, already quantized to the four colors. |
+| `feed_xiao.xml` | The XIAO panel, via an **RSS widget**. Exactly one item: the hour's card as title + description, and the same PNG as an `<enclosure>`, as bare base64 (`<dns:png>`) and as a `data:` URI (`<dns:pngDataUri>`). |
+| `epaper_xiao.html` | The XIAO panel, via the **HTML widget** where it is offered. One card, exactly 296×128, no JS. |
+| `epaper_xiao.bin` | A XIAO on its **own firmware**: packed 2-bit framebuffer, 9,472 bytes, index order black / white / yellow / red. |
+| `epaper_xiao/<id>.{html,png,bin}` | The same three, per card, to pin **one fixed card**. Same ids as the Sticky's. |
+| `epaper_xiao-all.html` | You. Audit, every card at panel size, "as the panel sees it" and "shipped PNG" toggles, and the mockup pairs. |
 
 15 of the Sticky's 16 rotate there (`mosaic` is dropped); verify with
-`uv run python tools/epaper_check.py --panel xiao`. Design notes and the open decisions:
+`uv run python tools/epaper_check.py --panel xiao`, which also checks every shipped PNG is
+296×128, 2-bit indexed on the four-color palette, and that `feed_xiao.xml` carries one item with
+its base64. Design notes and the open decisions:
 `Project Docs/Plans/strava-data/epaper-xiao.md`.
 
 Base URL: `https://ducktapegirl.github.io/distance-nerd-stuff/`
@@ -198,14 +203,31 @@ count would describe the cron schedule rather than the athlete.
 
 ### The XIAO panel
 
-Pair the XIAO ePaper Display Board the same way (its SenseCraft firmware is per panel — pick the
-2.9″ four-color entry under Tools), then point its Web function at
-`https://ducktapegirl.github.io/distance-nerd-stuff/epaper_xiao.html`, or at
-`…/epaper_xiao/<id>.html` to pin one card. The same three clocks apply, with one more caveat: a
-full refresh on this panel takes ~25 s and flashes, so the hourly rebuild is the right cadence and
-the device poll should not go below it. How SenseCraft quantizes a page to four colors (nearest
-color vs dithered) is undocumented — the cards use only pure black / white / red / yellow so
-either gives the same result; note here what the device actually does once it is on the desk.
+SenseCraft (Seeedash) is a **cloud-render, push** model: you compose a canvas of widgets, click
+Apply, and the cloud pushes a bitmap to the device on the schedule set by the device card's
+**Refresh Interval**. The device fetches nothing itself. So "the panel points at a URL" really
+means "a widget on the canvas has a URL the cloud resolves when it renders". Three widgets can
+carry the card, and the docs only document the refresh behavior of one of them:
+
+| Widget | Point it at | Refreshes every interval? |
+|---|---|---|
+| **RSS** | `…/feed_xiao.xml` | **Yes, documented** ("refresh with the latest headlines automatically"). Bind `title` / `description` to text. Try binding `dns:png` (base64) or `dns:pngDataUri` or `enclosure.url` to an **Image** widget — if the tree lets you, the whole card arrives inside the feed and nothing else is needed. |
+| **Image** | `…/epaper_xiao.png` | Undocumented. Test: Apply once, wait past the next refresh, see whether the card changed without another Apply. |
+| **HTML** | `…/epaper_xiao.html` | Undocumented; same test. Not offered for every panel. |
+
+Start with the RSS widget: it is the one guaranteed path. If a feed field can feed an Image
+widget, you are done. If it can only feed text, add an Image widget with the PNG URL alongside it
+and run the test — the text keeps the panel honest either way. Every image the build ships is
+already quantized to the four colors, so the cloud's dithering has nothing to do.
+
+If neither image path refreshes, the fallback is the XIAO's **own firmware**: an ESP32-S3 sketch
+that wakes hourly, fetches `epaper_xiao.bin` and writes it to the panel. The framebuffer's index
+order (black 0, white 1, yellow 2, red 3) follows the GDEY029F51 convention — verify against the
+driver before trusting it on glass.
+
+A full refresh on this panel takes ~25 s and flashes, so the hourly rebuild is the right cadence;
+a shorter Refresh Interval only redraws the same card. Pairing is the same as the Sticky's; the
+SenseCraft firmware is per panel, so pick the 2.9″ four-color entry under Tools.
 
 ## Changing what shows
 

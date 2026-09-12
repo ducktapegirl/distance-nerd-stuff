@@ -80,9 +80,18 @@ Vertical budget: masthead to y = 21 (kicker 14 px caps, date as "9 SEP" — the 
 that a twenty-character kicker needs more), body 27 → 122. That is 95 px for the whole idea, which
 is why no card has a footer, a divider, or a second line of anything. Headline numerals 26–48 px.
 
-Outputs, gitignored beside the Sticky's: `epaper_xiao.html` (device page), `epaper_xiao-all.html`
-(the sheet), `epaper_xiao/<id>.html` (one card, for pinning), and a `xiao` block in `feed.json`.
-`build_feed.py` builds both panels in one run, so neither workflow changed.
+Outputs, gitignored beside the Sticky's: `epaper_xiao.html` (page), `epaper_xiao.png` (2-bit
+indexed PNG, quantized to the four colors at build time), `epaper_xiao.bin` (packed 2-bit
+framebuffer), `feed_xiao.xml` (one RSS item: the fact as text, the PNG as enclosure + base64),
+`epaper_xiao-all.html` (the sheet), `epaper_xiao/<id>.{html,png,bin}` (one card, for pinning), and
+a `xiao` block in `feed.json`. `build_feed.py` builds both panels in one run, so neither workflow
+changed; `resvg-py` (a pure wheel) does the rasterizing, so the deploy runner needs no browser.
+
+**Pixels, not just markup.** SenseCraft's Image widget takes "an image URL or Base64 content", and
+its RSS widget is the one source the docs say the cloud re-fetches every refresh. `xiao/raster.py`
+renders each card with resvg, snaps every pixel to the nearest of the four colors, and writes an
+indexed PNG (~2 KB); `xiao/rss.py` puts the hour's PNG inside a one-item feed as base64. Which
+widget actually carries the picture is a device test — see the deployment runbook.
 
 ## 3 · Color
 
@@ -135,9 +144,14 @@ outputs.
 
 ## Unknowns
 
-- **How SenseCraft quantizes a web page for a four-color panel** — nearest color or dithered — is
-  undocumented. The cards use pure primaries and no gray so that either gives the same result;
-  what dithering would do to anti-aliased text edges is the one thing only the device can show.
+- **Which SenseCraft widget re-fetches a picture.** RSS is documented to refresh; whether a feed
+  field can be bound to an Image widget, and whether an Image widget's URL is re-fetched at all,
+  are device tests (runbook). Every shipped image is already four-color, so quantization is no
+  longer a question — only transport is.
+- **Fonts on the deploy runner.** resvg resolves `Helvetica, Arial, sans-serif` through the
+  system's fontconfig; the GitHub runner substitutes Liberation Sans, which is metrically
+  Arial-compatible, so the width estimates hold. If a runner ever lacks it, resvg falls back to
+  DejaVu, which is wider — a kicker that fits locally could ellipsize there.
 - **Refresh:** 25 s per full refresh means the panel will visibly flash on every card change. The
   hourly rebuild is the right cadence; do not point the device's own poll below that.
 - The panel's font. Same assumption as the Sticky (a bundled Helvetica / Arial); emoji in an

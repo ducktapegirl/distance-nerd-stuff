@@ -34,6 +34,10 @@ PPI        = 112
 OUT_PAGE     = os.path.join(_OUT_DIR, "epaper_xiao.html")
 OUT_SHEET    = os.path.join(_OUT_DIR, "epaper_xiao-all.html")
 OUT_CARD_DIR = os.path.join(_OUT_DIR, "epaper_xiao")
+# The rendered card of the hour, and the one-item feed that carries it.
+OUT_PNG      = os.path.join(_OUT_DIR, "epaper_xiao.png")
+OUT_RAW      = os.path.join(_OUT_DIR, "epaper_xiao.bin")
+OUT_RSS      = os.path.join(_OUT_DIR, "feed_xiao.xml")
 
 # --- The four colors ---------------------------------------------------------
 # Pure primaries on purpose: whatever nearest-color quantizer SenseCraft runs

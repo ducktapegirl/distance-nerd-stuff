@@ -51,6 +51,7 @@ import json
 import os
 import re
 import socket
+import struct
 import sys
 import threading
 import xml.etree.ElementTree as ET
@@ -202,6 +203,68 @@ def _fail(reason: str, detail: str = "", hint: str = "") -> int:
 
 
 # ── group 1: the feed ─────────────────────────────────────────────────────
+
+# ── group 1b: the XIAO's shipped pixels ───────────────────────────────────
+# The four-color panel's cards also ship as PNGs (and a one-item RSS feed
+# carrying one of them). Those are read by SenseCraft's Image widget, not by
+# a browser, so the page checks say nothing about them. Static, no Playwright.
+
+XIAO_PLTE = {(0, 0, 0), (255, 255, 255), (255, 255, 0), (255, 0, 0)}
+
+
+def check_xiao_assets(directory, w, h):
+    bad = []
+    pngs = glob.glob(os.path.join(directory, "epaper_xiao", "*.png"))
+    top = os.path.join(directory, "epaper_xiao.png")
+    if os.path.exists(top):
+        pngs.append(top)
+    if not pngs:
+        bad.append("no epaper_xiao PNGs found")
+    for path in pngs:
+        d = open(path, "rb").read()
+        name = os.path.relpath(path, directory)
+        if d[:8] != b"\x89PNG\r\n\x1a\n":
+            bad.append(f"{name}: not a PNG")
+            continue
+        i, plte, ihdr = 8, None, None
+        while i < len(d):
+            ln = struct.unpack(">I", d[i:i + 4])[0]
+            typ, body = d[i + 4:i + 8], d[i + 8:i + 8 + ln]
+            if typ == b"IHDR":
+                ihdr = struct.unpack(">IIBBBBB", body)
+            elif typ == b"PLTE":
+                plte = {tuple(body[k:k + 3]) for k in range(0, len(body), 3)}
+            i += 12 + ln
+        pw, ph, depth, ctype = ihdr[:4]
+        if (pw, ph) != (w, h):
+            bad.append(f"{name}: {pw}x{ph}, not {w}x{h}")
+        if ctype != 3 or depth != 2:
+            bad.append(f"{name}: color type {ctype} depth {depth}, expected indexed 2-bit")
+        if plte is None or not plte <= XIAO_PLTE:
+            bad.append(f"{name}: palette {sorted(plte or [])} is not the panel's four")
+        raw = path[:-4] + ".bin"
+        if os.path.exists(raw) and os.path.getsize(raw) != w * h // 4:
+            bad.append(f"{os.path.relpath(raw, directory)}: {os.path.getsize(raw)} bytes, "
+                       f"expected {w * h // 4}")
+    feed = os.path.join(directory, "feed_xiao.xml")
+    if not os.path.exists(feed):
+        bad.append("feed_xiao.xml missing")
+    else:
+        try:
+            root = ET.parse(feed).getroot()
+            items = root.findall("./channel/item")
+            if len(items) != 1:
+                bad.append(f"feed_xiao.xml has {len(items)} items, expected exactly 1")
+            elif not (items[0].findtext("{https://ducktapegirl.github.io/distance-nerd-stuff/ns/xiao}png") or "").startswith("iVBOR"):
+                bad.append("feed_xiao.xml item carries no base64 PNG")
+            for tag in ("title", "description"):
+                hit = BANNED_UNITS.search(items[0].findtext(tag) or "")
+                if hit:
+                    bad.append(f"metric unit {hit.group(0)!r} in feed_xiao <{tag}>")
+        except ET.ParseError as exc:
+            bad.append(f"feed_xiao.xml is not well-formed: {exc}")
+    return bad
+
 
 def check_feed(path):
     """Structural and units checks on feed.xml. Returns a list of failures."""
@@ -384,6 +447,13 @@ def main() -> int:
         for b in feed_bad:
             print(f"           - {b}")
         print()
+    if panel["palette"]:
+        asset_bad = check_xiao_assets(args.dir, panel["w"], panel["h"])
+        print(f"png + feed_xiao.xml   {'FAIL' if asset_bad else 'pass'}")
+        for b in asset_bad:
+            print(f"           - {b}")
+        print()
+        feed_bad += asset_bad
     failed = [r for r in results if r[1]]
     for name, errors, cut in results:
         note = f"   ({len(cut)} ellipsized)" if cut else ""

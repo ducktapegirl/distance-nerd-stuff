@@ -27,6 +27,9 @@ running-log/epaper/
 running-log/epaper_xiao.html
 running-log/epaper_xiao-all.html
 running-log/epaper_xiao/
+running-log/epaper_xiao.png
+running-log/epaper_xiao.bin
+running-log/feed_xiao.xml
 
 # Python
 __pycache__/
