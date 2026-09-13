@@ -24,7 +24,7 @@ committed.
 | `epaper.html` | The panel, via SenseCraft's **Web** function. One card, exactly 800×480, no JS. |
 | `feed.xml` | The panel, via SenseCraft's **RSS** function. One item per card, plain text. |
 | `epaper/<id>.html` | The panel, if you want **one fixed card** instead of the rotation — see below. |
-| `epaper-all.html` | You. The proof sheet — every card at real size, grouped by family, filterable to the 16 in rotation. |
+| `epaper-all.html` | You, **locally only** — the proof sheet, every card at real size, grouped by family, filterable to the rotation. `deploy.yml` builds with `--no-sheets`, so it is never published. |
 | `feed.json` | Escape hatch for HMI Canvas or anything else later. |
 
 63 cards build; 16 of them rotate.
@@ -38,7 +38,7 @@ committed.
 | `epaper_xiao.html` | The XIAO panel, via the **HTML widget** where it is offered. One card, exactly 296×128, no JS. |
 | `epaper_xiao.bin` | A XIAO on its **own firmware**: packed 2-bit framebuffer, 9,472 bytes, index order black / white / yellow / red. |
 | `epaper_xiao/<id>.{html,png,bin}` | The same three, per card, to pin **one fixed card**. Same ids as the Sticky's. |
-| `epaper_xiao-all.html` | You. Audit, every card at panel size, "as the panel sees it" and "shipped PNG" toggles, and the mockup pairs. |
+| `epaper_xiao-all.html` | You, **locally only** — audit, every card at panel size, "as the panel sees it" and "shipped PNG" toggles, and the mockup pairs. Never published, like the Sticky's sheet. |
 
 15 of the Sticky's 16 rotate there (`mosaic` is dropped); verify with
 `uv run python tools/epaper_check.py --panel xiao`, which also checks every shipped PNG is

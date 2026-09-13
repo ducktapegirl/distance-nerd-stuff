@@ -89,11 +89,14 @@ jobs:
       - name: Build landing page
         run: uv run python build_landing.py
 
-      # E-paper feed for the reTerminal Sticky via SenseCraft HMI. Writes
-      # feed.xml / epaper.html / epaper-all.html / feed.json into running-log/,
-      # which is the Pages publish root uploaded below. Stdlib-only, no network.
+      # E-paper feed for both panels via SenseCraft HMI. Writes feed.xml /
+      # epaper.html / feed.json and the XIAO's epaper_xiao.{html,png,bin} /
+      # feed_xiao.xml into running-log/, which is the Pages publish root
+      # uploaded below. --no-sheets keeps the two proof sheets (epaper-all.html,
+      # epaper_xiao-all.html) off the site: they are review surfaces for a
+      # person at a desk, built locally, never published. No network.
       - name: Build e-paper feed
-        run: uv run python strava-data/build_feed.py
+        run: uv run python strava-data/build_feed.py --no-sheets
 
       - uses: actions/configure-pages@v4
 

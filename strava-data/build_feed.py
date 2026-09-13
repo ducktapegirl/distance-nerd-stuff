@@ -13,6 +13,7 @@ Everything is written into running-log/ — already the GitHub Pages publish roo
 never collides with committed data.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -51,12 +52,22 @@ def _write_card_pages(card_dir, cards, render, exts=(".html",)):
     return stale
 
 
-def build_xiao(bundle, today, now):
+def _sheet(path, render, sheets):
+    """The proof sheets are for a person at a desk, not for the site: with
+    ``sheets`` off nothing is rendered and any earlier copy is removed, so a
+    stale sheet can never ride along in the publish root."""
+    if sheets:
+        return {path: render()}
+    if os.path.exists(path):
+        os.remove(path)
+    return {}
+
+
+def build_xiao(bundle, today, now, sheets):
     """The second panel: the same rotation on the 296x128 four-color XIAO
     display, written beside the Sticky's outputs. Same clocks, same data."""
     cards = xiao_cards.build_cards(bundle, today)
     today_card = xiao_cards.card_of_the_hour(cards, now)
-    mockups = xiao_cards.build_mockups(bundle, today)
     # Pixels as well as markup: SenseCraft's Image widget wants a PNG (URL or
     # base64), and a XIAO on its own firmware wants the raw framebuffer. Both
     # are quantized to the four colors here, so nothing downstream dithers.
@@ -64,8 +75,9 @@ def build_xiao(bundle, today, now):
     raws = {c.id: raster.raw(c) for c in cards}
     outputs = {
         XIAO_PAGE: xiao_page.render_page(today_card),
-        XIAO_SHEET: xiao_page.render_sheet(cards, mockups, bundle["asof"],
-                                           xiao_cards.ROTATION, today_card),
+        **_sheet(XIAO_SHEET, lambda: xiao_page.render_sheet(
+            cards, xiao_cards.build_mockups(bundle, today), bundle["asof"],
+            xiao_cards.ROTATION, today_card), sheets),
         XIAO_PNG: pngs[today_card.id],
         XIAO_RAW: raws[today_card.id],
         XIAO_RSS: xiao_rss.build_rss(today_card, raster.b64(pngs[today_card.id]), now,
@@ -87,6 +99,15 @@ def build_xiao(bundle, today, now):
 
 
 def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--no-sheets", action="store_true",
+                    help="skip epaper-all.html and epaper_xiao-all.html, the proof sheets. "
+                         "deploy.yml passes this: the sheets are review surfaces for a "
+                         "person, not something the site should publish.")
+    args = ap.parse_args()
+    sheets = not args.no_sheets
+
     # Card titles carry em dashes; a cp1252 Windows console raises
     # UnicodeEncodeError on the first print without this.
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -104,11 +125,12 @@ def main():
     print(f"Built {len(cards)} cards")
 
     today_card = card_of_the_day(cards, now)
-    xiao, xiao_today = build_xiao(bundle, today, now)
+    xiao, xiao_today = build_xiao(bundle, today, now, sheets)
     outputs = {
         OUT_RSS: build_rss(cards, asof, bundle["athlete"]),
         OUT_PAGE: render_page(today_card, asof),
-        OUT_SHEET: render_contact_sheet(cards, asof, ROTATION, FAMILIES),
+        **_sheet(OUT_SHEET, lambda: render_contact_sheet(cards, asof, ROTATION, FAMILIES),
+                 sheets),
         OUT_JSON: json.dumps({
             "as_of": asof.isoformat(),
             "built": today.isoformat(),
