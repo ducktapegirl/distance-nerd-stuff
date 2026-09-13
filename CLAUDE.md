@@ -211,7 +211,10 @@ in the entrypoint, and not as a bespoke layout: the twelve layouts exist so 63 c
 apart. Outputs go to `running-log/` (the Pages publish root) and are **gitignored** like the
 dashboards' HTML. `epaper-all.html` is the proof sheet — every card at real size, grouped by
 family, with a JS filter for the rotation subset (that page is a browsing surface for a person,
-so the no-JavaScript rule does not apply to it — only to the cards and to `epaper.html`); `epaper/<id>.html` is one card on its own, so a single card can be pinned by URL in
+so the no-JavaScript rule does not apply to it — only to the cards and to `epaper.html`).
+**Both proof sheets are local-only:** `deploy.yml` builds with `--no-sheets`, which skips
+`epaper-all.html` and `epaper_xiao-all.html` and deletes any earlier copy, so they never reach
+Pages — build without the flag to review them at `127.0.0.1`. `epaper/<id>.html` is one card on its own, so a single card can be pinned by URL in
 SenseCraft or checked locally; and `cards.ROTATION` is the 16-card subset the device cycles, one
 per hour.
 The build prunes `epaper/` pages whose card no longer exists, so a retired card stops being served.
