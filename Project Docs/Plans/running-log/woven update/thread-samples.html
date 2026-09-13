@@ -1,0 +1,218 @@
+<title>Woven Weeks Thread Samples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0f17;
+  --surface:#121826;
+  --card:#0f172a;
+  --ink:#e6ebf4;
+  --ink-soft:#8b96ab;
+  --border:#22293a;
+  --accent:#a78bfa;
+  --accent-tint:#241c3a;
+}
+*{box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'Geist',ui-sans-serif,system-ui,sans-serif;padding:36px 20px 64px;}
+.wrap{max-width:900px;margin:0 auto;}
+.eyebrow{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 10px;}
+h1{font-size:clamp(26px,3.6vw,36px);font-weight:700;letter-spacing:-.01em;margin:0 0 12px;text-wrap:balance;}
+.intro{font-size:15px;line-height:1.6;color:var(--ink-soft);max-width:70ch;margin:0 0 26px;}
+.intro strong{color:var(--ink);font-weight:600;}
+
+.ref{display:flex;align-items:center;gap:18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:30px;}
+.ref-label{font-family:'Geist Mono',ui-monospace,monospace;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);flex:none;width:110px;}
+.ref svg{background:var(--card);border-radius:6px;}
+
+.sample{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 22px 20px;margin-bottom:22px;}
+.sample-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;}
+.sample-num{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-tint);border-radius:6px;padding:3px 8px;}
+.sample-title{font-size:18px;font-weight:600;margin:0;}
+.sample-sub{font-size:13.5px;color:var(--ink-soft);line-height:1.55;margin:0 0 16px;max-width:76ch;}
+.swatches{display:flex;gap:6px;margin:0 0 14px;align-items:center;}
+.swatches span{width:26px;height:12px;border-radius:3px;display:inline-block;}
+.swatches i{font-style:normal;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;color:var(--ink-soft);margin-left:6px;}
+
+.views{display:grid;grid-template-columns:1fr;gap:12px;}
+.view-label{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 6px;}
+svg.detail{display:block;width:100%;max-width:640px;height:auto;background:var(--card);border-radius:8px;}
+svg.true{display:block;width:621px;max-width:100%;height:auto;background:var(--card);border-radius:8px;}
+
+.note{margin-top:28px;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;font-size:14px;line-height:1.65;color:var(--ink-soft);}
+.note strong{color:var(--ink);font-weight:600;}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">running-log/dashboard/art_weave.py &middot; real runs, weeks 56&ndash;100 &middot; round 2</p>
+  <h1>Toward the blanket: muted yarn and a stitch grain</h1>
+  <p class="intro">Your reference blanket reads as yarn for two reasons, and neither is
+    per-strand shading: the colors are <strong>matte and muted</strong>, and one fine
+    <strong>stitch texture runs uniformly across every color</strong>, with the rows fully
+    covering the surface. These four vary exactly those two things &mdash; how far the palette is
+    pulled toward wool, and which stitch the grain imitates &mdash; on the same real 44-week
+    window as before. The grain is a tiled SVG pattern stroked <em>along each thread</em>, so it
+    lives only on yarn, never on the gaps.</p>
+
+  <div class="ref">
+    <div class="ref-label">Today, for reference</div>
+    <svg id="ref-svg" class="true" style="width:621px"></svg>
+  </div>
+
+  <div id="samples"></div>
+
+  <p class="note"><strong>The two dials are independent</strong> &mdash; any stitch can be
+    paired with any saturation. Sample 01 is my recommendation: enough color pulled out that the
+    palette sits together as a set of yarns rather than five brand colors, with the stockinette
+    V-grain that reads as a fine knit at page scale and as actual stitches when zoomed.</p>
+</div>
+
+<script type="application/json" id="weave-data">{"runs": [{"row": 0, "dow": 0, "mi": 9.0, "t": "easy", "date": "2004-09-20"}, {"row": 0, "dow": 1, "mi": 9.0, "t": "easy", "date": "2004-09-21"}, {"row": 0, "dow": 2, "mi": 6.0, "t": "easy", "date": "2004-09-22"}, {"row": 0, "dow": 3, "mi": 7.75, "t": "easy", "date": "2004-09-23"}, {"row": 0, "dow": 4, "mi": 8.5, "t": "easy", "date": "2004-09-24"}, {"row": 0, "dow": 6, "mi": 11.5, "t": "long", "date": "2004-09-26"}, {"row": 1, "dow": 0, "mi": 6.75, "t": "easy", "date": "2004-09-27"}, {"row": 1, "dow": 1, "mi": 7.0, "t": "easy", "date": "2004-09-28"}, {"row": 1, "dow": 2, "mi": 6.5, "t": "workout", "date": "2004-09-29"}, {"row": 1, "dow": 3, "mi": 4.5, "t": "easy", "date": "2004-09-30"}, {"row": 1, "dow": 4, "mi": 7.0, "t": "workout", "date": "2004-10-01"}, {"row": 1, "dow": 6, "mi": 11.5, "t": "long", "date": "2004-10-03"}, {"row": 2, "dow": 0, "mi": 8.0, "t": "easy", "date": "2004-10-04"}, {"row": 2, "dow": 1, "mi": 6.5, "t": "workout", "date": "2004-10-05"}, {"row": 2, "dow": 2, "mi": 5.5, "t": "easy", "date": "2004-10-06"}, {"row": 2, "dow": 3, "mi": 3.0, "t": "workout", "date": "2004-10-07"}, {"row": 2, "dow": 4, "mi": 8.0, "t": "race", "date": "2004-10-08"}, {"row": 3, "dow": 0, "mi": 8.5, "t": "easy", "date": "2004-10-11"}, {"row": 3, "dow": 1, "mi": 4.0, "t": "easy", "date": "2004-10-12"}, {"row": 3, "dow": 3, "mi": 1.0, "t": "workout", "date": "2004-10-14"}, {"row": 3, "dow": 5, "mi": 8.5, "t": "race", "date": "2004-10-16"}, {"row": 4, "dow": 1, "mi": 6.0, "t": "workout", "date": "2004-10-19"}, {"row": 4, "dow": 3, "mi": 1.0, "t": "workout", "date": "2004-10-21"}, {"row": 4, "dow": 4, "mi": 7.5, "t": "workout", "date": "2004-10-22"}, {"row": 5, "dow": 0, "mi": 6.0, "t": "workout", "date": "2004-10-25"}, {"row": 5, "dow": 2, "mi": 5.0, "t": "workout", "date": "2004-10-27"}, {"row": 5, "dow": 3, "mi": 2.0, "t": "easy", "date": "2004-10-28"}, {"row": 5, "dow": 5, "mi": 6.0, "t": "race", "date": "2004-10-30"}, {"row": 6, "dow": 1, "mi": 11.0, "t": "long", "date": "2004-11-02"}, {"row": 6, "dow": 2, "mi": 6.0, "t": "workout", "date": "2004-11-03"}, {"row": 6, "dow": 3, "mi": 7.5, "t": "easy", "date": "2004-11-04"}, {"row": 6, "dow": 4, "mi": 5.0, "t": "workout", "date": "2004-11-05"}, {"row": 6, "dow": 5, "mi": 5.5, "t": "easy", "date": "2004-11-06"}, {"row": 6, "dow": 6, "mi": 9.25, "t": "long", "date": "2004-11-07"}, {"row": 7, "dow": 0, "mi": 6.0, "t": "workout", "date": "2004-11-08"}, {"row": 7, "dow": 1, "mi": 4.75, "t": "easy", "date": "2004-11-09"}, {"row": 7, "dow": 2, "mi": 4.5, "t": "workout", "date": "2004-11-10"}, {"row": 7, "dow": 4, "mi": 2.0, "t": "workout", "date": "2004-11-12"}, {"row": 7, "dow": 5, "mi": 6.5, "t": "race", "date": "2004-11-13"}, {"row": 9, "dow": 6, "mi": 4.75, "t": "easy", "date": "2004-11-28"}, {"row": 10, "dow": 1, "mi": 5.0, "t": "easy", "date": "2004-11-30"}, {"row": 11, "dow": 3, "mi": 4.5, "t": "easy", "date": "2004-12-09"}, {"row": 12, "dow": 2, "mi": 5.7, "t": "easy", "date": "2004-12-15"}, {"row": 12, "dow": 4, "mi": 5.0, "t": "easy", "date": "2004-12-17"}, {"row": 12, "dow": 5, "mi": 10.0, "t": "easy", "date": "2004-12-18"}, {"row": 13, "dow": 6, "mi": 10.5, "t": "long", "date": "2004-12-26"}, {"row": 14, "dow": 0, "mi": 7.0, "t": "easy", "date": "2004-12-27"}, {"row": 14, "dow": 5, "mi": 6.0, "t": "easy", "date": "2005-01-01"}, {"row": 14, "dow": 6, "mi": 6.75, "t": "easy", "date": "2005-01-02"}, {"row": 15, "dow": 1, "mi": 8.0, "t": "easy", "date": "2005-01-04"}, {"row": 15, "dow": 2, "mi": 9.0, "t": "easy", "date": "2005-01-05"}, {"row": 15, "dow": 3, "mi": 12.0, "t": "long", "date": "2005-01-06"}, {"row": 15, "dow": 4, "mi": 5.0, "t": "easy", "date": "2005-01-07"}, {"row": 15, "dow": 4, "mi": 4.0, "t": "easy", "date": "2005-01-07"}, {"row": 15, "dow": 5, "mi": 7.5, "t": "easy", "date": "2005-01-08"}, {"row": 15, "dow": 6, "mi": 7.5, "t": "easy", "date": "2005-01-09"}, {"row": 16, "dow": 0, "mi": 8.0, "t": "easy", "date": "2005-01-10"}, {"row": 16, "dow": 1, "mi": 9.0, "t": "easy", "date": "2005-01-11"}, {"row": 16, "dow": 2, "mi": 13.0, "t": "long", "date": "2005-01-12"}, {"row": 16, "dow": 4, "mi": 8.5, "t": "easy", "date": "2005-01-14"}, {"row": 16, "dow": 5, "mi": 10.0, "t": "easy", "date": "2005-01-15"}, {"row": 17, "dow": 0, "mi": 13.0, "t": "long", "date": "2005-01-17"}, {"row": 17, "dow": 1, "mi": 8.1, "t": "easy", "date": "2005-01-18"}, {"row": 17, "dow": 2, "mi": 7.0, "t": "easy", "date": "2005-01-19"}, {"row": 17, "dow": 3, "mi": 8.0, "t": "easy", "date": "2005-01-20"}, {"row": 17, "dow": 5, "mi": 12.5, "t": "long", "date": "2005-01-22"}, {"row": 18, "dow": 6, "mi": 7.0, "t": "easy", "date": "2005-01-30"}, {"row": 19, "dow": 0, "mi": 12.0, "t": "long", "date": "2005-01-31"}, {"row": 19, "dow": 1, "mi": 8.5, "t": "easy", "date": "2005-02-01"}, {"row": 19, "dow": 2, "mi": 7.5, "t": "workout", "date": "2005-02-02"}, {"row": 19, "dow": 3, "mi": 10.0, "t": "easy", "date": "2005-02-03"}, {"row": 19, "dow": 4, "mi": 6.0, "t": "easy", "date": "2005-02-04"}, {"row": 20, "dow": 0, "mi": 5.0, "t": "easy", "date": "2005-02-07"}, {"row": 20, "dow": 1, "mi": 3.5, "t": "easy", "date": "2005-02-08"}, {"row": 20, "dow": 2, "mi": 4.0, "t": "easy", "date": "2005-02-09"}, {"row": 20, "dow": 3, "mi": 4.5, "t": "easy", "date": "2005-02-10"}, {"row": 20, "dow": 4, "mi": 4.5, "t": "easy", "date": "2005-02-11"}, {"row": 20, "dow": 5, "mi": 8.5, "t": "race", "date": "2005-02-12"}, {"row": 21, "dow": 0, "mi": 11.5, "t": "long", "date": "2005-02-14"}, {"row": 21, "dow": 1, "mi": 8.0, "t": "easy", "date": "2005-02-15"}, {"row": 21, "dow": 2, "mi": 8.5, "t": "easy", "date": "2005-02-16"}, {"row": 21, "dow": 3, "mi": 8.75, "t": "easy", "date": "2005-02-17"}, {"row": 21, "dow": 4, "mi": 7.0, "t": "tempo", "date": "2005-02-18"}, {"row": 21, "dow": 5, "mi": 6.0, "t": "easy", "date": "2005-02-19"}, {"row": 21, "dow": 6, "mi": 11.0, "t": "long", "date": "2005-02-20"}, {"row": 22, "dow": 0, "mi": 7.0, "t": "easy", "date": "2005-02-21"}, {"row": 22, "dow": 1, "mi": 7.5, "t": "easy", "date": "2005-02-22"}, {"row": 22, "dow": 3, "mi": 8.5, "t": "tempo", "date": "2005-02-24"}, {"row": 22, "dow": 4, "mi": 8.25, "t": "easy", "date": "2005-02-25"}, {"row": 22, "dow": 6, "mi": 12.0, "t": "long", "date": "2005-02-27"}, {"row": 23, "dow": 0, "mi": 7.0, "t": "easy", "date": "2005-02-28"}, {"row": 23, "dow": 1, "mi": 8.0, "t": "easy", "date": "2005-03-01"}, {"row": 23, "dow": 2, "mi": 7.0, "t": "easy", "date": "2005-03-02"}, {"row": 23, "dow": 3, "mi": 8.5, "t": "tempo", "date": "2005-03-03"}, {"row": 23, "dow": 4, "mi": 0.5, "t": "workout", "date": "2005-03-04"}, {"row": 23, "dow": 5, "mi": 10.0, "t": "easy", "date": "2005-03-05"}, {"row": 24, "dow": 0, "mi": 7.0, "t": "workout", "date": "2005-03-07"}, {"row": 24, "dow": 1, "mi": 4.5, "t": "easy", "date": "2005-03-08"}, {"row": 24, "dow": 2, "mi": 6.0, "t": "workout", "date": "2005-03-09"}, {"row": 24, "dow": 4, "mi": 6.0, "t": "easy", "date": "2005-03-11"}, {"row": 24, "dow": 5, "mi": 10.0, "t": "long", "date": "2005-03-12"}, {"row": 25, "dow": 0, "mi": 7.0, "t": "workout", "date": "2005-03-14"}, {"row": 25, "dow": 1, "mi": 7.5, "t": "easy", "date": "2005-03-15"}, {"row": 25, "dow": 2, "mi": 7.5, "t": "workout", "date": "2005-03-16"}, {"row": 25, "dow": 3, "mi": 8.0, "t": "easy", "date": "2005-03-17"}, {"row": 25, "dow": 4, "mi": 6.0, "t": "easy", "date": "2005-03-18"}, {"row": 25, "dow": 5, "mi": 10.0, "t": "long", "date": "2005-03-19"}, {"row": 25, "dow": 6, "mi": 7.0, "t": "easy", "date": "2005-03-20"}, {"row": 26, "dow": 0, "mi": 7.0, "t": "workout", "date": "2005-03-21"}, {"row": 26, "dow": 1, "mi": 7.5, "t": "easy", "date": "2005-03-22"}, {"row": 26, "dow": 3, "mi": 7.0, "t": "workout", "date": "2005-03-24"}, {"row": 26, "dow": 4, "mi": 7.5, "t": "easy", "date": "2005-03-25"}, {"row": 26, "dow": 5, "mi": 10.5, "t": "long", "date": "2005-03-26"}, {"row": 27, "dow": 0, "mi": 6.0, "t": "easy", "date": "2005-03-28"}, {"row": 27, "dow": 1, "mi": 8.0, "t": "workout", "date": "2005-03-29"}, {"row": 27, "dow": 2, "mi": 6.0, "t": "easy", "date": "2005-03-30"}, {"row": 27, "dow": 3, "mi": 7.0, "t": "workout", "date": "2005-03-31"}, {"row": 27, "dow": 5, "mi": 7.0, "t": "workout", "date": "2005-04-02"}, {"row": 27, "dow": 6, "mi": 9.0, "t": "long", "date": "2005-04-03"}, {"row": 28, "dow": 0, "mi": 6.5, "t": "workout", "date": "2005-04-04"}, {"row": 28, "dow": 2, "mi": 5.0, "t": "workout", "date": "2005-04-06"}, {"row": 28, "dow": 3, "mi": 8.5, "t": "easy", "date": "2005-04-07"}, {"row": 28, "dow": 4, "mi": 2.0, "t": "workout", "date": "2005-04-08"}, {"row": 28, "dow": 5, "mi": 8.5, "t": "race", "date": "2005-04-09"}, {"row": 28, "dow": 5, "mi": 8.5, "t": "race", "date": "2005-04-09"}, {"row": 28, "dow": 6, "mi": 7.0, "t": "easy", "date": "2005-04-10"}, {"row": 29, "dow": 1, "mi": 7.0, "t": "workout", "date": "2005-04-12"}, {"row": 29, "dow": 2, "mi": 6.5, "t": "easy", "date": "2005-04-13"}, {"row": 29, "dow": 3, "mi": 5.75, "t": "easy", "date": "2005-04-14"}, {"row": 29, "dow": 4, "mi": 3.0, "t": "workout", "date": "2005-04-15"}, {"row": 29, "dow": 5, "mi": 8.0, "t": "race", "date": "2005-04-16"}, {"row": 29, "dow": 5, "mi": 8.0, "t": "race", "date": "2005-04-16"}, {"row": 29, "dow": 6, "mi": 9.75, "t": "long", "date": "2005-04-17"}, {"row": 30, "dow": 1, "mi": 5.75, "t": "workout", "date": "2005-04-19"}, {"row": 30, "dow": 2, "mi": 6.0, "t": "easy", "date": "2005-04-20"}, {"row": 30, "dow": 3, "mi": 7.75, "t": "tempo", "date": "2005-04-21"}, {"row": 30, "dow": 4, "mi": 3.0, "t": "workout", "date": "2005-04-22"}, {"row": 30, "dow": 5, "mi": 5.5, "t": "race", "date": "2005-04-23"}, {"row": 30, "dow": 5, "mi": 5.5, "t": "race", "date": "2005-04-23"}, {"row": 30, "dow": 6, "mi": 9.0, "t": "long", "date": "2005-04-24"}, {"row": 31, "dow": 0, "mi": 5.5, "t": "workout", "date": "2005-04-25"}, {"row": 31, "dow": 2, "mi": 5.5, "t": "workout", "date": "2005-04-27"}, {"row": 31, "dow": 3, "mi": 5.0, "t": "easy", "date": "2005-04-28"}, {"row": 31, "dow": 4, "mi": 2.5, "t": "workout", "date": "2005-04-29"}, {"row": 31, "dow": 5, "mi": 9.5, "t": "race", "date": "2005-04-30"}, {"row": 31, "dow": 5, "mi": 9.5, "t": "race", "date": "2005-04-30"}, {"row": 31, "dow": 6, "mi": 2.5, "t": "easy", "date": "2005-05-01"}, {"row": 32, "dow": 0, "mi": 9.5, "t": "long", "date": "2005-05-02"}, {"row": 32, "dow": 1, "mi": 4.25, "t": "easy", "date": "2005-05-03"}, {"row": 32, "dow": 2, "mi": 4.5, "t": "workout", "date": "2005-05-04"}, {"row": 32, "dow": 3, "mi": 3.5, "t": "easy", "date": "2005-05-05"}, {"row": 32, "dow": 4, "mi": 2.0, "t": "workout", "date": "2005-05-06"}, {"row": 32, "dow": 5, "mi": 5.0, "t": "race", "date": "2005-05-07"}, {"row": 33, "dow": 0, "mi": 8.5, "t": "tempo", "date": "2005-05-09"}, {"row": 33, "dow": 1, "mi": 3.5, "t": "easy", "date": "2005-05-10"}, {"row": 33, "dow": 2, "mi": 4.25, "t": "workout", "date": "2005-05-11"}, {"row": 33, "dow": 3, "mi": 3.5, "t": "easy", "date": "2005-05-12"}, {"row": 33, "dow": 4, "mi": 2.5, "t": "workout", "date": "2005-05-13"}, {"row": 33, "dow": 5, "mi": 5.5, "t": "race", "date": "2005-05-14"}, {"row": 34, "dow": 0, "mi": 6.0, "t": "workout", "date": "2005-05-16"}, {"row": 34, "dow": 1, "mi": 4.5, "t": "easy", "date": "2005-05-17"}, {"row": 34, "dow": 2, "mi": 2.0, "t": "workout", "date": "2005-05-18"}, {"row": 34, "dow": 3, "mi": 4.5, "t": "race", "date": "2005-05-19"}, {"row": 36, "dow": 0, "mi": 4.0, "t": "easy", "date": "2005-05-30"}, {"row": 36, "dow": 3, "mi": 4.75, "t": "easy", "date": "2005-06-02"}, {"row": 36, "dow": 4, "mi": 5.0, "t": "easy", "date": "2005-06-03"}, {"row": 36, "dow": 6, "mi": 7.0, "t": "long", "date": "2005-06-05"}, {"row": 37, "dow": 1, "mi": 5.0, "t": "easy", "date": "2005-06-07"}, {"row": 37, "dow": 2, "mi": 5.5, "t": "easy", "date": "2005-06-08"}, {"row": 37, "dow": 3, "mi": 5.0, "t": "easy", "date": "2005-06-09"}, {"row": 37, "dow": 4, "mi": 4.5, "t": "easy", "date": "2005-06-10"}, {"row": 37, "dow": 5, "mi": 4.0, "t": "easy", "date": "2005-06-11"}, {"row": 37, "dow": 6, "mi": 8.5, "t": "long", "date": "2005-06-12"}, {"row": 38, "dow": 0, "mi": 5.0, "t": "easy", "date": "2005-06-13"}, {"row": 38, "dow": 1, "mi": 6.25, "t": "easy", "date": "2005-06-14"}, {"row": 38, "dow": 2, "mi": 6.5, "t": "easy", "date": "2005-06-15"}, {"row": 38, "dow": 3, "mi": 4.0, "t": "easy", "date": "2005-06-16"}, {"row": 38, "dow": 5, "mi": 10.5, "t": "long", "date": "2005-06-18"}, {"row": 38, "dow": 6, "mi": 5.0, "t": "easy", "date": "2005-06-19"}, {"row": 39, "dow": 0, "mi": 7.25, "t": "easy", "date": "2005-06-20"}, {"row": 39, "dow": 1, "mi": 6.0, "t": "easy", "date": "2005-06-21"}, {"row": 39, "dow": 2, "mi": 7.25, "t": "easy", "date": "2005-06-22"}, {"row": 39, "dow": 3, "mi": 4.0, "t": "easy", "date": "2005-06-23"}, {"row": 39, "dow": 4, "mi": 6.0, "t": "easy", "date": "2005-06-24"}, {"row": 39, "dow": 6, "mi": 9.0, "t": "easy", "date": "2005-06-26"}, {"row": 40, "dow": 0, "mi": 6.0, "t": "easy", "date": "2005-06-27"}, {"row": 40, "dow": 1, "mi": 6.0, "t": "easy", "date": "2005-06-28"}, {"row": 40, "dow": 2, "mi": 7.0, "t": "easy", "date": "2005-06-29"}, {"row": 40, "dow": 3, "mi": 11.5, "t": "long", "date": "2005-06-30"}, {"row": 40, "dow": 4, "mi": 5.75, "t": "easy", "date": "2005-07-01"}, {"row": 40, "dow": 6, "mi": 10.0, "t": "long", "date": "2005-07-03"}, {"row": 41, "dow": 0, "mi": 8.0, "t": "easy", "date": "2005-07-04"}, {"row": 41, "dow": 1, "mi": 7.0, "t": "easy", "date": "2005-07-05"}, {"row": 41, "dow": 2, "mi": 6.0, "t": "easy", "date": "2005-07-06"}, {"row": 41, "dow": 6, "mi": 12.0, "t": "long", "date": "2005-07-10"}, {"row": 42, "dow": 0, "mi": 7.0, "t": "easy", "date": "2005-07-11"}, {"row": 42, "dow": 1, "mi": 6.0, "t": "easy", "date": "2005-07-12"}, {"row": 42, "dow": 2, "mi": 6.0, "t": "easy", "date": "2005-07-13"}, {"row": 42, "dow": 3, "mi": 9.0, "t": "easy", "date": "2005-07-14"}, {"row": 42, "dow": 5, "mi": 8.0, "t": "tempo", "date": "2005-07-16"}, {"row": 42, "dow": 6, "mi": 13.0, "t": "long", "date": "2005-07-17"}, {"row": 43, "dow": 0, "mi": 8.0, "t": "easy", "date": "2005-07-18"}, {"row": 43, "dow": 1, "mi": 7.5, "t": "easy", "date": "2005-07-19"}, {"row": 43, "dow": 2, "mi": 7.5, "t": "easy", "date": "2005-07-20"}, {"row": 43, "dow": 3, "mi": 9.5, "t": "easy", "date": "2005-07-21"}, {"row": 43, "dow": 4, "mi": 6.0, "t": "easy", "date": "2005-07-22"}, {"row": 43, "dow": 6, "mi": 7.5, "t": "easy", "date": "2005-07-24"}], "nrow": 44, "mx": 15.1, "types": ["easy", "long", "tempo", "workout", "race"], "colors": {"easy": "#2dd4bf", "long": "#a78bfa", "tempo": "#f59e0b", "workout": "#60a5fa", "race": "#f87171"}, "weft_dark": "#44536b"}</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('weave-data').textContent);
+
+  var S = 900, L = 118, R = 858, T = 74, B = 858;
+  var NROW_TOTAL = 194;
+  var rh = (B - T) / NROW_TOTAL;        // 4.041
+  var colw = (R - L) / 7;
+  var mx = D.mx;
+  var sw0 = Math.min(rh * 0.8, 3.6);    // today's 3.23
+
+  function lnOf(mi){ return 0.34 * colw + 0.95 * colw * Math.pow(mi / mx, 0.6); }
+  function xOf(dow, ln){ return L + dow * colw + (colw - ln) / 2; }
+  function yOf(row){ return T + (row + 0.5) * rh; }
+  function f(v){ return (Math.round(v * 100) / 100).toString(); }
+
+  // --- color: pull toward wool -----------------------------------------
+  function hexToHsl(h){
+    var r = parseInt(h.slice(1,3),16)/255, g = parseInt(h.slice(3,5),16)/255, b = parseInt(h.slice(5,7),16)/255;
+    var mx_ = Math.max(r,g,b), mn = Math.min(r,g,b), l = (mx_+mn)/2, hh = 0, s = 0;
+    if (mx_ !== mn){
+      var d = mx_ - mn; s = l > .5 ? d/(2-mx_-mn) : d/(mx_+mn);
+      if (mx_ === r) hh = (g-b)/d + (g<b?6:0); else if (mx_ === g) hh = (b-r)/d + 2; else hh = (r-g)/d + 4;
+      hh /= 6;
+    }
+    return [hh, s, l];
+  }
+  function hslToHex(h, s, l){
+    function k(n){ return (n + h*12) % 12; }
+    var a = s * Math.min(l, 1-l);
+    function ch(n){ var c = l - a * Math.max(-1, Math.min(k(n)-3, 9-k(n), 1)); return Math.round(c*255).toString(16).padStart(2,'0'); }
+    return '#' + ch(0) + ch(8) + ch(4);
+  }
+  // sMul scales saturation; lTo nudges lightness toward a mid value so the
+  // five hues sit at one tonal level like a dye lot instead of five brands.
+  function wool(hex, sMul, lTo, lAmt){
+    var c = hexToHsl(hex); var l = c[2] + (lTo - c[2]) * lAmt;
+    return hslToHex(c[0], Math.max(0, Math.min(1, c[1] * sMul)), l);
+  }
+
+  // --- stitch patterns (userSpaceOnUse so the grain is one continuous cloth) ---
+  var PW = 2.4, PH = rh;   // one pattern tile = one weft row tall, two stitch rows inside
+  function stockinette(id, hi, lo){
+    var v = 'M.15 .45L1.2 1.55L2.25 .45';
+    var v2 = 'M-1.05 2.47L0 3.57L1.05 2.47M1.35 2.47L2.4 3.57L3.45 2.47';
+    return '<pattern id="' + id + '" patternUnits="userSpaceOnUse" width="' + PW + '" height="' + f(PH) + '">' +
+      '<path d="' + v + v2 + '" fill="none" stroke="#000" stroke-width=".5" opacity="' + lo + '" transform="translate(0,.42)"/>' +
+      '<path d="' + v + v2 + '" fill="none" stroke="#fff" stroke-width=".42" opacity="' + hi + '"/>' +
+      '</pattern>';
+  }
+  function garter(id, hi, lo){
+    return '<pattern id="' + id + '" patternUnits="userSpaceOnUse" width="' + PW + '" height="' + f(PH) + '">' +
+      '<ellipse cx="1.2" cy="1.25" rx=".85" ry=".5" fill="#000" opacity="' + lo + '"/>' +
+      '<ellipse cx="1.2" cy=".85" rx=".8" ry=".42" fill="#fff" opacity="' + hi + '"/>' +
+      '<ellipse cx="0" cy="3.27" rx=".85" ry=".5" fill="#000" opacity="' + lo + '"/><ellipse cx="2.4" cy="3.27" rx=".85" ry=".5" fill="#000" opacity="' + lo + '"/>' +
+      '<ellipse cx="0" cy="2.87" rx=".8" ry=".42" fill="#fff" opacity="' + hi + '"/><ellipse cx="2.4" cy="2.87" rx=".8" ry=".42" fill="#fff" opacity="' + hi + '"/>' +
+      '</pattern>';
+  }
+  function rib(id, hi, lo){
+    // tight vertical ribs, like the blanket's stitch columns
+    return '<pattern id="' + id + '" patternUnits="userSpaceOnUse" width="1.6" height="' + f(PH) + '">' +
+      '<rect x="0" y="0" width=".55" height="' + f(PH) + '" fill="#000" opacity="' + lo + '"/>' +
+      '<rect x=".75" y="0" width=".4" height="' + f(PH) + '" fill="#fff" opacity="' + hi + '"/>' +
+      '<rect x="0" y="' + f(PH/2 - .18) + '" width="1.6" height=".36" fill="#000" opacity="' + (lo*.7) + '"/>' +
+      '</pattern>';
+  }
+
+  // --- geometry ------------------------------------------------------------
+  function straight(x, y, ln){ return 'M' + f(x) + ' ' + f(y) + 'h' + f(ln); }
+  function weftD(){ var d=''; for (var i=0;i<D.nrow;i++) d += straight(L, yOf(i), R-L); return d; }
+  function warpD(){ var d=''; for (var c=0;c<7;c++){ var x=L+(c+.5)*colw; d+='M'+f(x)+' '+T+'V'+B; } return d; }
+  function byType(){ var s={}; D.types.forEach(function(t){s[t]='';}); D.runs.forEach(function(r){ var ln=lnOf(r.mi); s[r.t]+=straight(xOf(r.dow,ln),yOf(r.row),ln); }); return s; }
+  var SEGS = byType(), WEFT_D = weftD(), WARP_D = warpD();
+
+  function today(){
+    var out = '<path d="' + WEFT_D + '" stroke="' + D.weft_dark + '" stroke-width="1.2" fill="none" opacity=".6"/>' +
+              '<path d="' + WARP_D + '" stroke="' + D.weft_dark + '" stroke-width=".6" fill="none" opacity=".35"/>';
+    D.types.forEach(function(t){ if (!SEGS[t]) return;
+      out += '<g fill="none" stroke-linecap="round"><path d="' + SEGS[t] + '" stroke="' + D.colors[t] + '" stroke-width="' + f(sw0) + '" opacity=".92"/></g>';
+    });
+    return out;
+  }
+
+  // One recipe, four settings. cover=true fills the ground with an undyed
+  // weft so no card shows between rows, as in the blanket.
+  function cloth(opts){
+    var pid = opts.id, pat = opts.pattern(pid, opts.hi, opts.lo);
+    var cols = {}; D.types.forEach(function(t){ cols[t] = wool(D.colors[t], opts.sat, opts.lTo, opts.lAmt); });
+    var weftCol = opts.weft;
+    var sw = opts.sw, wsw = opts.cover ? sw : 1.4;
+    var out = '<defs>' + pat + '</defs>';
+    // undyed weft, then its grain
+    out += '<g fill="none" stroke-linecap="butt">' +
+           '<path d="' + WEFT_D + '" stroke="' + weftCol + '" stroke-width="' + f(wsw) + '" opacity="' + (opts.cover ? '1' : '.7') + '"/>' +
+           '<path d="' + WEFT_D + '" stroke="url(#' + pid + ')" stroke-width="' + f(wsw) + '"/>' +
+           '</g>';
+    if (!opts.cover) out += '<path d="' + WARP_D + '" stroke="' + weftCol + '" stroke-width=".6" fill="none" opacity=".35"/>';
+    D.types.forEach(function(t){ if (!SEGS[t]) return;
+      out += '<g fill="none" stroke-linecap="round">' +
+        '<path d="' + SEGS[t] + '" stroke="' + cols[t] + '" stroke-width="' + f(sw) + '"/>' +
+        (opts.shade ? '<path d="' + SEGS[t] + '" stroke="#000" stroke-width="' + f(sw*.42) + '" opacity=".13" transform="translate(0,' + f(sw*.28) + ')"/>' +
+                      '<path d="' + SEGS[t] + '" stroke="#fff" stroke-width="' + f(sw*.3) + '" opacity=".10" transform="translate(0,-' + f(sw*.26) + ')"/>' : '') +
+        '<path d="' + SEGS[t] + '" stroke="url(#' + pid + ')" stroke-width="' + f(sw) + '"/>' +
+        '</g>';
+    });
+    return {svg: out, cols: cols};
+  }
+
+  var fullVB = [L - 18, T - 2, (R - L) + 36, D.nrow * rh + 4].map(f).join(' ');
+  var cropVB = [L - 18, yOf(8) - rh/2 - 1, 2 * colw + 36, 18 * rh + 2].map(f).join(' ');
+
+  document.getElementById('ref-svg').setAttribute('viewBox', fullVB);
+  document.getElementById('ref-svg').innerHTML = today();
+
+  var samples = [
+    { title: 'Stockinette, wool-muted',
+      sub: 'Saturation pulled to 55% and every hue nudged toward one mid lightness, so the five read as a dye lot. Rows fully cover the ground with an undyed weft. The grain is a knit V (stockinette) — one continuous tile across every thread and every color, so the cloth reads as one fabric with stripes, exactly like the reference.',
+      opts: { id:'aw-st-1', pattern: stockinette, hi:.22, lo:.30, sat:.55, lTo:.58, lAmt:.45, sw:3.62, cover:true, weft:'#6b6f78', shade:true } },
+    { title: 'Garter bumps, wool-muted',
+      sub: 'Same palette as 01, but the grain is a purl bump — little beads in brick rows — which is closer to the crochet in your photo. Slightly nubblier and warmer up close; at page scale the two knits are hard to tell apart.',
+      opts: { id:'aw-st-2', pattern: garter, hi:.20, lo:.28, sat:.55, lTo:.58, lAmt:.45, sw:3.62, cover:true, weft:'#6b6f78', shade:true } },
+    { title: 'Stockinette, more muted',
+      sub: 'The dial pushed further: 40% saturation, hues pulled harder toward one tone. Reads as faded, well-loved wool. The risk is that easy (teal) and workout (blue) start to merge; check the legend swatches below.',
+      opts: { id:'aw-st-3', pattern: stockinette, hi:.24, lo:.32, sat:.40, lTo:.60, lAmt:.6, sw:3.62, cover:true, weft:'#6b6f78', shade:true } },
+    { title: 'Ribbed, muted, open ground',
+      sub: 'Keeps today’s airy ground — the weft stays a thin thread rather than filling the row — so the piece keeps its current breathing room, but with muted yarn colors and a tight vertical rib grain like the blanket’s stitch columns. The least departure from what is on the page now.',
+      opts: { id:'aw-st-4', pattern: rib, hi:.22, lo:.30, sat:.55, lTo:.58, lAmt:.45, sw:3.5, cover:false, weft:'#59606e', shade:true } }
+  ];
+
+  var host = document.getElementById('samples');
+  samples.forEach(function(s, i){
+    var r = cloth(s.opts);
+    var sw = D.types.map(function(t){ return '<span style="background:' + r.cols[t] + '" title="' + t + '"></span>'; }).join('') +
+             '<i>' + D.types.join(' · ') + '</i>';
+    var el = document.createElement('div');
+    el.className = 'sample';
+    el.innerHTML =
+      '<div class="sample-head"><span class="sample-num">0' + (i + 1) + '</span><h2 class="sample-title">' + s.title + '</h2></div>' +
+      '<p class="sample-sub">' + s.sub + '</p>' +
+      '<div class="swatches">' + sw + '</div>' +
+      '<div class="views">' +
+        '<div><p class="view-label">2.6× detail · Mon &amp; Tue, 18 weeks</p><svg class="detail" viewBox="' + cropVB + '">' + r.svg + '</svg></div>' +
+        '<div><p class="view-label">Page scale · all 7 days, 44 weeks</p><svg class="true" viewBox="' + fullVB + '">' + r.svg + '</svg></div>' +
+      '</div>';
+    host.appendChild(el);
+  });
+})();
+</script>
