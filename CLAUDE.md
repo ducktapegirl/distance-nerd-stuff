@@ -25,7 +25,8 @@ Human-facing documents (not agent-facing config) live under **`Project Docs/`**,
 
 ```
 strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
-                    build_feed.py + feed/ → ../running-log/{feed.xml, epaper.html, epaper-all.html, feed.json, epaper/<id>.html} (e-paper output)
+                    build_feed.py + feed/ → ../running-log/{epaper.html, epaper/<id>.html} (in use) + {feed.xml, feed.json} (proof of concept)
+                    + feed/xiao/ → ../running-log/{epaper_xiao.html, epaper_xiao/<id>.html} (in use) + {epaper_xiao.png, epaper_xiao.bin, feed_xiao.xml} (proof of concept)
 running-log/        college.html, index.html (landing), running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
 landing/            build_landing.py + landing/ package → running-log/index.html (the site's front door)
 nerd_common/        installed package of shared design tokens, Plotly theme, formatters, theme_ui (the light/dark control), geometry (GPS projection + simplification for all the SVG art)
@@ -242,14 +243,31 @@ Idea catalog and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-
 Getting it onto the panel — pairing, URLs, and the three refresh clocks:
 [`Project Docs/Handoffs/strava-data/epaper-deployment.md`](Project%20Docs/Handoffs/strava-data/epaper-deployment.md).
 
-**`deploy.yml` has an hourly `schedule` trigger and both the trigger and its cadence matter.**
-`card_of_the_day` is chosen at *build* time — the panel runs no JS and cannot choose — so
-`epaper.html` holds one fixed card until the site rebuilds, and **the rotation advances only as
-often as the site is rebuilt**. Turning up the device's own poll interval does nothing; it just
-re-fetches the same file. Keyed on hours since the epoch in UTC, the 16-card rotation cycles in 16
-hours (it was 16 days on the old daily cron). The run re-renders committed data and makes no Strava
-API calls. `cards.ROTATION` is the 16 cards the device cycles; the other 47 still build and still
-ship in `feed.xml`, the proof sheet and their own `epaper/<id>.html`.
+**The device page chooses the card; the site rebuilds daily, not hourly.** `epaper.html` and
+`epaper_xiao.html` carry every rotation card as an inert `<template>` plus one live copy, and
+`feed/page.py:PICK_JS` swaps in the card for the current hour — hours since the epoch in UTC modulo
+the rotation, the same key as `cards.card_of_the_day`, which now only decides the **no-JS fallback**
+baked into the page. SenseCraft's HTML widget renders the page in a cloud headless browser, so the
+script runs and **the device's own poll interval is the rotation's clock** (30 min on the XIAO,
+verified 2026-09-13). `deploy.yml`'s `schedule` is daily (`0 7 * * *`) and exists for the
+date-keyed cards (`anniversary`, route of the day, this week); it is *not* what moves the rotation
+any more — if a renderer ever stops running the script the panel stays on the build-time pick, and
+hourly is the one-line revert. Templates, not hidden divs: template content is inert, so the
+sixteen copies of the dither `<pattern>` ids and the hashed clipPath ids never coexist in the live
+DOM, and the page always holds exactly one `<svg>` — `tools/epaper_check.py` steps through every
+template via `window.__pick(k)`. The cards themselves are still whole-card SVG with no script; the
+per-card `epaper/<id>.html` pages (`render_card_page`) carry none either. `cards.ROTATION` is the
+16 cards the device cycles; the other 47 still build and still ship in `feed.xml`, the proof sheet
+and their own `epaper/<id>.html`.
+
+**Which outputs are in use and which are proof of concept.** In use: `epaper.html`,
+`epaper_xiao.html` and the per-card pages. Proof of concept, built by every deploy but rotating
+only with the rebuild, nothing pointed at them: `feed.xml` / `feed_xiao.xml` (RSS widget — the
+fact as text in SenseCraft's typography, composable beside other widgets), `epaper_xiao.png` (Image
+widget / Gallery / any image-URL device — the exact pixels as an element on a canvas, or for a
+renderer with no JS), `epaper_xiao.bin` (own firmware — no cloud, sub-hour refresh) and `feed.json`
+(External Data Source widget — the numbers without the art). The runbook's "What the fallbacks
+would allow" table is the reference; don't retire one without reading it.
 
 **`metrics.load()` treats the last day with data as "today", and `anniversary` is the one
 deliberate exception.** That card looks for a race in the paper log near the *build* date, because
@@ -269,7 +287,9 @@ Panel rules — these are constraints, not preferences, and `svg.py` enforces th
 - **Four tones only** (`#000`/`#555`/`#AAA`/`#FFF`) plus three dither patterns — use `svg.tone()`.
   Encode categories by shape and pattern, quantity by tone. The dashboard's `SPORT_COLORS`
   teal/amber mapping means nothing here.
-- **No Plotly, no JavaScript, no CDN, no webfonts.** Cards are whole-card SVG at exact user units.
+- **No Plotly, no JavaScript, no CDN, no webfonts in a card.** Cards are whole-card SVG at exact
+  user units. The one script on the site is the device page's card selector (`PICK_JS`), which
+  chooses *between* cards and never draws inside one.
 - Display units follow the same policy as the dashboard: miles, feet, min/mi, mph, °F.
 - **No card footers.** Cards carry the fact and nothing else; the sentence of context lives in
   the RSS `<description>` and the provenance in the card's `recipe`, both shown on the proof

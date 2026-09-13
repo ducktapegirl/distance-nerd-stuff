@@ -35,17 +35,21 @@ on:
   workflow_run:
     workflows: ["Strava Data Fetch"]
     types: [completed]
-  # Hourly rebuild. NOT redundant with the triggers above, and the cadence is
-  # the whole point: the e-paper feed's card_of_the_day is chosen at *build*
-  # time (the panel runs no JavaScript, so it cannot choose), which means the
-  # rotation advances only as often as the site is rebuilt. Turning up the
-  # device's own poll interval does nothing — it would just re-fetch the same
-  # file. At hourly the 16-card rotation cycles in 16 hours instead of 16 days.
+  # Daily rebuild. NOT redundant with the triggers above: it keeps the
+  # date-keyed e-paper cards honest between data pushes - `anniversary` is
+  # keyed to the build date by design, and route-of-the-day / this-week cards
+  # move by day. It is NOT what advances the card rotation any more: the
+  # device pages (epaper.html, epaper_xiao.html) carry every rotation card and
+  # choose the hour's card themselves when SenseCraft's HTML widget renders
+  # them, so the device's own poll interval is the rotation's clock. This used
+  # to be hourly for exactly that reason; if a renderer ever stops running the
+  # page's script, the pages fall back to the build-time pick and hourly is the
+  # one-line revert.
   #
   # It re-renders already-committed data and makes no Strava API calls, so the
   # cost is a runner minute; the concurrency group below cancels any overlap.
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 7 * * *"
   workflow_dispatch: {}
 
 permissions:

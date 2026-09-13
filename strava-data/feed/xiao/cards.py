@@ -570,12 +570,19 @@ def build_cards(bundle, today=None, pal=DEFAULT):
     return out
 
 
+def rotation_pool(cards):
+    """The rotation's cards that built, in ROTATION order - what the device
+    page's templates and ``card_of_the_hour`` both index."""
+    by_id = {c.id: c for c in cards}
+    return [by_id[i] for i in ROTATION if i in by_id] or list(cards)
+
+
 def card_of_the_hour(cards, now=None):
     """Same clock as ``feed.cards.card_of_the_day``: hours since the epoch in
-    UTC, modulo the rotation, chosen at build time."""
+    UTC, modulo the rotation. The build's pick - the device page's no-JS
+    fallback; the page re-applies the formula itself when it renders."""
     now = now or datetime.now(timezone.utc)
-    by_id = {c.id: c for c in cards}
-    pool = [by_id[i] for i in ROTATION if i in by_id] or cards
+    pool = rotation_pool(cards)
     return pool[int(now.timestamp() // 3600) % len(pool)]
 
 
