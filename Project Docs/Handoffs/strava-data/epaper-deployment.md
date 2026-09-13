@@ -40,7 +40,7 @@ committed.
 | `epaper_xiao/<id>.{html,png,bin}` | The same three, per card, to pin **one fixed card**. Same ids as the Sticky's. |
 | `epaper_xiao-all.html` | You, **locally only** — audit, every card at panel size, "as the panel sees it" and "shipped PNG" toggles, and the mockup pairs. Never published, like the Sticky's sheet. |
 
-15 of the Sticky's 16 rotate there (`mosaic` is dropped); verify with
+All 16 of the Sticky's rotation cards rotate there; verify with
 `uv run python tools/epaper_check.py --panel xiao`, which also checks every shipped PNG is
 296×128, 2-bit indexed on the four-color palette, and that `feed_xiao.xml` carries one item with
 its base64. Design notes and the open decisions:

@@ -138,9 +138,10 @@ def everest(b, o, pal=DEFAULT):
     return c
 
 
-def _journey(b, group, pal, variant=None):
-    """Numbers plus the milepost strip by default; ``variant="map"`` swaps
-    the strip for the CONUS orientation map the Sticky draws."""
+def _journey(b, group, pal, variant="map"):
+    """Numbers beside the CONUS orientation map the Sticky draws - the
+    owner's pick, 2026-09-13, for both journey cards. ``variant="strip"``
+    is the alternative the sheet still shows: the milepost strip alone."""
     if group == "run":
         total = M.totals(b["acts"], M.is_run)["mi"]
         verb, color = "run", pal.run
@@ -228,12 +229,12 @@ class _InkOnly:
 
 
 @card(19, "C", "cumulative running miles on the road-distance ladder from 92129")
-def journey_run(b, o, pal=DEFAULT, variant=None):
+def journey_run(b, o, pal=DEFAULT, variant="map"):
     return _journey(b, "run", pal, variant)
 
 
 @card(19, "C", "cumulative riding miles on the road-distance ladder from 92129")
-def journey_bike(b, o, pal=DEFAULT, variant=None):
+def journey_bike(b, o, pal=DEFAULT, variant="map"):
     return _journey(b, "bike", pal, variant)
 
 
@@ -517,11 +518,11 @@ def haiku(b, o, pal=DEFAULT):
 
 # ══ mockup only ══════════════════════════════════════════════════════════════
 
-@card(37, "F", "every GPS track, simplified to 64 points, twelve tiled", rotation=False)
+@card(37, "F", "every GPS track, simplified to 64 points, twelve tiled")
 def mosaic(b, o, pal=DEFAULT):
-    """Dropped from the rotation: at 296x128 the Sticky's 32 thumbnails would
-    be 25 px squiggles. Twelve at 42 px is the most this panel can carry, and
-    whether that is still a mosaic is the owner's call - it is on the sheet."""
+    """The audit dropped this - at 296x128 the Sticky's 32 thumbnails would
+    be 25 px squiggles - and the owner reinstated it from the sheet on
+    2026-09-13 at twelve routes in a 2x6, the most this panel can carry."""
     tracks = P.all_tracks()
     if not tracks:
         return None
@@ -545,10 +546,11 @@ def mosaic(b, o, pal=DEFAULT):
 
 # ══ assembly ═════════════════════════════════════════════════════════════════
 
-# The Sticky's hand-picked rotation minus what the audit dropped, in the
-# Sticky's order. Both panels key the hour the same way, so they show the
-# same idea at the same time except in the hours the Sticky shows the mosaic.
-DROPPED = ("mosaic",)
+# The Sticky's hand-picked rotation, in the Sticky's order, minus anything
+# the audit dropped - nothing, since the owner reinstated the mosaic. Both
+# panels key the hour the same way, so they show the same idea at the same
+# time.
+DROPPED = ()
 ROTATION = [cid for cid in STICKY_ROTATION if cid not in DROPPED]
 
 
@@ -596,16 +598,12 @@ def build_mockups(bundle, today=None):
         return c
 
     layout = [
-        (("journey-run · strip (ships)", "Numbers over the milepost strip - the precise half of the Sticky card.",
+        (("journey-run · map (ships)", "The CONUS coast at 144 px wide with the route on it - chosen 2026-09-13.",
           mk(journey_run)),
-         ("journey-run · map", "The CONUS coast at 144 px wide with the route on it. Orientation, at the cost of a very busy 2 px coastline.",
-          mk(journey_run, variant="map"))),
-        (("journey-bike · strip (ships)", "", mk(journey_bike)),
-         ("journey-bike · map", "", mk(journey_bike, variant="map"))),
-        (("mosaic · dropped", "Not built for the device. The Sticky's 32 thumbnails would be 25 px here.",
-          None),
-         ("mosaic · 2×6 at 42 px", "Twelve routes, rotating daily. Reinstate, or is this no longer a mosaic?",
-          mk(mosaic))),
+         ("journey-run · strip", "Numbers over the milepost strip - the precise half of the Sticky card.",
+          mk(journey_run, variant="strip"))),
+        (("journey-bike · map (ships)", "", mk(journey_bike)),
+         ("journey-bike · strip", "", mk(journey_bike, variant="strip"))),
         (("hall-of-fame · 3 names (ships)", "The first three of the Sticky's weekly five, single line each.",
           mk(hall_of_fame)),
          ("hall-of-fame · one name", "The whole card to one name, wrapped. Reads as a quote card - closer to the logbook card than to a hall of fame.",
@@ -624,7 +622,7 @@ def build_mockups(bundle, today=None):
           mk(split)),
          ("split · C sport", "Bike rows red, run rows black - the dashboard's teal / amber re-tabled.",
           mk(split, SPORT))),
-        (("journey-bike · A semantic (ships)", "Red is 'you are here' and nothing else.",
+        (("journey-bike · A semantic (ships)", "Red is 'you are here' and nothing else. Chosen 2026-09-13, with the rest of the rotation.",
           mk(journey_bike)),
          ("journey-bike · C sport", "The ridden road and the total go red for the bike card; the here-dot now shares its color.",
           mk(journey_bike, SPORT))),
