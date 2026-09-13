@@ -1,7 +1,7 @@
 # The Sticky rotation on a 2.9″ four-color XIAO panel
 
-**Status:** built, 15 of 16 rotation cards adapted, four decisions left to the owner on the
-sheet · **Created:** 2026-09-12 · **Owner:** unassigned
+**Status:** built, all 16 rotation cards adapted, owner's decisions applied 2026-09-13 ·
+**Created:** 2026-09-12 · **Owner:** unassigned
 
 Companion to `strava-data/feed/xiao/` and the review sheet it builds, `epaper_xiao-all.html`.
 The Sticky catalog and its rationale are in [`epaper-feed-brainstorm.md`](epaper-feed-brainstorm.md);
@@ -42,10 +42,10 @@ density this panel does not have.
 | `strip` (9) | adapt | 2 rows of 15 cells at 13 px (3 mm). Headline above; rest days take the wash, today the accent. |
 | `sparkline` (17) | adapt | Headline number, 13-month line, end dot as the accent, range label under. |
 | `everest` (18) | adapt | Up to six summits across the bottom; the partial one fills with the wash. |
-| `journey-run` / `-bike` (19) | adapt · **mockup** | Numbers over the milepost strip (the precise half). The CONUS map is the mockup. |
+| `journey-run` / `-bike` (19) | adapt | Numbers beside the CONUS map (coast only, clipped). The milepost strip was the first draft and stays on the sheet as the alternative. |
 | `split` (20) | adapt | Five bar rows → four; the track is a wash band, no outline. |
 | `hours` (21) | adapt | Numeral left, one tally mark per 24 h along the bottom; the partial day is the accent. |
-| `mosaic` (37) | **drop** · mockup | 32 routes would be 25 px squiggles. A 2 × 6 at 42 px is on the sheet to reinstate or not. |
+| `mosaic` (37) | dropped, then **reinstated** | 32 routes would be 25 px squiggles; twelve at 42 px in a 2 × 6 turned out to read, and the owner kept it. |
 | `latest` (3) | adapt | Route left, six of eight stats in a 3 × 2 grid; the activity name moves into the masthead. |
 | `segment-month` (57) | adapt | Name, best / last / trend (accent when slower), spark of the last 24 efforts. Grade caption goes. |
 | `hall-of-fame` (58) | adapt · **mockup** | Three of the weekly five, two 14 px lines each, distance not date. A one-name version is the mockup. |
@@ -55,7 +55,7 @@ density this panel does not have.
 | `anniversary` (61) | adapt | When-line (accent on the day), distance · time, race name, date. Comments go. |
 | `haiku` (62) | adapt | Three lines at 18 px shrinking to 14, full width, no glyph. Never ellipsized — checked. |
 
-Rotation: the Sticky's list minus `mosaic`, in the Sticky's order, keyed on the same UTC hour
+Rotation: the Sticky's list, all 16, in the Sticky's order, keyed on the same UTC hour
 (`xiao/cards.py:ROTATION`, `card_of_the_hour`). Cards with no data this fetch (no GPS stream on the
 newest activity, no UV this ISO week) drop out exactly as they do on the Sticky.
 
@@ -115,19 +115,18 @@ A ships because it is the direct translation of the existing intent — `svg.ton
 by tone, and red-as-accent is what a single spot color is for. B and C are the two that cannot be
 decided from principle, so the sheet shows the same cards under each.
 
-## What the sheet asks you to decide
+## The owner's decisions (2026-09-13)
 
-Open `epaper_xiao-all.html` (1× is close to physical size on an ordinary monitor; 2× shows the
-pixels; "as the panel sees it" thresholds every channel at one half, which is the same collapse
-the device's quantizer makes, dithering aside).
+Taken on the review sheet, read back from its store, and applied:
 
-1. **Journey:** milepost strip (ships) or the CONUS map. The map is legible at 144 px wide with the
-   coast clipped and the state lines dropped, but it is a busy 2 px line.
-2. **Mosaic:** stay dropped, or reinstate the 2 × 6 at 42 px.
-3. **Hall of fame:** three names on two lines each (ships), or one name as a quote card.
-4. **Color model:** A (ships), B, or C — globally or per card. Switching is one `Palette` argument.
+1. **Journey:** the CONUS **map**, for both cards ("match the run"). The milepost strip stays on the
+   sheet as the alternative.
+2. **Mosaic:** **reinstated** at 2 × 6. The rotation is the Sticky's full 16 again, hour for hour.
+3. **Hall of fame:** three names, as shipped.
+4. **Color model:** "per card", and every card pair chose **A · semantic** — so A throughout;
+   `DEFAULT` is unchanged. The journey-bike color pair was left open and stays A with the rest.
 
-To act on any of them: `DROPPED` and the `variant=` defaults in `xiao/cards.py`, and `DEFAULT` in
+To revisit any of them: `DROPPED` and the `variant=` defaults in `xiao/cards.py`, and `DEFAULT` in
 `xiao/config.py`.
 
 ## Verification
