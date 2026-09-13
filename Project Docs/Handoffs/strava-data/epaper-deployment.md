@@ -150,7 +150,7 @@ This is the part worth understanding, because a stale panel has three possible c
 |---|---|---|---|
 | **Strava fetch** | `.github/workflows/strava-fetch.yml` | every 3 days (`0 6 */3 * *`) | how current the *numbers* are |
 | **Site rebuild** | `.github/workflows/deploy.yml` | hourly (`0 * * * *`) + on any content push | **which card is showing** |
-| **Device poll** | SenseCraft HMI settings | *unverified — see below* | how soon the panel notices a change |
+| **Device poll** | SenseCraft device card → Refresh Interval | **30 min** on the XIAO (verified 2026-09-13); Sticky unverified | how soon the panel notices a change |
 
 **Turning up the device's poll interval does not make the cards rotate faster.** This is the single
 most counter-intuitive thing here, so it is worth being blunt about: `card_of_the_day` is evaluated
@@ -179,10 +179,12 @@ varied sequence.
 Day-of-month stepping restarts each month, so `*/3` fires on the 1st, 4th, 7th … 31st and then again
 on the 1st — a 1-day gap at some month boundaries rather than 3. Harmless, just surprising.
 
-**The device-side interval is unverified.** `sensecraft-hmi-docs.seeed.cc` is unreachable from the
-environment this was written in, and the Seeed wiki mirror documents pairing but not refresh
-settings. Find it in the SenseCraft UI and **write the real number here** — without it, "the panel
-is stale" is unfalsifiable.
+**The device-side interval lives on the device card in SenseCraft (Refresh Interval).** Verified on
+the XIAO 2.9″ on 2026-09-13: set to **30 minutes**, pointed at `epaper_xiao.html` through the HTML
+widget, and the cloud does re-render the page on every interval — the card changes without another
+Apply. So a new card lands on the panel at most 30 minutes after the hourly rebuild, and the
+in-between poll redraws the same card. The Sticky's setting has not been written down; add it here
+when it is.
 
 Note also that `metrics.load()` treats **the last day with data** as "today", not the wall clock. So
 "3 days since an activity" counts from the last fetch, not from now — deliberate, since a wall-clock
@@ -211,14 +213,13 @@ carry the card, and the docs only document the refresh behavior of one of them:
 
 | Widget | Point it at | Refreshes every interval? |
 |---|---|---|
-| **RSS** | `…/feed_xiao.xml` | **Yes, documented** ("refresh with the latest headlines automatically"). Bind `title` / `description` to text. Try binding `dns:png` (base64) or `dns:pngDataUri` or `enclosure.url` to an **Image** widget — if the tree lets you, the whole card arrives inside the feed and nothing else is needed. |
-| **Image** | `…/epaper_xiao.png` | Undocumented. Test: Apply once, wait past the next refresh, see whether the card changed without another Apply. |
-| **HTML** | `…/epaper_xiao.html` | Undocumented; same test. Not offered for every panel. |
+| **HTML** | `…/epaper_xiao.html` | **Yes — verified 2026-09-13, and what is in use.** The cloud re-renders the page every Refresh Interval (30 min); the card changes without another Apply. |
+| **RSS** | `…/feed_xiao.xml` | Documented to refresh. Bind `title` / `description` to text; `dns:png` / `dns:pngDataUri` / `enclosure.url` carry the PNG for an Image widget if its tree allows the binding. Untested — kept as the fallback. |
+| **Image** | `…/epaper_xiao.png` | Undocumented, untested. |
 
-Start with the RSS widget: it is the one guaranteed path. If a feed field can feed an Image
-widget, you are done. If it can only feed text, add an Image widget with the PNG URL alongside it
-and run the test — the text keeps the panel honest either way. Every image the build ships is
-already quantized to the four colors, so the cloud's dithering has nothing to do.
+The HTML widget is the live path, so the page is what matters: the cards are pure black / white /
+red / yellow, which is why the cloud's quantizer has nothing to decide. The PNG, framebuffer and
+one-item feed still ship every hour as the fallbacks they were built to be.
 
 If neither image path refreshes, the fallback is the XIAO's **own firmware**: an ESP32-S3 sketch
 that wakes hourly, fetches `epaper_xiao.bin` and writes it to the panel. The framebuffer's index
