@@ -21,7 +21,7 @@ asset, real writing from the day it happened. A constellation whose dots
 reveal the actual sentence is a better piece than one that reveals a mileage.
 
 Every id and class is prefixed `ac-`; theme is pure cascade and
-`applyChartTheme()` must not touch it. See `art_relief.py` for the full
+`applyChartTheme()` must not touch it. See `art_weave.py` for the full
 statement of both rules.
 """
 
