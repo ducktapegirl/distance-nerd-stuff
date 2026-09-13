@@ -19,10 +19,10 @@ import os
 import sys
 from datetime import date, datetime, timezone
 
-from feed.cards import FAMILIES, ROTATION, build_cards, card_of_the_day
+from feed.cards import FAMILIES, ROTATION, build_cards, card_of_the_day, rotation_pool
 from feed.config import OUT_CARD_DIR, OUT_JSON, OUT_PAGE, OUT_RSS, OUT_SHEET, SITE
 from feed.metrics import load
-from feed.page import render_contact_sheet, render_page
+from feed.page import render_card_page, render_contact_sheet, render_page
 from feed.rss import build_rss
 from feed.xiao import cards as xiao_cards
 from feed.xiao import page as xiao_page
@@ -68,13 +68,14 @@ def build_xiao(bundle, today, now, sheets):
     display, written beside the Sticky's outputs. Same clocks, same data."""
     cards = xiao_cards.build_cards(bundle, today)
     today_card = xiao_cards.card_of_the_hour(cards, now)
+    pool = xiao_cards.rotation_pool(cards)
     # Pixels as well as markup: SenseCraft's Image widget wants a PNG (URL or
     # base64), and a XIAO on its own firmware wants the raw framebuffer. Both
     # are quantized to the four colors here, so nothing downstream dithers.
     pngs = {c.id: raster.png(c) for c in cards}
     raws = {c.id: raster.raw(c) for c in cards}
     outputs = {
-        XIAO_PAGE: xiao_page.render_page(today_card),
+        XIAO_PAGE: xiao_page.render_page(pool, today_card),
         **_sheet(XIAO_SHEET, lambda: xiao_page.render_sheet(
             cards, xiao_cards.build_mockups(bundle, today), bundle["asof"],
             xiao_cards.ROTATION, today_card), sheets),
@@ -90,7 +91,8 @@ def build_xiao(bundle, today, now, sheets):
         print(f"-> {os.path.basename(path):18s} {len(body):>8,} bytes")
     stale = _write_card_pages(
         XIAO_CARD_DIR, cards,
-        lambda c: {".html": xiao_page.render_page(c), ".png": pngs[c.id], ".bin": raws[c.id]},
+        lambda c: {".html": xiao_page.render_card_page(c), ".png": pngs[c.id],
+                   ".bin": raws[c.id]},
         exts=(".html", ".png", ".bin"))
     print(f"-> epaper_xiao/      {len(cards):>4} cards x (html, png, bin)"
           + (f" ({len(stale)} stale removed)" if stale else ""))
@@ -115,8 +117,10 @@ def main():
     bundle = load()
     asof = bundle["asof"]
     # Two clocks on purpose. `today` drives the cards' own daily content
-    # rotation ("route of the day"); `now` drives which card is published,
-    # which steps hourly. Both are UTC so a local build matches the runner.
+    # rotation ("route of the day"); `now` drives the build's pick of the
+    # hour's card - the no-JS fallback baked into the device pages, which
+    # otherwise choose for themselves. Both are UTC so a local build matches
+    # the runner and the page's own epoch-based clock.
     now = datetime.now(timezone.utc)
     today = now.date()
     print(f"Loaded {len(bundle['acts'])} activities, data as of {asof}")
@@ -128,7 +132,7 @@ def main():
     xiao, xiao_today = build_xiao(bundle, today, now, sheets)
     outputs = {
         OUT_RSS: build_rss(cards, asof, bundle["athlete"]),
-        OUT_PAGE: render_page(today_card, asof),
+        OUT_PAGE: render_page(rotation_pool(cards), today_card),
         **_sheet(OUT_SHEET, lambda: render_contact_sheet(cards, asof, ROTATION, FAMILIES),
                  sheets),
         OUT_JSON: json.dumps({
@@ -136,6 +140,9 @@ def main():
             "built": today.isoformat(),
             "card_chosen_at": now.strftime("%Y-%m-%dT%H:00Z"),
             "site": SITE,
+            # The build's pick is the no-JS fallback baked into epaper.html;
+            # the page itself chooses the hour's card when it renders.
+            "chosen_by": "page",
             "card_of_the_day": today_card.id,
             "rotation": list(ROTATION),
             "cards": [{"id": c.id, "idea": c.idea, "family": c.family,
@@ -159,7 +166,7 @@ def main():
     # One static page per card, so a single card can be pinned in SenseCraft
     # by URL, or checked locally, without waiting for its turn in the rotation.
     # The panel runs no JavaScript, so a "?card=" query could never work.
-    stale = _write_card_pages(OUT_CARD_DIR, cards, lambda c: {".html": render_page(c, asof)})
+    stale = _write_card_pages(OUT_CARD_DIR, cards, lambda c: {".html": render_card_page(c)})
     print(f"-> epaper/           {len(cards):>4} card pages"
           + (f" ({len(stale)} stale removed)" if stale else ""))
     print(f"   card this hour: {today_card.id} — {today_card.title}")
