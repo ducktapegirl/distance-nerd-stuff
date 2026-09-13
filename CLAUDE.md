@@ -276,6 +276,32 @@ Panel rules — these are constraints, not preferences, and `svg.py` enforces th
 - `metrics.load()` treats **the last day with data** as "today", not the wall clock — the fetch
   cron runs twice a month, so a wall-clock "days since" would describe the schedule, not the athlete.
 
+### The second panel — 2.9″ four-color XIAO (`feed/xiao/`)
+
+The same rotation on Seeed's 2.9″ Quadruple Color ePaper (296×128, black / white / red / yellow, 112
+PPI, ~25 s refresh) via the XIAO ePaper Display Board and the same SenseCraft Web function.
+`build_feed.py` builds it in the same run, into `running-log/{epaper_xiao.html, epaper_xiao.png,
+epaper_xiao.bin, feed_xiao.xml, epaper_xiao-all.html, epaper_xiao/<id>.{html,png,bin}}` (gitignored).
+The PNG / framebuffer / one-item RSS exist because SenseCraft's Image widget wants pixels (URL or
+base64) and its RSS widget is the one source documented to re-fetch; `xiao/raster.py` renders with
+`resvg-py` and snaps every pixel to the four colors, so nothing downstream dithers. It is a **sibling package, not a parameterization**: the data
+layer (`metrics`, `places`, `journey`, `geo`) and the glyph builders are shared; `xiao/{config,svg,
+layouts,cards,page}.py` are the drawing surface. Rules that differ from the Sticky's:
+
+- **Floors are 14 px text and 2 px strokes** — the Sticky's 26 / 3 translated through the pixel
+  density and rounded up, because there is no anti-aliasing on a four-color panel.
+- **No gray, no dither ramp, no `svg.tone()`.** Every fill and stroke is one of `PALETTE`;
+  `xiao/svg.py` raises on anything else, and `tools/epaper_check.py --panel xiao` checks the rendered
+  page. Cards ask a `Palette` for a *role* (`ink`, `accent`, `wash`, `run`, `bike`, `ramp`) — never a
+  hex — so the color models on the proof sheet are one table swap. Yellow is the light tone (area
+  wash, never text or a thin stroke); red is the single accent.
+- **`xiao/cards.py` reuses the Sticky's card ids** and drops `mosaic` (`DROPPED`); both panels key
+  the hour the same way. Add a card there as `@card(idea, family, recipe)` composed from
+  `xiao/layouts.py`; `rotation=False` keeps it sheet-only.
+- `epaper_xiao-all.html` carries the audit, the rotation at 1× / 2×, a "panel preview" toggle that
+  thresholds the render to the four colors, and the mockup pairs still awaiting a decision — see
+  [`Project Docs/Plans/strava-data/epaper-xiao.md`](Project%20Docs/Plans/strava-data/epaper-xiao.md).
+
 ## Poster (40 for 40)
 
 ```bash
