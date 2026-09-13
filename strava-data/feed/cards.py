@@ -1556,20 +1556,27 @@ def build_cards(bundle, today=None):
     return out
 
 
+def rotation_pool(cards):
+    """The rotation's cards that actually built, in ROTATION order - the list
+    both ``card_of_the_day`` and the device page's script index into."""
+    by_id = {c.id: c for c in cards}
+    return [by_id[i] for i in ROTATION if i in by_id] or list(cards)
+
+
 def card_of_the_day(cards, now=None):
     """Deterministic rotation over the curated list, stepping once an hour.
 
-    Keyed on hours since the epoch in **UTC**, not on a local date. The card is
-    chosen at build time - the panel runs no JavaScript and cannot choose - so
-    the rotation can only advance as often as the site is rebuilt. deploy.yml
-    rebuilds hourly to match; at a daily rebuild this simply steps once a day.
-    UTC because the build runs on a UTC runner, so a local key would step at a
-    different moment depending on where the build happened.
+    Keyed on hours since the epoch in **UTC**, not on a local date. This is
+    the build's pick: the card baked into the device page as its no-JS
+    fallback and reported in feed.json. The page itself carries the whole
+    pool and re-applies the same formula when it renders (``page.PICK_JS``),
+    so what the panel shows is the hour's card regardless of when the site
+    was last rebuilt. UTC because the build runs on a UTC runner and the
+    page's ``Date.now()`` is epoch-based, so the two agree everywhere.
 
     Falls back to the whole catalog if a rotation id ever goes missing, so a
     typo in ROTATION degrades rather than crashes.
     """
     now = now or datetime.now(timezone.utc)
-    by_id = {c.id: c for c in cards}
-    pool = [by_id[i] for i in ROTATION if i in by_id] or cards
+    pool = rotation_pool(cards)
     return pool[int(now.timestamp() // 3600) % len(pool)]

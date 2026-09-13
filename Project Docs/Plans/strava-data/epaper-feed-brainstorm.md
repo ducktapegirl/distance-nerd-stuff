@@ -55,10 +55,14 @@ rotation. The panel never loads it.
 
 ## Cadence caveat
 
-`strava-fetch.yml` runs on `0 6 1,15 * *` — **twice a month**. A card that says "last 7 days" can be
-up to 15 days stale. The build deliberately treats **the last day with data**, not the wall clock,
-as "today" so nothing lies about freshness; but if these cards are meant to feel live, that cron
-wants bumping to daily. Left unchanged: it changes Strava API usage, which is the owner's call.
+`strava-fetch.yml` runs every three days. A card that says "last 7 days" can be that stale. The
+build deliberately treats **the last day with data**, not the wall clock, as "today" so nothing
+lies about freshness.
+
+The *rotation* is on a different clock altogether, as of 2026-09-13: the device page carries every
+rotation card and chooses the hour's card itself when SenseCraft's HTML widget renders it, so the
+site rebuilds only daily (for the date-keyed cards) and the panel's own Refresh Interval is what
+advances the rotation. `Project Docs/Handoffs/strava-data/epaper-deployment.md` has the clocks.
 
 ---
 

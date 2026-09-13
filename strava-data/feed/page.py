@@ -1,7 +1,21 @@
-"""Static pages: the device page, and the proof sheet.
+"""Static pages: the device page, the per-card pages, and the proof sheet.
 
-``render_page`` is what the panel loads - no JavaScript, no CDN, no webfonts,
-no scrolling, sized in exact user units so nothing depends on the CSS cascade.
+``render_page`` is what the panel loads. It carries **every rotation card** as
+an inert ``<template>`` plus one live copy - the build's own pick - and a few
+lines of script that swap in the card for the current hour, keyed exactly as
+``cards.card_of_the_day`` is. SenseCraft's HTML widget renders the page in a
+cloud headless browser (its documented example is windy.com, blank without
+JavaScript), so the page can choose and the site no longer has to be rebuilt
+every hour for the rotation to move. If the script ever does not run, the
+panel shows the build-time pick: today's behavior, never a blank screen.
+
+Templates, not hidden divs, on purpose: template content is inert, so the
+sixteen copies of the dither ``<pattern id="d25">`` and the hashed clipPath
+ids never coexist in the live DOM, and the document always holds exactly one
+``<svg>``. The cards themselves remain whole-card SVG with no script, no CDN,
+no webfonts, sized in exact user units.
+
+``render_card_page`` is one card on its own, for pinning by URL.
 
 ``render_contact_sheet`` is the opposite: a browsing surface for a person, on
 a real screen, showing every card in the catalog at once.
@@ -18,14 +32,42 @@ _CSS = f"""html,body{{margin:0;padding:0;background:{WHITE};
 svg{{display:block}}"""
 
 
-def render_page(card, asof):
-    """The device page: exactly one card, exactly 800x480."""
+# The selector. Same key as cards.card_of_the_day: hours since the epoch in
+# UTC, modulo the pool, and the pool is the templates in ROTATION order - so
+# Python and this script name the same card for the same hour. Exposed as
+# window.__pick so tools/epaper_check.py can step through every hour.
+PICK_JS = """(function () {
+  var t = document.querySelectorAll('template'), slot = document.getElementById('card');
+  function pick(h) {
+    if (!t.length) return;
+    slot.replaceChildren(t[h % t.length].content.cloneNode(true));
+    slot.dataset.id = t[h % t.length].dataset.id;
+  }
+  window.__pick = pick;
+  pick(Math.floor(Date.now() / 3600000));
+})();"""
+
+
+def _shell(title, css, body):
     return (
         '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'
         f'<meta name="viewport" content="width={W},height={H}">\n'
-        f"<title>{esc(card.title)}</title>\n<style>{_CSS}</style></head>\n"
-        f"<body>{card.svg()}</body></html>\n"
+        f"<title>{esc(title)}</title>\n<style>{css}</style></head>\n"
+        f"<body>{body}</body></html>\n"
     )
+
+
+def render_page(pool, pick, css=_CSS):
+    """The device page: every rotation card as a template, the build's pick
+    live, and the script that swaps in the hour's card."""
+    live = f'<div id="card" data-id="{esc(pick.id)}">{pick.svg()}</div>'
+    tpl = "".join(f'<template data-id="{esc(c.id)}">{c.svg()}</template>' for c in pool)
+    return _shell(pick.title, css, live + tpl + f"<script>{PICK_JS}</script>")
+
+
+def render_card_page(card, css=_CSS):
+    """One card on its own, no script: the pin-by-URL page."""
+    return _shell(card.title, css, card.svg())
 
 
 # ── proof sheet ───────────────────────────────────────────────────────────

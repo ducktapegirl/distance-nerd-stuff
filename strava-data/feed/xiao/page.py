@@ -1,7 +1,10 @@
 """Static pages for the XIAO panel: the device page and the review sheet.
 
-``render_page`` is what SenseCraft's Web function fetches - one card, exactly
-296x128, no JavaScript, no CDN, no webfonts.
+``render_page`` is what SenseCraft's HTML widget fetches: every rotation card
+as an inert template, the build's pick live, and the Sticky's selector script
+(``feed.page.PICK_JS``) choosing the hour's card - see that module for why.
+``render_card_page`` is one card alone, for pinning. The cards carry no
+script, no CDN, no webfonts.
 
 ``render_sheet`` is for a person. It carries the audit of the Sticky rotation,
 every surviving card at panel size, and the mockup pairs the owner is asked
@@ -16,6 +19,7 @@ the device will show, jaggies included.
 """
 
 from .. import fmt as F
+from .. import page as sticky_page
 from ..svg import esc
 from .config import BLACK, H, PALETTE, PPI, RED, W, WHITE, YELLOW
 
@@ -24,13 +28,26 @@ _CSS = f"""html,body{{margin:0;padding:0;background:{WHITE};
 svg{{display:block}}"""
 
 
-def render_page(card):
-    """The device page: exactly one card, exactly 296x128."""
+def render_page(pool, pick):
+    """The device page at 296x128: the whole rotation, the hour's card chosen
+    by the page. The viewport meta must be this panel's, so the shell is
+    built here rather than borrowed."""
+    live = f'<div id="card" data-id="{esc(pick.id)}">{pick.svg()}</div>'
+    tpl = "".join(f'<template data-id="{esc(c.id)}">{c.svg()}</template>' for c in pool)
+    return _shell(pick.title, live + tpl + f"<script>{sticky_page.PICK_JS}</script>")
+
+
+def render_card_page(card):
+    """One card on its own, no script: the pin-by-URL page."""
+    return _shell(card.title, card.svg())
+
+
+def _shell(title, body):
     return (
         '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'
         f'<meta name="viewport" content="width={W},height={H}">\n'
-        f"<title>{esc(card.title)}</title>\n<style>{_CSS}</style></head>\n"
-        f"<body>{card.svg()}</body></html>\n"
+        f"<title>{esc(title)}</title>\n<style>{_CSS}</style></head>\n"
+        f"<body>{body}</body></html>\n"
     )
 
 
@@ -336,8 +353,9 @@ Every rotation card ships four ways, all quantized to the four colors at build t
 Image widget), <code>epaper_xiao.bin</code> (packed 2-bit framebuffer for a XIAO on its own
 firmware) and <code>feed_xiao.xml</code> (one RSS item: the fact as text, the PNG as an
 enclosure and as base64, for the RSS widget the cloud is documented to re-fetch). Per-card
-copies live under <code>epaper_xiao/&lt;id&gt;.*</code>. The rotation advances hourly with the
-site rebuild, exactly as the Sticky's does.<br>
+copies live under <code>epaper_xiao/&lt;id&gt;.*</code>. The device page carries every rotation
+card and picks the hour's itself when SenseCraft renders it, so the rotation moves with the
+panel's own poll; the site rebuilds daily for the date-keyed cards.<br>
 Palette: {' · '.join(PALETTE)}. "As the panel sees it" thresholds the browser render at one
 half per channel; "Shipped PNG" shows the actual file — the two should agree, and the PNG is
 what the panel gets.
