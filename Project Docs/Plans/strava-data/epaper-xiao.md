@@ -20,7 +20,7 @@ Same delivery path as the Sticky: the Web function fetches a static page. What d
 | Pixels | 800 × 480 | 296 × 128, landscape | a tenth of the pixel budget; a 2.3 : 1 strip |
 | Density | 235 PPI | 112 PPI (66.9 × 29.1 mm active) | the Sticky's 26 px floor is 12.4 px here, physically |
 | Tones | 4 grays + 3 dithers | **4 solid colors, no gray, no anti-aliasing** | no `#555` / `#AAA`; every fill is one of the four |
-| Refresh | seconds | ~25 s full refresh | hourly rotation is fine; nothing faster |
+| Refresh | seconds | ~25 s full refresh | one card an hour is fine; nothing much faster |
 
 Floors are derived, not guessed: 26 px at 235 PPI is 2.8 mm of em, which is 12.4 px at 112 PPI,
 rounded **up** to **14 px** because there is no anti-aliasing to soften a 12 px stem; the 3 px
@@ -80,12 +80,16 @@ Vertical budget: masthead to y = 21 (kicker 14 px caps, date as "9 SEP" — the 
 that a twenty-character kicker needs more), body 27 → 122. That is 95 px for the whole idea, which
 is why no card has a footer, a divider, or a second line of anything. Headline numerals 26–48 px.
 
-Outputs, gitignored beside the Sticky's: `epaper_xiao.html` (page), `epaper_xiao.png` (2-bit
-indexed PNG, quantized to the four colors at build time), `epaper_xiao.bin` (packed 2-bit
-framebuffer), `feed_xiao.xml` (one RSS item: the fact as text, the PNG as enclosure + base64),
-`epaper_xiao-all.html` (the sheet), `epaper_xiao/<id>.{html,png,bin}` (one card, for pinning), and
-a `xiao` block in `feed.json`. `build_feed.py` builds both panels in one run, so neither workflow
-changed; `resvg-py` (a pure wheel) does the rasterizing, so the deploy runner needs no browser.
+Outputs, gitignored beside the Sticky's. **In use:** `epaper_xiao.html` (every rotation card in
+one page, the hour's card chosen by the page's script, the build's pick as the no-JS fallback) and
+`epaper_xiao/<id>.html` (one card, for pinning). **Proof of concept** — built by every deploy,
+nothing pointed at them, kept so a different transport is a URL change away: `epaper_xiao.png`
+(2-bit indexed PNG, quantized to the four colors at build time), `epaper_xiao.bin` (packed 2-bit
+framebuffer), `feed_xiao.xml` (one RSS item: the fact as text, the PNG as enclosure + base64), the
+per-card `.png` / `.bin`, and a `xiao` block in `feed.json`. **Local only:** `epaper_xiao-all.html`
+(the sheet). What each fallback would allow that the page does not is tabled in the deployment
+runbook. `build_feed.py` builds both panels in one run; `resvg-py` (a pure wheel) does the
+rasterizing, so the deploy runner needs no browser.
 
 **Pixels, not just markup.** SenseCraft's Image widget takes "an image URL or Base64 content", and
 its RSS widget is the one source the docs say the cloud re-fetches every refresh. `xiao/raster.py`
@@ -143,15 +147,17 @@ outputs.
 
 ## Unknowns
 
-- **Which SenseCraft widget re-fetches a picture.** RSS is documented to refresh; whether a feed
-  field can be bound to an Image widget, and whether an Image widget's URL is re-fetched at all,
-  are device tests (runbook). Every shipped image is already four-color, so quantization is no
-  longer a question — only transport is.
+- **Which SenseCraft widget re-fetches a picture** — answered 2026-09-13: the **HTML widget**
+  re-renders the page every Refresh Interval (30 min on this panel), and since it renders in a
+  headless browser the page now chooses the hour's card itself. Whether a feed field can be bound
+  to an Image widget, and whether an Image widget's URL is re-fetched, remain untested and only
+  matter if the PNG or RSS fallbacks are ever put to use.
 - **Fonts on the deploy runner.** resvg resolves `Helvetica, Arial, sans-serif` through the
   system's fontconfig; the GitHub runner substitutes Liberation Sans, which is metrically
   Arial-compatible, so the width estimates hold. If a runner ever lacks it, resvg falls back to
   DejaVu, which is wider — a kicker that fits locally could ellipsize there.
-- **Refresh:** 25 s per full refresh means the panel will visibly flash on every card change. The
-  hourly rebuild is the right cadence; do not point the device's own poll below that.
+- **Refresh:** 25 s per full refresh means the panel will visibly flash on every card change, and
+  the device's Refresh Interval is now the rotation's clock; much under 15 minutes buys flicker,
+  not freshness.
 - The panel's font. Same assumption as the Sticky (a bundled Helvetica / Arial); emoji in an
   activity name may render as boxes in the masthead of `latest`.

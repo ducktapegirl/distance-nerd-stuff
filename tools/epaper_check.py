@@ -15,7 +15,9 @@ Three groups:
 1. **feed.xml** - well-formed, enough items, unique GUIDs, and no metric or
    Celsius units leaking into a title or description (the repo's display-units
    policy: miles, feet, min/mi, mph, degrees F).
-2. **Every page** - ``epaper.html`` and each ``epaper/<id>.html`` at an
+2. **Every page** - ``epaper.html`` (stepping through every ``<template>``
+   card it carries via ``window.__pick``, and confirming its no-JS fallback is
+   the card ``feed.json`` names) and each ``epaper/<id>.html`` at an
    800x480 viewport: no scroll in either axis, exactly one ``<svg>``, every
    ``<text>`` at 26 px or more, every stroke at 3 px or more once the element's
    own transform scale is applied, no two text boxes overlapping, nothing
@@ -306,6 +308,67 @@ def _rgb_to_hex(c):
     return c.lower()
 
 
+def _judge(m, W, H, MIN_TEXT, MIN_STROKE, panel):
+    """Turn one measurement into a list of failures."""
+    errors = []
+    if m["scrollW"] != W or m["scrollH"] != H:
+        errors.append(f"page is {m['scrollW']}x{m['scrollH']}, not {W}x{H}")
+    if m["svgs"] != 1:
+        errors.append(f"{m['svgs']} <svg> elements, expected exactly 1")
+    for t in m["texts"][:4]:
+        errors.append(f"text {t['size']}px < {MIN_TEXT}: {t['text']!r}")
+    if len(m["texts"]) > 4:
+        errors.append(f"...and {len(m['texts']) - 4} more undersized texts")
+    for s in m["strokes"][:4]:
+        errors.append(f"{s['tag']} stroke {s['w']}px < {MIN_STROKE}")
+    if len(m["strokes"]) > 4:
+        errors.append(f"...and {len(m['strokes']) - 4} more thin strokes")
+    for ov in m["overlaps"][:4]:
+        errors.append(f"overlap {ov['w']}x{ov['h']}px: {ov['a']!r} on {ov['b']!r}")
+    if len(m["overlaps"]) > 4:
+        errors.append(f"...and {len(m['overlaps']) - 4} more overlaps")
+    for t in m["clipped"][:4]:
+        errors.append(f"text outside the panel: {t!r}")
+    if panel["palette"]:
+        off = sorted({_rgb_to_hex(c) for c in m["colors"]} - panel["palette"])
+        if off:
+            errors.append(f"colors outside the panel's palette: {off[:4]}")
+    return errors
+
+
+def _sweep_device(page, js, W, H, MIN_TEXT, MIN_STROKE, panel, expected_pick):
+    errors = []
+    info = page.evaluate("""() => ({
+      n: document.querySelectorAll('template').length,
+      ids: [...document.querySelectorAll('template')].map(t => t.dataset.id),
+      shown: document.getElementById('card') && document.getElementById('card').dataset.id,
+      pick: typeof window.__pick === 'function'})""")
+    if not info["n"]:
+        errors.append("device page carries no <template> cards")
+        return errors
+    if not info["pick"]:
+        errors.append("device page has no window.__pick - the selector script did not run")
+        return errors
+    # The no-JS fallback is whatever the build wrote into #card. The script
+    # has already replaced it with the current hour's card, so read the
+    # fallback from the source instead of the DOM.
+    if expected_pick:
+        src = page.content()
+        mm = re.search(r'<div id="card" data-id="([^"]+)"', src)
+        if not mm or mm.group(1) != expected_pick:
+            errors.append(f"build-time pick in #card is {mm and mm.group(1)!r}, "
+                          f"feed.json says {expected_pick!r}")
+    for k, cid in enumerate(info["ids"]):
+        page.evaluate(f"window.__pick({k})")
+        m = page.evaluate(js)
+        shown = page.evaluate("document.getElementById('card').dataset.id")
+        if shown != cid:
+            errors.append(f"__pick({k}) showed {shown!r}, expected {cid!r}")
+        for e in _judge(m, W, H, MIN_TEXT, MIN_STROKE, panel):
+            errors.append(f"[{cid}] {e}")
+    return errors
+
+
 def check_pages(page, urls, shot_dir, panel):
     """Load each page at panel size, measure it, and screenshot it."""
     W, H = panel["w"], panel["h"]
@@ -324,29 +387,15 @@ def check_pages(page, urls, shot_dir, panel):
         page.goto(url, wait_until="load")
 
         m = page.evaluate(js)
-        if m["scrollW"] != W or m["scrollH"] != H:
-            errors.append(f"page is {m['scrollW']}x{m['scrollH']}, not {W}x{H}")
-        if m["svgs"] != 1:
-            errors.append(f"{m['svgs']} <svg> elements, expected exactly 1")
-        for t in m["texts"][:4]:
-            errors.append(f"text {t['size']}px < {MIN_TEXT}: {t['text']!r}")
-        if len(m["texts"]) > 4:
-            errors.append(f"...and {len(m['texts']) - 4} more undersized texts")
-        for s in m["strokes"][:4]:
-            errors.append(f"{s['tag']} stroke {s['w']}px < {MIN_STROKE}")
-        if len(m["strokes"]) > 4:
-            errors.append(f"...and {len(m['strokes']) - 4} more thin strokes")
-        for ov in m["overlaps"][:4]:
-            errors.append(f"overlap {ov['w']}x{ov['h']}px: "
-                          f"{ov['a']!r} on {ov['b']!r}")
-        if len(m["overlaps"]) > 4:
-            errors.append(f"...and {len(m['overlaps']) - 4} more overlaps")
-        for t in m["clipped"][:4]:
-            errors.append(f"text outside the panel: {t!r}")
-        if panel["palette"]:
-            off = sorted({_rgb_to_hex(c) for c in m["colors"]} - panel["palette"])
-            if off:
-                errors.append(f"colors outside the panel's palette: {off[:4]}")
+        errors += _judge(m, W, H, MIN_TEXT, MIN_STROKE, panel)
+        if name == "device":
+            # The device page carries every rotation card as a <template> and
+            # picks one by the hour. Step through all of them here, so each
+            # card is checked as the device page renders it, not only as its
+            # own file; and confirm the build's own pick is what the page
+            # shows before any script runs.
+            errors += _sweep_device(page, js, W, H, MIN_TEXT, MIN_STROKE, panel,
+                                    panel.get("pick"))
         for c in console[:3]:
             errors.append(f"console: {c[:80]}")
 
@@ -390,6 +439,15 @@ def main() -> int:
     if not os.path.exists(device_page) or not os.path.isdir(card_dir):
         return _fail("feed-not-built", f"missing {device_page} or {card_dir}",
                      "uv run python strava-data/build_feed.py")
+
+    # What the build says it baked into the device page as the no-JS fallback.
+    try:
+        with open(os.path.join(args.dir, "feed.json"), encoding="utf-8") as f:
+            fj = json.load(f)
+        panel = dict(panel, pick=(fj.get("xiao", {}).get("card_of_the_hour")
+                                  if args.panel == "xiao" else fj.get("card_of_the_day")))
+    except (OSError, ValueError):
+        panel = dict(panel, pick=None)
 
     wanted = {s.strip() for s in args.only.split(",") if s.strip()}
     cards = sorted(os.path.basename(p)[:-5]
