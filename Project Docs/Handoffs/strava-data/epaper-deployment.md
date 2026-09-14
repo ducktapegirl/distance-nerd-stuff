@@ -176,8 +176,14 @@ epoch-hour arithmetic as `epaper.html`'s script and embeds the hour's card **as 
 
    ```liquid
    {% assign h = "now" | date: "%s" | divided_by: 3600 | modulo: epaper.rotation.size %}
-   <img src="{{ epaper.png | replace: '{id}', epaper.rotation[h] }}" width="800" height="480">
+   {% assign url = epaper.png | replace: '{id}', epaper.rotation[h] %}
+   <img src="{{ url }}" width="800" height="480">
    ```
+
+   The `replace` runs inside an `{% assign %}` on purpose. Liquid's tokenizer matches an output
+   tag with `\{\{.*?\}\}?` — the second closing brace is optional — so a literal `}` inside
+   `{{ … }}` (the one in `'{id}'`) ends the tag early and raises "Variable … was not properly
+   terminated". Tag blocks don't have that problem.
 
    One polling URL, so the JSON's fields are top-level (`epaper.…`, not `IDX_0.epaper.…`). The
    block is named `epaper` and **must not be renamed `trmnl`**: that is TRMNL's own reserved
