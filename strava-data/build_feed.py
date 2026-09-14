@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build the e-paper feed → running-log/{feed.xml, epaper.html, epaper-all.html, feed.json}
+and epaper/<id>.{html,png} - the per-card page, and the card as a 1-bit PNG for TRMNL.
 
 Plus the second panel: epaper_xiao.html, epaper_xiao-all.html and epaper_xiao/<id>.html
 for the 2.9" four-color XIAO display, built from the same bundle by feed/xiao/.
@@ -21,6 +22,7 @@ from datetime import date, datetime, timezone
 
 from feed.cards import FAMILIES, ROTATION, build_cards, card_of_the_day, rotation_pool
 from feed.config import OUT_CARD_DIR, OUT_JSON, OUT_PAGE, OUT_RSS, OUT_SHEET, SITE
+from feed import raster as sticky_raster
 from feed.metrics import load
 from feed.page import render_card_page, render_contact_sheet, render_page
 from feed.rss import build_rss
@@ -127,6 +129,9 @@ def main():
 
     cards = build_cards(bundle, today)
     print(f"Built {len(cards)} cards")
+    # Pixels for TRMNL: its server embeds the hour's card by URL from a
+    # Liquid template, and a 1-bit file leaves it nothing to dither.
+    pngs = {c.id: sticky_raster.png_1bit(c) for c in cards}
 
     today_card = card_of_the_day(cards, now)
     xiao, xiao_today = build_xiao(bundle, today, now, sheets)
@@ -143,6 +148,11 @@ def main():
             # The build's pick is the no-JS fallback baked into epaper.html;
             # the page itself chooses the hour's card when it renders.
             "chosen_by": "page",
+            # TRMNL (the Sticky reflashed): a Polling private plugin reads
+            # this file and its template picks the hour's card by URL,
+            # keyed the same way as PICK_JS. See the deployment runbook.
+            "epaper": {"png": f"{SITE}/epaper/{{id}}.png", "rotation": list(ROTATION),
+                      "hour_key": "floor(unix_seconds / 3600) mod rotation.size"},
             "card_of_the_day": today_card.id,
             "rotation": list(ROTATION),
             "cards": [{"id": c.id, "idea": c.idea, "family": c.family,
@@ -166,8 +176,11 @@ def main():
     # One static page per card, so a single card can be pinned in SenseCraft
     # by URL, or checked locally, without waiting for its turn in the rotation.
     # The panel runs no JavaScript, so a "?card=" query could never work.
-    stale = _write_card_pages(OUT_CARD_DIR, cards, lambda c: {".html": render_card_page(c)})
-    print(f"-> epaper/           {len(cards):>4} card pages"
+    stale = _write_card_pages(
+        OUT_CARD_DIR, cards,
+        lambda c: {".html": render_card_page(c), ".png": pngs[c.id]},
+        exts=(".html", ".png"))
+    print(f"-> epaper/           {len(cards):>4} cards x (html, png)"
           + (f" ({len(stale)} stale removed)" if stale else ""))
     print(f"   card this hour: {today_card.id} — {today_card.title}")
 
