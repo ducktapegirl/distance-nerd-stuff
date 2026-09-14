@@ -23,8 +23,9 @@ committed.
 |---|---|---|
 | `epaper.html` | **in use** | The panel, via SenseCraft's HTML / Web widget. Every rotation card at 800×480 inside one page; a few lines of script show the card for the current hour, and the build's own pick is the no-JS fallback. |
 | `epaper/<id>.html` | **in use** | The panel, if you want **one fixed card** instead of the rotation — see below. One card, no script. |
+| `epaper/<id>.png` | **in use (TRMNL)** | The panel **reflashed to TRMNL firmware** — see "TRMNL firmware" below. Each card as an 800×480 **1-bit** PNG, the two grays and the dither patterns reduced by an ordered Bayer 4×4 dither at build time (`feed/raster.py`), so TRMNL's own screenshot pipeline has nothing left to dither. |
 | `feed.xml` | proof of concept | SenseCraft's RSS widget. One item per card, plain text. Nothing points at it today — see "What the fallbacks would allow". |
-| `feed.json` | proof of concept | SenseCraft's External Data Source widget, or anything else later. Records the build-time pick (`card_of_the_day`) and `"chosen_by": "page"`. |
+| `feed.json` | **in use (TRMNL)** | The TRMNL private plugin's polling URL. Its `epaper` block is the `{id}` URL template plus the rotation list the Liquid template indexes; the rest (`card_of_the_day`, `"chosen_by": "page"`, every card's title / summary / recipe) is there for SenseCraft's External Data Source widget or anything else later. |
 | `epaper-all.html` | local only | You — the proof sheet, every card at real size, grouped by family, filterable to the rotation. `deploy.yml` builds with `--no-sheets`, so it is never published. |
 
 63 cards build; 16 of them rotate.
@@ -151,6 +152,57 @@ Needs a **2.4 GHz** network.
   All 63 cards as one-line text items — useful as a second page or a fallback.
 - **To pin one card instead**, point the Web function at
   `…/epaper/<id>.html` (e.g. `…/epaper/haiku.html`) rather than `…/epaper.html`.
+
+## TRMNL firmware (the Sticky reflashed)
+
+The same panel on [TRMNL](https://trmnl.com) firmware is a different transport, and Steps 3–4
+above do not apply. **The device never fetches our URLs.** It polls `trmnl.com/api/display` and
+receives an 800×480 1-bit image that TRMNL's *server* produced by screenshotting a plugin's Liquid
+template — so `epaper.html`, its card-picking script, and the per-card pages are all unreachable
+from it. (The "framework" TRMNL documents at `trmnl.com/framework` is the CSS for those
+templates, not a device protocol.) There is no "render this external page" option.
+
+What TRMNL *does* offer is a **Private Plugin** with the **Polling** strategy: every refresh, its
+server fetches a JSON URL and merges the result into a Liquid template. Since the card pick already
+moved from the build to the renderer (see "Refresh" below), this fits: the template does the same
+epoch-hour arithmetic as `epaper.html`'s script and embeds the hour's card **as a PNG by URL**.
+
+1. Flash TRMNL firmware and claim the device at trmnl.com — the reTerminal E series is a supported
+   model; follow TRMNL's own setup for the flash and the claim.
+2. **Plugins → Private Plugin → New.** Strategy **Polling**. Polling URL
+   `https://ducktapegirl.github.io/distance-nerd-stuff/feed.json`. Refresh interval **60 min**
+   (the rotation is one card per hour; polling faster re-fetches the same card).
+3. **Edit Markup** — paste this as the full-screen layout:
+
+   ```liquid
+   {% assign h = "now" | date: "%s" | divided_by: 3600 | modulo: epaper.rotation.size %}
+   <img src="{{ epaper.png | replace: '{id}', epaper.rotation[h] }}" width="800" height="480">
+   ```
+
+   One polling URL, so the JSON's fields are top-level (`epaper.…`, not `IDX_0.epaper.…`). The
+   block is named `epaper` and **must not be renamed `trmnl`**: that is TRMNL's own reserved
+   namespace in every template (`trmnl.user`, `trmnl.device`, `trmnl.system.timestamp_utc`,
+   `trmnl.plugin_settings`), and a key with that name is silently shadowed — verified 2026-09-13
+   via the Webhook strategy, where `{{ trmnl }}` printed the device record and `epaper.rotation`
+   printed nothing until the key was renamed. The
+   card key is hours since the epoch in UTC modulo the rotation length — identical to
+   `cards.card_of_the_day` and `page.PICK_JS`, so this panel and a SenseCraft one show the same
+   card in the same hour. `epaper.png` is
+   `https://ducktapegirl.github.io/distance-nerd-stuff/epaper/{id}.png`.
+4. Turn off the plugin's title bar / padding if the layout offers them: the PNG is the whole
+   screen, at the panel's exact size.
+5. Add the plugin to the playlist; **Force Refresh** on the device page to see it without
+   waiting for the next poll.
+
+- **To pin one card instead**, replace the markup with a literal
+  `<img src="https://ducktapegirl.github.io/distance-nerd-stuff/epaper/<id>.png" width="800" height="480">`.
+- **The rotation's clock is the plugin's refresh interval**, exactly as it is SenseCraft's poll
+  interval on the HTML widget. The site's daily rebuild only changes the *content* of the
+  date-keyed cards.
+- The PNGs are already black and white, so what the panel shows is what
+  `running-log/epaper/<id>.png` holds — open one in a browser to see exactly what TRMNL gets.
+  `tools/epaper_check.py` asserts every card has one, that each is 800×480 indexed 1-bit, and that
+  `feed.json`'s `epaper.rotation` names only cards that have a PNG.
 
 ---
 

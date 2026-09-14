@@ -25,7 +25,7 @@ Human-facing documents (not agent-facing config) live under **`Project Docs/`**,
 
 ```
 strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
-                    build_feed.py + feed/ → ../running-log/{epaper.html, epaper/<id>.html} (in use) + {feed.xml, feed.json} (proof of concept)
+                    build_feed.py + feed/ → ../running-log/{epaper.html, epaper/<id>.html} (in use, SenseCraft) + {epaper/<id>.png, feed.json} (in use, TRMNL) + feed.xml (proof of concept)
                     + feed/xiao/ → ../running-log/{epaper_xiao.html, epaper_xiao/<id>.html} (in use) + {epaper_xiao.png, epaper_xiao.bin, feed_xiao.xml} (proof of concept)
 running-log/        college.html, index.html (landing), running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
 landing/            build_landing.py + landing/ package → running-log/index.html (the site's front door)
@@ -261,13 +261,25 @@ per-card `epaper/<id>.html` pages (`render_card_page`) carry none either. `cards
 and their own `epaper/<id>.html`.
 
 **Which outputs are in use and which are proof of concept.** In use: `epaper.html`,
-`epaper_xiao.html` and the per-card pages. Proof of concept, built by every deploy but rotating
+`epaper_xiao.html` and the per-card pages (SenseCraft); `epaper/<id>.png` and `feed.json` (TRMNL).
+Proof of concept, built by every deploy but rotating
 only with the rebuild, nothing pointed at them: `feed.xml` / `feed_xiao.xml` (RSS widget — the
 fact as text in SenseCraft's typography, composable beside other widgets), `epaper_xiao.png` (Image
 widget / Gallery / any image-URL device — the exact pixels as an element on a canvas, or for a
-renderer with no JS), `epaper_xiao.bin` (own firmware — no cloud, sub-hour refresh) and `feed.json`
-(External Data Source widget — the numbers without the art). The runbook's "What the fallbacks
-would allow" table is the reference; don't retire one without reading it.
+renderer with no JS) and `epaper_xiao.bin` (own firmware — no cloud, sub-hour refresh). The
+runbook's "What the fallbacks would allow" table is the reference; don't retire one without
+reading it.
+
+**TRMNL is a third transport, and the Sticky on TRMNL firmware never loads a page of ours.** The
+device polls trmnl.com, whose server screenshots a private plugin's Liquid template; `epaper.html`
+and `PICK_JS` are unreachable from it. So every Sticky card also ships as `epaper/<id>.png` — an
+800×480 **1-bit** indexed PNG, the grays and dither patterns reduced by an ordered Bayer 4×4 at
+build time in `feed/raster.py` — and `feed.json` carries an `epaper` block (`{id}` URL template +
+rotation list) that a Polling-strategy plugin reads; its template picks the hour's card with the
+same epoch-hour key as `PICK_JS`. Setup and the template are in the deployment runbook.
+`feed/raster.py` is also the PNG codec (`decode_png`, `encode_indexed`, `render_rgb`) that
+`feed/xiao/raster.py` builds its four-color snap on — change it there, both panels re-render.
+`tools/epaper_check.py` checks the PNGs and the `epaper` block.
 
 **`metrics.load()` treats the last day with data as "today", and `anniversary` is the one
 deliberate exception.** That card looks for a race in the paper log near the *build* date, because

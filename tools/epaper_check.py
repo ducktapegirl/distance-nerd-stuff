@@ -212,6 +212,70 @@ def _fail(reason: str, detail: str = "", hint: str = "") -> int:
 # a browser, so the page checks say nothing about them. Static, no Playwright.
 
 XIAO_PLTE = {(0, 0, 0), (255, 255, 255), (255, 255, 0), (255, 0, 0)}
+STICKY_PLTE = {(0, 0, 0), (255, 255, 255)}
+
+
+def _png_header(d):
+    """(ihdr tuple, palette set) of a PNG's bytes, or None if not a PNG."""
+    if d[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    i, plte, ihdr = 8, None, None
+    while i < len(d):
+        ln = struct.unpack(">I", d[i:i + 4])[0]
+        typ, body = d[i + 4:i + 8], d[i + 8:i + 8 + ln]
+        if typ == b"IHDR":
+            ihdr = struct.unpack(">IIBBBBB", body)
+        elif typ == b"PLTE":
+            plte = {tuple(body[k:k + 3]) for k in range(0, len(body), 3)}
+        i += 12 + ln
+    return ihdr, plte
+
+
+# ── group 1c: the Sticky's shipped pixels ─────────────────────────────────
+# Reflashed to TRMNL, the Sticky never loads epaper.html: TRMNL's server
+# embeds epaper/<id>.png from a Liquid template and sends the panel a 1-bit
+# image. So every card must exist as an 800x480 black-and-white PNG, one per
+# card page, and feed.json must carry the block the template reads.
+
+def check_sticky_assets(directory, w, h):
+    bad = []
+    pages = glob.glob(os.path.join(directory, "epaper", "*.html"))
+    pngs = glob.glob(os.path.join(directory, "epaper", "*.png"))
+    if not pngs:
+        bad.append("no epaper/*.png found")
+    missing = sorted({os.path.basename(x)[:-5] for x in pages}
+                     - {os.path.basename(x)[:-4] for x in pngs})
+    if missing:
+        bad.append(f"cards without a PNG: {', '.join(missing)}")
+    for path in pngs:
+        name = os.path.relpath(path, directory)
+        hdr = _png_header(open(path, "rb").read())
+        if hdr is None:
+            bad.append(f"{name}: not a PNG")
+            continue
+        ihdr, plte = hdr
+        pw, ph, depth, ctype = ihdr[:4]
+        if (pw, ph) != (w, h):
+            bad.append(f"{name}: {pw}x{ph}, not {w}x{h}")
+        if ctype != 3 or depth != 1:
+            bad.append(f"{name}: color type {ctype} depth {depth}, expected indexed 1-bit")
+        if plte is None or not plte <= STICKY_PLTE:
+            bad.append(f"{name}: palette {sorted(plte or [])} is not black and white")
+    fj = os.path.join(directory, "feed.json")
+    if not os.path.exists(fj):
+        bad.append("feed.json missing")
+    else:
+        t = json.load(open(fj, encoding="utf-8")).get("epaper") or {}
+        if "{id}" not in t.get("png", ""):
+            bad.append("feed.json epaper.png is not an {id} URL template")
+        if not t.get("rotation"):
+            bad.append("feed.json epaper.rotation is empty")
+        else:
+            gone = [c for c in t["rotation"]
+                    if not os.path.exists(os.path.join(directory, "epaper", c + ".png"))]
+            if gone:
+                bad.append(f"feed.json epaper.rotation names cards with no PNG: {gone}")
+    return bad
 
 
 def check_xiao_assets(directory, w, h):
@@ -223,20 +287,12 @@ def check_xiao_assets(directory, w, h):
     if not pngs:
         bad.append("no epaper_xiao PNGs found")
     for path in pngs:
-        d = open(path, "rb").read()
         name = os.path.relpath(path, directory)
-        if d[:8] != b"\x89PNG\r\n\x1a\n":
+        hdr = _png_header(open(path, "rb").read())
+        if hdr is None:
             bad.append(f"{name}: not a PNG")
             continue
-        i, plte, ihdr = 8, None, None
-        while i < len(d):
-            ln = struct.unpack(">I", d[i:i + 4])[0]
-            typ, body = d[i + 4:i + 8], d[i + 8:i + 8 + ln]
-            if typ == b"IHDR":
-                ihdr = struct.unpack(">IIBBBBB", body)
-            elif typ == b"PLTE":
-                plte = {tuple(body[k:k + 3]) for k in range(0, len(body), 3)}
-            i += 12 + ln
+        ihdr, plte = hdr
         pw, ph, depth, ctype = ihdr[:4]
         if (pw, ph) != (w, h):
             bad.append(f"{name}: {pw}x{ph}, not {w}x{h}")
@@ -505,6 +561,13 @@ def main() -> int:
         for b in feed_bad:
             print(f"           - {b}")
         print()
+    if panel["feed"]:
+        asset_bad = check_sticky_assets(args.dir, panel["w"], panel["h"])
+        print(f"epaper/*.png + feed.json   {'FAIL' if asset_bad else 'pass'}")
+        for b in asset_bad:
+            print(f"           - {b}")
+        print()
+        feed_bad += asset_bad
     if panel["palette"]:
         asset_bad = check_xiao_assets(args.dir, panel["w"], panel["h"])
         print(f"png + feed_xiao.xml   {'FAIL' if asset_bad else 'pass'}")
