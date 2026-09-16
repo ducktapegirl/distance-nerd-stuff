@@ -1,5 +1,5 @@
 segment_id,segment_name,segment_city,segment_state,segment_distance_m,segment_avg_grade,start_lat,start_lng,sport_types,effort_count,first_effort,last_effort,best_time_s,worst_time_s,pr_date,recent_trend,avg_heartrate
-41655896,Canyon entrance via Salix,San Diego,California,697.5,-2.5,32.940492,-117.154161,MountainBikeRide,36,2025-08-12 13:35:59,2026-08-26 17:00:45,100,191,2026-01-28 11:55:21,8.1,95.5
+41655896,Canyon entrance via Salix,San Diego,California,697.5,-2.5,32.940492,-117.154161,MountainBikeRide,37,2025-08-12 13:35:59,2026-09-13 08:48:41,100,220,2026-01-28 11:55:21,20.3,95.1
 41655826,Salix out to PV,San Diego,California,532.5,3.5,32.937546,-117.156937,MountainBikeRide,29,2025-09-04 13:25:16,2026-08-30 09:36:00,142,387,2025-09-23 16:39:42,-3.4,147.6
 6790509,"Oops, I crapped my pants on Lenkeit bridge",San Diego,CA,67.9,-13.3,32.955355,-117.153056,MountainBikeRide,23,2025-12-09 14:00:47,2026-09-10 16:05:37,10,240,2026-08-30 08:28:26,-4.5,141.4
 34723500,Cataldo East,Lexington,Massachusetts,393.6,-0.1,42.426508,-71.194358,Run,20,2024-11-03 10:12:12,2025-07-09 12:22:21,118,142,2025-04-18 07:48:36,2.0,157.5
@@ -252,6 +252,7 @@ segment_id,segment_name,segment_city,segment_state,segment_distance_m,segment_av
 3413207,Duck Pond Ranch Loop CounterClockwise,San Diego,CA,4040.71,0.1,32.93404561467469,-117.1778151858598,MountainBikeRide,2,2026-02-13 15:31:11,2026-08-26 17:14:13,1040,1169,2026-02-13 15:31:11,129.0,154.8
 3189583,CDS (Planned) Trail to East Deer Canyon Start,San Diego,CA,322.235,-5.3,32.953248179703586,-117.1529447163999,MountainBikeRide,2,2026-02-25 16:14:55,2026-04-15 15:09:35,49,61,2026-02-25 16:14:55,12.0,125.4
 19188555,Nice curves Mrs. Del Vino,,,1691.1,-0.2,32.935439,-117.181862,MountainBikeRide,2,2026-03-02 14:39:21,2026-06-16 15:12:27,439,456,2026-03-02 14:39:21,17.0,143.7
+4259503,Carson's Crossing,San Diego,CA,189.1,-1.5,32.933205,-117.167772,MountainBikeRide,2,2026-03-06 13:34:07,2026-09-13 08:57:40,76,101,2026-03-06 13:34:07,25.0,102.9
 15355021,Post-climb Joy!,Seattle,Washington,380.8,0.8,47.683974,-122.312213,Run,2,2026-04-07 08:47:18,2026-04-08 09:17:38,136,136,2026-04-07 08:47:18,0.0,162.4
 27643037,The Full Puma Westbound,San Diego,California,2064.4,-0.2,32.941152,-117.084041,MountainBikeRide,2,2026-05-04 14:30:16,2026-07-19 08:58:13,841,980,2026-07-19 08:58:13,-139.0,144.2
 8423225,CMP PsychoPATH reverse,San Diego,California,955.3,3.1,32.932002,-117.210363,MountainBikeRide,2,2026-05-12 14:24:04,2026-06-29 14:57:46,477,513,2026-06-29 14:57:46,-36.0,145.1
@@ -578,7 +579,6 @@ segment_id,segment_name,segment_city,segment_state,segment_distance_m,segment_av
 3999372,Del Vino (Long),San Diego,CA,1223.6,5.3,32.949103,-117.181537,MountainBikeRide,1,2026-03-04 14:40:03,2026-03-04 14:40:03,576,576,2026-03-04 14:40:03,,152.9
 698198,Del Vino Climb,San Diego,CA,245.11,11.7,32.94682969339192,-117.18020277097821,MountainBikeRide,1,2026-03-04 14:42:08,2026-03-04 14:42:08,171,171,2026-03-04 14:42:08,,160.2
 12793644,Del Vino Ct.,San Diego,California,393.5,4.6,32.946781,-117.182694,MountainBikeRide,1,2026-03-04 14:46:34,2026-03-04 14:46:34,136,136,2026-03-04 14:46:34,,151.2
-4259503,Carson's Crossing,San Diego,CA,189.1,-1.5,32.933205,-117.167772,MountainBikeRide,1,2026-03-06 13:34:07,2026-03-06 13:34:07,76,76,2026-03-06 13:34:07,,107.3
 2006617,to work South side,San Diego,CA,1721.83,-0.8,32.92956590652466,-117.16958105564117,MountainBikeRide,1,2026-03-06 13:36:51,2026-03-06 13:36:51,385,385,2026-03-06 13:36:51,,145.4
 13075948,Escape from the waterfall,San Diego,California,348.1,3.7,32.925657,-117.178505,MountainBikeRide,1,2026-03-06 13:40:41,2026-03-06 13:40:41,106,106,2026-03-06 13:40:41,,157.4
 3763967,PQ Sycamore Crossing to Waterfall,San Diego,CA,955.011,2.5,32.92346,-117.184738,MountainBikeRide,1,2026-03-06 13:53:02,2026-03-06 13:53:02,282,282,2026-03-06 13:53:02,,155.8
@@ -768,3 +768,4 @@ segment_id,segment_name,segment_city,segment_state,segment_distance_m,segment_av
 42005965,Drop Dead Legs,San Diego,California,501.6,4.2,32.95497,-117.156565,MountainBikeRide,1,2026-09-10 16:03:08,2026-09-10 16:03:08,207,207,2026-09-10 16:03:08,,161.3
 1947497,Drop It Like Its Hot,San Diego,CA,270.861,-3.3,32.95656615405619,-117.15311271149399,MountainBikeRide,1,2026-09-10 16:06:35,2026-09-10 16:06:35,90,90,2026-09-10 16:06:35,,153.7
 9128875,Rhodes ST South,San Diego,California,408.1,0.5,32.951336,-117.152905,MountainBikeRide,1,2026-09-10 16:09:24,2026-09-10 16:09:24,81,81,2026-09-10 16:09:24,,152.2
+2598962,Black Swamp - Black Top,San Diego,CA,736.08,0.4,32.93867544271052,-117.14973036199808,MountainBikeRide,1,2026-09-13 09:36:02,2026-09-13 09:36:02,385,385,2026-09-13 09:36:02,,111.1
