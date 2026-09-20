@@ -350,16 +350,28 @@ def c16_odometer(b, o):
     return c
 
 
-@card(17, "C", "miles per calendar month, last 13 months")
+@card(17, "C", "miles per calendar month, last 13 months, all sports; "
+               "range spans complete months only")
 def c17_sparkline(b, o):
     months = M.monthly_miles(b["acts"], 13)
     vals = [v for _, v in months]
+    # The range reads over complete months; the partial current month is still
+    # plotted, but as a low it would only describe how far into the month we are.
+    done = M.complete_months(months, b["asof"])
+    done_vals = [v for _, v in done] or vals
+    # Only call the last month partial when it really is the current one — with
+    # no activity yet this month, the final entry is a month that finished.
+    tail = (f"with {vals[-1]:.0f} so far in {months[-1][0]}" if len(done) < len(months)
+            else f"finishing at {vals[-1]:.0f} in {months[-1][0]}")
     c = _mk("sparkline", f"13 months of volume — {vals[-1]:.0f} mi latest",
-            f"Monthly mileage over the last 13 months, from {min(vals):.0f} to {max(vals):.0f}, "
-            f"finishing at {vals[-1]:.0f}.",
-            "monthly volume", b, 17, "C", "miles per calendar month, last 13 months")
+            f"Monthly mileage over the last 13 months, every sport counted, ranging from "
+            f"{min(done_vals):.0f} to {max(done_vals):.0f} across complete months, {tail}.",
+            "monthly volume", b, 17, "C",
+            "miles per calendar month, last 13 months, all sports; "
+            "range spans complete months only")
     L.spark(c, vals, labels=(months[0][0], months[-1][0]),
-            headline=f"{vals[-1]:.0f} mi", sub=f"range {min(vals):.0f}–{max(vals):.0f} mi")
+            headline=f"{vals[-1]:.0f} mi",
+            sub=f"all sports · {min(done_vals):.0f}–{max(done_vals):.0f} mi")
     return c
 
 
