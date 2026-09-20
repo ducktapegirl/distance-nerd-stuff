@@ -99,17 +99,25 @@ def strip(b, o, pal=DEFAULT, variant=None):
 
 # ══ C · Volume ════════════════════════════════════════════════════════════════
 
-@card(17, "C", "miles per calendar month, last 13 months")
+@card(17, "C", "miles per calendar month, last 13 months, all sports; "
+               "range spans complete months only")
 def sparkline(b, o, pal=DEFAULT):
     months = M.monthly_miles(b["acts"], 13)
     vals = [v for _, v in months]
+    # See the Sticky card: the partial current month is plotted but kept out
+    # of the range, where it would read as a real monthly low.
+    done = M.complete_months(months, b["asof"])
+    done_vals = [v for _, v in done] or vals
+    tail = (f"with {vals[-1]:.0f} so far in {months[-1][0]}" if len(done) < len(months)
+            else f"finishing at {vals[-1]:.0f} in {months[-1][0]}")
     c = _mk("sparkline", f"13 months of volume — {vals[-1]:.0f} mi latest",
-            f"Monthly mileage over the last 13 months, from {min(vals):.0f} to "
-            f"{max(vals):.0f}, finishing at {vals[-1]:.0f}.", "monthly volume", b, pal)
+            f"Monthly mileage over the last 13 months, every sport counted, ranging from "
+            f"{min(done_vals):.0f} to {max(done_vals):.0f} across complete months, {tail}.",
+            "monthly volume", b, pal)
     c.add(S.text(PAD, 56, f"{vals[-1]:.0f} MI", 34, "bold", fill=pal.ink))
     L.spark(c, vals, top=64, bottom=98, pal=pal)
     c.add(S.text(PAD, 118, _month(months[0][0]), MIN_TEXT, fill=pal.ink, tracking=1),
-          S.text(L.CX, 118, f"{min(vals):.0f}–{max(vals):.0f} MI", MIN_TEXT,
+          S.text(L.CX, 118, f"{min(done_vals):.0f}–{max(done_vals):.0f} MI", MIN_TEXT,
                  anchor="middle", fill=pal.ink, tracking=1),
           S.text(W - PAD, 118, _month(months[-1][0]), MIN_TEXT, anchor="end",
                  fill=pal.ink, tracking=1))

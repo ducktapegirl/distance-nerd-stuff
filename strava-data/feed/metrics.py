@@ -356,6 +356,19 @@ def monthly_miles(acts, months=13):
     return [(f"{y}-{mo:02d}", m[(y, mo)]) for y, mo in keys]
 
 
+def complete_months(months, asof):
+    """``monthly_miles`` entries with the in-progress month dropped.
+
+    The calendar month ``asof`` falls in is still filling up, so its total is
+    a partial sum that climbs all month — fine to plot, misleading in a
+    min/max range, where it reads as a real monthly low. Keyed on ``asof``
+    rather than simply dropping the last entry, because a month with no
+    activity at all never becomes an entry to drop.
+    """
+    current = f"{asof.year}-{asof.month:02d}"
+    return [(label, v) for label, v in months if label != current]
+
+
 def sport_split(acts, asof, days=365):
     """Activity counts by sport in a trailing window, biggest first."""
     c = Counter(r["sport_type"] for r in window(acts, asof, days))
