@@ -457,20 +457,23 @@ def week_2004(b, o, pal=DEFAULT):
     then_mi = sum(r["_mi"] for r in then)
     then_paces = [r["_pace"] for r in then if r["_pace"]]
     then_pace = sum(then_paces) / len(then_paces) if then_paces else None
-    now = [r for r in b["acts"]
-           if r["_date"].isocalendar()[:2] == (year, week) and M.is_run(r)]
+    # Every sport, as on the Sticky. This panel has no room for the day list,
+    # so the days and sports are counted into the one sub line it does have.
+    now = [r for r in b["acts"] if r["_date"].isocalendar()[:2] == (year, week)]
     now_mi = sum(r["_mi"] for r in now)
-    now_paces = [60 / (M.mf(r["average_speed_kmh"]) * KM_TO_MI)
-                 for r in now if M.mf(r["average_speed_kmh"])]
-    now_pace = sum(now_paces) / len(now_paces) if now_paces else None
-    c = _mk("week-2004", f"Week {week}: {then_mi:.0f} mi in {then_year}, {now_mi:.0f} mi now",
+    now_days = len({r["_date"] for r in now})
+    now_sports = len({r["sport_type"] for r in now})
+    c = _mk("week-2004", f"Week {week}: {then_mi:.0f} mi in {then_year}, "
+                         f"{now_sports} sports now",
             f"The same ISO week, {year - then_year} years apart: {then_mi:.1f} run miles in "
-            f"{then_year} against {now_mi:.1f} now.", f"week {week} · then and now", b, pal)
+            f"{then_year}; this week, {now_days} days across {now_sports} sports.",
+            f"week {week} · then and now", b, pal)
     L.then_now(c,
                (then_year, f"{then_mi:.0f} MI",
                 f"avg {mmss(then_pace * 60)}/mi" if then_pace else f"{len(then)} days logged"),
                (year, f"{now_mi:.0f} MI",
-                f"avg {mmss(now_pace * 60)}/mi" if now_pace else "no runs yet"),
+                # 11 characters is all this sub line holds at the 14 px floor.
+                f"{now_sports} sports {now_days}d" if now else "nothing yet"),
                pal=pal)
     return c
 
