@@ -472,8 +472,11 @@ def week_2004(b, o, pal=DEFAULT):
                (then_year, f"{then_mi:.0f} MI",
                 f"avg {mmss(then_pace * 60)}/mi" if then_pace else f"{len(then)} days logged"),
                (year, f"{now_mi:.0f} MI",
-                # 11 characters is all this sub line holds at the 14 px floor.
-                f"{now_sports} sports {now_days}d" if now else "nothing yet"),
+                # Exactly fills the sub line's 15 characters at the 14 px floor;
+                # the singular forms are shorter, so they cannot overflow it.
+                f"{now_sports} sport{'s' if now_sports != 1 else ''} "
+                f"{now_days} day{'s' if now_days != 1 else ''}"
+                if now else "nothing yet"),
                pal=pal)
     return c
 
