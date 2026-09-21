@@ -403,25 +403,69 @@ def then_now(c, top, bottom):
     height, because the lower half has the same four rows to fit and no shaded
     box to hide in - laid out by eye it runs its subtitle through the footer.
     """
+    tops, heights = _eras()
+    c.add(S.rect(PAD, tops[0], W - 2 * PAD, heights[0], fill=LIGHT))
+    for i, band in enumerate((top, bottom)):
+        _era_band(c, tops[i], heights[i], *band)
+    return c
+
+
+def _eras():
+    """Where the two then/now bands sit. Shared so a card that redraws one
+    half cannot drift from the half it leaves alone."""
     gap = 18
     avail = BOT_RULE - (TOP_RULE + 8) - gap
     band_h = int(avail * 0.53)
-    tops = (TOP_RULE + 8, TOP_RULE + 8 + band_h + gap)
-    heights = (band_h, avail - band_h)
-    c.add(S.rect(PAD, tops[0], W - 2 * PAD, band_h, fill=LIGHT))
-    for i, (era, headline, sub, lines) in enumerate((top, bottom)):
-        y0, bh = tops[i], heights[i]
-        c.add(S.text(PAD + 16, y0 + 34, str(era).upper(), 28, "bold", tracking=3))
-        ht, hs = S.fit_text(str(headline), 58, 330)
-        c.add(S.text(PAD + 16, y0 + 92, ht, hs, "bold"))
-        if sub:
-            st, ss = S.fit_text(str(sub), 28, 330)
-            c.add(S.text(PAD + 16, y0 + 124, st, ss, fill=DARK))
-        # However many 36 px rows are left after the era heading.
-        room = max(0, int((bh - 40) // 36))
-        y = y0 + 34
-        for text in list(lines)[:room]:
-            lt, ls = S.fit_text(str(text), 28, W - PAD - 420)
-            c.add(S.text(PAD + 400, y, lt, ls))
-            y += 36
+    return ((TOP_RULE + 8, TOP_RULE + 8 + band_h + gap), (band_h, avail - band_h))
+
+
+def _era_band(c, y0, bh, era, headline, sub, lines):
+    """One era: a heading and big number on the left, text rows on the right."""
+    c.add(S.text(PAD + 16, y0 + 34, str(era).upper(), 28, "bold", tracking=3))
+    ht, hs = S.fit_text(str(headline), 58, 330)
+    c.add(S.text(PAD + 16, y0 + 92, ht, hs, "bold"))
+    if sub:
+        st, ss = S.fit_text(str(sub), 28, 330)
+        c.add(S.text(PAD + 16, y0 + 124, st, ss, fill=DARK))
+    # However many 36 px rows are left after the era heading.
+    room = max(0, int((bh - 40) // 36))
+    y = y0 + 34
+    for text in list(lines)[:room]:
+        lt, ls = S.fit_text(str(text), 28, W - PAD - 420)
+        c.add(S.text(PAD + 400, y, lt, ls))
+        y += 36
+    return c
+
+
+def then_days(c, top, era, rows):
+    """The shaded past over a day-by-day list of the present.
+
+    ``top`` is the same ``(era, headline, sub, lines)`` band ``then_now``
+    draws. The present half trades its big number for the list, which runs
+    the full width in two columns of three: six days, which is the most this
+    athlete has ever logged in one ISO week. An empty week says so rather
+    than drawing an empty grid.
+    """
+    tops, heights = _eras()
+    c.add(S.rect(PAD, tops[0], W - 2 * PAD, heights[0], fill=LIGHT))
+    _era_band(c, tops[0], heights[0], *top)
+
+    y0 = tops[1]
+    c.add(S.text(PAD + 16, y0 + 34, str(era).upper(), 28, "bold", tracking=3))
+    if not rows:
+        c.add(S.text(PAD + 16, y0 + 92, "none", 58, "bold"))
+        return c
+    rows = list(rows)
+    # Six slots. A busier week than that spends the last one saying so, rather
+    # than dropping an activity off the bottom without a word.
+    if len(rows) > 6:
+        rows = rows[:5] + [f"+{len(rows) - 5} more"]
+    # Three or fewer stay in one column; more split evenly, so four days read
+    # as two and two rather than as a full column beside a lone straggler.
+    per_col = len(rows) if len(rows) <= 3 else -(-len(rows) // 2)
+    col_w = (W - 2 * PAD - 24) / 2
+    for i, text in enumerate(rows):
+        lt, ls = S.fit_text(str(text), 28, col_w - 16)
+        c.add(S.text(PAD + 16 + (i // per_col) * col_w,
+                     y0 + 76 + (i % per_col) * 36, lt, ls))
     return c
