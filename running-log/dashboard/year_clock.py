@@ -161,7 +161,9 @@ def year_clock_html(rows):
     years_map = _by_year(by_date)
     years = sorted(years_map)
     mx = max(rec["miles"] for recs in years_map.values() for rec in recs.values())
-    start = max(years, key=lambda y: len(years_map[y]))   # the fullest year lands first
+    # the latest year (2007, the paper log's last, partial year) lands first;
+    # #art?year=YYYY overrides it (template.py JS: yearFromHash)
+    start = max(years)
 
     picker = []
     for y in years:
