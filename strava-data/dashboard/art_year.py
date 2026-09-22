@@ -459,8 +459,25 @@ ART_JS = """
       applyFilter();
     });
   });
+  // Deep link: '#art?year=2019' opens on that year. A user's pick is written
+  // back (replaceState fires no hashchange, so it can't loop) so the address
+  // bar is always a shareable link to what's on screen.
+  function yearFromHash(){
+    var h=location.hash||'', q=h.indexOf('?');
+    if(h.replace('#','').split('?')[0]!=='art' || q<0) return null;
+    var y=new URLSearchParams(h.slice(q+1)).get('year');
+    return (y && layers[y]) ? y : null;   // an unknown year keeps the default
+  }
+  function pickYear(y){
+    setYear(y);
+    if(document.documentElement.getAttribute('data-view')==='art')
+      history.replaceState(null,'','#art?year='+yr);
+  }
+  window.addEventListener('hashchange',function(){
+    var y=yearFromHash(); if(y) setYear(y); });
+
   Array.prototype.forEach.call(document.querySelectorAll('#art-years button'),function(b){
-    b.addEventListener('click',function(){ setYear(b.getAttribute('data-year')); });
+    b.addEventListener('click',function(){ pickYear(b.getAttribute('data-year')); });
   });
 
   // Arrow keys change year, but only while the Art view is the active one --
@@ -469,10 +486,10 @@ ART_JS = """
     if(e.key!=='ArrowLeft' && e.key!=='ArrowRight') return;
     if(document.documentElement.getAttribute('data-view')!=='art') return;
     var ys=D.years, i=ys.indexOf(Number(yr)) + (e.key==='ArrowRight'?1:-1);
-    if(i>=0 && i<ys.length){ setYear(ys[i]); e.preventDefault(); }
+    if(i>=0 && i<ys.length){ pickYear(ys[i]); e.preventDefault(); }
   });
 
-  setYear(D.start);
+  setYear(yearFromHash() || D.start);
 })();
 """
 
@@ -555,7 +572,10 @@ def art_fragment(rows):
     # render literally
     hint = ("point at a spoke to light its route in the ground layer "
             "· drag to scrub the year")
-    start = max(years, key=lambda y: len(years[y]))   # the fullest year lands first
+    # the latest year -- in practice the current, usually partial one -- lands
+    # first; the data's last year, not the wall clock, so the build stays
+    # deterministic. #art?year=YYYY overrides it (ART_JS: yearFromHash).
+    start = max(years)
 
     data = {"act": meta, "ndays": ndays_map, "start": str(start), "hint": hint,
             "years": sorted(years)}

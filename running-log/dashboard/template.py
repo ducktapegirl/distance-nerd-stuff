@@ -1395,8 +1395,9 @@ document.querySelectorAll('.hm-toggle').forEach(btn => {
     y = String(y);
     if (!layers[y] || y === yr) return;
     select(null);
-    if (yr && layers[yr]) layers[yr].style.display = 'none';
-    layers[y].style.display = '';
+    // every other layer, not just the previous one: at boot a deep-linked
+    // year must also hide the one the server rendered visible
+    for (var k in layers) layers[k].style.display = (k === y) ? '' : 'none';
     yr = y;
     rebuildSpokes(y);
     updateButtons(y);
@@ -1433,11 +1434,29 @@ document.querySelectorAll('.hm-toggle').forEach(btn => {
   svg.querySelectorAll('.yc-hit').forEach(hit => {
     hit.addEventListener('click', () => { select(hit.dataset.date); });
   });
-  document.querySelectorAll('#yc-years button').forEach(b => {
-    b.addEventListener('click', () => setYear(b.dataset.year));
+  // Deep link: '#art?year=2005' opens on that year. A click writes the pick
+  // back (replaceState fires no hashchange, so it can't loop) so the address
+  // bar is always a shareable link; the calendar sync above deliberately
+  // doesn't, since it fires from other tabs.
+  function yearFromHash() {
+    var h = location.hash || '', q = h.indexOf('?');
+    if (h.replace('#', '').split('?')[0] !== 'art' || q < 0) return null;
+    var y = new URLSearchParams(h.slice(q + 1)).get('year');
+    return (y && layers[y]) ? y : null;   // an unknown year keeps the default
+  }
+  window.addEventListener('hashchange', () => {
+    var y = yearFromHash(); if (y) setYear(y);
   });
 
-  setYear(D.start);
+  document.querySelectorAll('#yc-years button').forEach(b => {
+    b.addEventListener('click', () => {
+      setYear(b.dataset.year);
+      if (document.documentElement.getAttribute('data-view') === 'art')
+        history.replaceState(null, '', '#art?year=' + yr);
+    });
+  });
+
+  setYear(yearFromHash() || D.start);
 })();
 
 // ─── Note row → highlight calendar cell ─────────────────────────────────────
