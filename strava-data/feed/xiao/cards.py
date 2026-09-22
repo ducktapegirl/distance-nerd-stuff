@@ -99,17 +99,25 @@ def strip(b, o, pal=DEFAULT, variant=None):
 
 # ══ C · Volume ════════════════════════════════════════════════════════════════
 
-@card(17, "C", "miles per calendar month, last 13 months")
+@card(17, "C", "miles per calendar month, last 13 months, all sports; "
+               "range spans complete months only")
 def sparkline(b, o, pal=DEFAULT):
     months = M.monthly_miles(b["acts"], 13)
     vals = [v for _, v in months]
+    # See the Sticky card: the partial current month is plotted but kept out
+    # of the range, where it would read as a real monthly low.
+    done = M.complete_months(months, b["asof"])
+    done_vals = [v for _, v in done] or vals
+    tail = (f"with {vals[-1]:.0f} so far in {months[-1][0]}" if len(done) < len(months)
+            else f"finishing at {vals[-1]:.0f} in {months[-1][0]}")
     c = _mk("sparkline", f"13 months of volume — {vals[-1]:.0f} mi latest",
-            f"Monthly mileage over the last 13 months, from {min(vals):.0f} to "
-            f"{max(vals):.0f}, finishing at {vals[-1]:.0f}.", "monthly volume", b, pal)
+            f"Monthly mileage over the last 13 months, every sport counted, ranging from "
+            f"{min(done_vals):.0f} to {max(done_vals):.0f} across complete months, {tail}.",
+            "monthly volume", b, pal)
     c.add(S.text(PAD, 56, f"{vals[-1]:.0f} MI", 34, "bold", fill=pal.ink))
     L.spark(c, vals, top=64, bottom=98, pal=pal)
     c.add(S.text(PAD, 118, _month(months[0][0]), MIN_TEXT, fill=pal.ink, tracking=1),
-          S.text(L.CX, 118, f"{min(vals):.0f}–{max(vals):.0f} MI", MIN_TEXT,
+          S.text(L.CX, 118, f"{min(done_vals):.0f}–{max(done_vals):.0f} MI", MIN_TEXT,
                  anchor="middle", fill=pal.ink, tracking=1),
           S.text(W - PAD, 118, _month(months[-1][0]), MIN_TEXT, anchor="end",
                  fill=pal.ink, tracking=1))
@@ -457,20 +465,26 @@ def week_2004(b, o, pal=DEFAULT):
     then_mi = sum(r["_mi"] for r in then)
     then_paces = [r["_pace"] for r in then if r["_pace"]]
     then_pace = sum(then_paces) / len(then_paces) if then_paces else None
-    now = [r for r in b["acts"]
-           if r["_date"].isocalendar()[:2] == (year, week) and M.is_run(r)]
+    # Every sport, as on the Sticky. This panel has no room for the day list,
+    # so the days and sports are counted into the one sub line it does have.
+    now = [r for r in b["acts"] if r["_date"].isocalendar()[:2] == (year, week)]
     now_mi = sum(r["_mi"] for r in now)
-    now_paces = [60 / (M.mf(r["average_speed_kmh"]) * KM_TO_MI)
-                 for r in now if M.mf(r["average_speed_kmh"])]
-    now_pace = sum(now_paces) / len(now_paces) if now_paces else None
-    c = _mk("week-2004", f"Week {week}: {then_mi:.0f} mi in {then_year}, {now_mi:.0f} mi now",
+    now_days = len({r["_date"] for r in now})
+    now_sports = len({r["sport_type"] for r in now})
+    c = _mk("week-2004", f"Week {week}: {then_mi:.0f} mi in {then_year}, "
+                         f"{now_sports} sports now",
             f"The same ISO week, {year - then_year} years apart: {then_mi:.1f} run miles in "
-            f"{then_year} against {now_mi:.1f} now.", f"week {week} · then and now", b, pal)
+            f"{then_year}; this week, {now_days} days across {now_sports} sports.",
+            f"week {week} · then and now", b, pal)
     L.then_now(c,
                (then_year, f"{then_mi:.0f} MI",
                 f"avg {mmss(then_pace * 60)}/mi" if then_pace else f"{len(then)} days logged"),
                (year, f"{now_mi:.0f} MI",
-                f"avg {mmss(now_pace * 60)}/mi" if now_pace else "no runs yet"),
+                # Exactly fills the sub line's 15 characters at the 14 px floor;
+                # the singular forms are shorter, so they cannot overflow it.
+                f"{now_sports} sport{'s' if now_sports != 1 else ''} "
+                f"{now_days} day{'s' if now_days != 1 else ''}"
+                if now else "nothing yet"),
                pal=pal)
     return c
 

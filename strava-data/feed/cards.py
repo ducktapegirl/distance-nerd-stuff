@@ -52,6 +52,36 @@ def _mk(cid, title, summary, kicker, b, idea, family, recipe):
     return c
 
 
+# Short enough for a day row at the 26 px floor, where the budget is ~21
+# characters: "Mountain bike" alone would ellipsize the amount off the end.
+_SHORT_SPORT = {
+    "Run": "Run", "TrailRun": "Trail", "MountainBikeRide": "Mtn bike",
+    "Ride": "Bike", "GravelRide": "Gravel", "EBikeRide": "E-bike",
+    "VirtualRide": "Trainer", "WeightTraining": "Weights", "Workout": "Workout",
+    "Hike": "Hike", "Walk": "Walk", "AlpineSki": "Ski", "Snowboard": "Board",
+    "NordicSki": "Nordic", "BackcountrySki": "Ski tour", "IceSkate": "Skate",
+    "RockClimbing": "Climbing", "Swim": "Swim", "Yoga": "Yoga",
+    "Elliptical": "Cross-tr", "Pickleball": "Pickle", "Golf": "Golf",
+    "StandUpPaddling": "Paddle", "Paddleboard": "Paddle", "Kayaking": "Kayak",
+    "Canoeing": "Canoe", "Rowing": "Row", "Pilates": "Pilates",
+    "Snowshoe": "Snowshoe", "Velomobile": "Velo", "Handcycle": "Handcyc",
+}
+
+
+def _day_row(r):
+    """``Wed · Mtn bike · 8.2 mi`` — miles where the sport logs them, minutes
+    where it does not, so a weights session is a line and not a silent zero."""
+    mi = r["_mi"]
+    if mi >= 0.05:
+        amount = f"{mi:.0f} mi" if mi >= 10 else f"{mi:.1f} mi"
+    else:
+        mins = M.mf(r.get("moving_time_min")) or 0.0
+        amount = (f"{int(mins // 60)}h{int(mins % 60):02d}" if mins >= 60
+                  else f"{mins:.0f} min")
+    sport = _SHORT_SPORT.get(r["sport_type"]) or F.sport(r["sport_type"])
+    return f"{r['_date'].strftime('%a')} · {sport} · {amount}"
+
+
 def _sport_glyph(sport):
     if sport in ("Run", "TrailRun", "Walk", "Hike"):
         return S.glyph_runner
@@ -350,16 +380,28 @@ def c16_odometer(b, o):
     return c
 
 
-@card(17, "C", "miles per calendar month, last 13 months")
+@card(17, "C", "miles per calendar month, last 13 months, all sports; "
+               "range spans complete months only")
 def c17_sparkline(b, o):
     months = M.monthly_miles(b["acts"], 13)
     vals = [v for _, v in months]
+    # The range reads over complete months; the partial current month is still
+    # plotted, but as a low it would only describe how far into the month we are.
+    done = M.complete_months(months, b["asof"])
+    done_vals = [v for _, v in done] or vals
+    # Only call the last month partial when it really is the current one — with
+    # no activity yet this month, the final entry is a month that finished.
+    tail = (f"with {vals[-1]:.0f} so far in {months[-1][0]}" if len(done) < len(months)
+            else f"finishing at {vals[-1]:.0f} in {months[-1][0]}")
     c = _mk("sparkline", f"13 months of volume — {vals[-1]:.0f} mi latest",
-            f"Monthly mileage over the last 13 months, from {min(vals):.0f} to {max(vals):.0f}, "
-            f"finishing at {vals[-1]:.0f}.",
-            "monthly volume", b, 17, "C", "miles per calendar month, last 13 months")
+            f"Monthly mileage over the last 13 months, every sport counted, ranging from "
+            f"{min(done_vals):.0f} to {max(done_vals):.0f} across complete months, {tail}.",
+            "monthly volume", b, 17, "C",
+            "miles per calendar month, last 13 months, all sports; "
+            "range spans complete months only")
     L.spark(c, vals, labels=(months[0][0], months[-1][0]),
-            headline=f"{vals[-1]:.0f} mi", sub=f"range {min(vals):.0f}–{max(vals):.0f} mi")
+            headline=f"{vals[-1]:.0f} mi",
+            sub=f"all sports · {min(done_vals):.0f}–{max(done_vals):.0f} mi")
     return c
 
 
@@ -1405,7 +1447,7 @@ def c61_wildlife(b, o):
     return c
 
 
-@card(60, "I", "the same ISO week in the 2003-07 paper log, against this one")
+@card(60, "I", "the same ISO week in the 2003-07 paper log, beside this week day by day")
 def c62_week_2004(b, o):
     year, week, _ = b["asof"].isocalendar()
     then_year = next((y for y in (2004, 2003, 2005, 2006, 2007)
@@ -1417,12 +1459,15 @@ def c62_week_2004(b, o):
     then_paces = [r["_pace"] for r in then if r["_pace"]]
     then_pace = sum(then_paces) / len(then_paces) if then_paces else None
 
-    now = [r for r in b["acts"]
-           if r["_date"].isocalendar()[:2] == (year, week) and M.is_run(r)]
+    # Every sport, not just the runs: the point of the present half is the
+    # range of what gets done in a week, which a run filter hides.
+    now = sorted((r for r in b["acts"]
+                  if r["_date"].isocalendar()[:2] == (year, week)),
+                 key=lambda r: r["_dt"])
     now_mi = sum(r["_mi"] for r in now)
-    now_paces = [60 / (M.mf(r["average_speed_kmh"]) * KM_TO_MI)
-                 for r in now if M.mf(r["average_speed_kmh"])]
-    now_pace = sum(now_paces) / len(now_paces) if now_paces else None
+    now_rows = [_day_row(r) for r in now]
+    now_days = len({r["_date"] for r in now})
+    now_sports = len({r["sport_type"] for r in now})
 
     then_lines = []
     for r in [t for t in then if t["_mi"] > 0][:4]:
@@ -1431,30 +1476,21 @@ def c62_week_2004(b, o):
             line += f"  · RACE: {r['race_name']}"
         then_lines.append(line)
 
-    if now:
-        now_lines = [f"{r['_date'].strftime('%a')}  {r['name']}  {r['_mi']:.1f} mi"
-                     for r in sorted(now, key=lambda r: r["_dt"])[:4]]
-    else:
-        lr = M.longest([r for r in b["acts"] if M.is_run(r)], lambda r: True, "_dt")
-        now_lines = ["no runs this ISO week"]
-        if lr:
-            now_lines.append(f"last run: {lr['name']}")
-            now_lines.append(f"{lr['_mi']:.1f} mi on {F.day(lr['_date'])}")
-
-    delta = now_mi - then_mi
+    now_summary = (f"{now_days} day{'s' if now_days != 1 else ''} across "
+                   f"{now_sports} sport{'s' if now_sports != 1 else ''}, "
+                   f"{now_mi:.1f} miles logged" if now else "nothing logged")
     c = _mk("week-2004", f"Week {week}: {then_mi:.0f} mi in {then_year}, "
-                         f"{now_mi:.0f} mi now",
-            f"The same ISO week, {year - then_year} years apart: {then_mi:.1f} run miles in "
-            f"{then_year} against {now_mi:.1f} now.",
+                         f"{now_sports} sports now",
+            f"The same ISO week, {year - then_year} years apart: {then_mi:.1f} run miles "
+            f"in {then_year}; this week, {now_summary}.",
             f"this week in {then_year}", b, 60, "I",
-            "the same ISO week in the 2003-07 paper log, against this one")
-    L.then_now(c,
-               (str(then_year), f"{then_mi:.0f} mi",
-                f"avg {mmss(then_pace * 60)}/mi" if then_pace else f"{len(then)} days logged",
-                then_lines),
-               (str(year), f"{now_mi:.0f} mi",
-                f"avg {mmss(now_pace * 60)}/mi" if now_pace else "no run pace this week",
-                now_lines))
+            "the same ISO week in the 2003-07 paper log, beside this week day by day")
+    L.then_days(c,
+                (str(then_year), f"{then_mi:.0f} mi",
+                 f"avg {mmss(then_pace * 60)}/mi" if then_pace
+                 else f"{len(then)} days logged",
+                 then_lines),
+                str(year), now_rows)
     return c
 
 
