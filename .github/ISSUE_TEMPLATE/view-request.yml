@@ -12,13 +12,23 @@ body:
 
         Rough ideas are welcome. There's a field below for saying it's rough.
 
+        **An e-paper card is a different animal from a chart.** It carries one fact, drawn
+        as flat SVG at a fixed size, with no interactivity and no color to spend: the Sticky
+        panel has four grays plus dither patterns, the XIAO has black, white, red and yellow.
+        A good card idea is a single number, streak, or shape that reads at arm's length —
+        not something you'd hover or zoom.
+
   - type: dropdown
     id: dashboard
     attributes:
-      label: Which dashboard?
+      label: Which page or panel?
       options:
         - Strava dashboard (strava.html)
         - Running Log (college.html)
+        - Landing page (index.html)
+        - e-paper card, Sticky panel - 800x480 grayscale
+        - e-paper card, XIAO panel - 2.9-inch four-color
+        - e-paper card, both panels
         - Either / not sure
     validations:
       required: true
@@ -62,6 +72,7 @@ body:
       description: >
         Strava has activities, segment efforts, per-activity GPS/HR streams, laps, gear, and
         weather-derived fields. The Running Log is a fixed 2003–2007 dataset (date, miles,
-        pace, type, notes). Leave blank if you're not sure.
+        pace, type, notes). The e-paper cards can draw on both at once, which is where the
+        long-range comparisons come from. Leave blank if you're not sure.
     validations:
       required: false

@@ -7,8 +7,10 @@ at my own endurance sports data: a **Strava dashboard** for activities pulling u
 activities (2024+), and a **Running Log**: my college running log that predated Strava entirely (2003-2007).
 
 **Live:**
-- 🏃 Running Log — https://ducktapegirl.github.io/distance-nerd-stuff/
+- 🚪 Landing page — https://ducktapegirl.github.io/distance-nerd-stuff/
+- 🏃 Running Log — https://ducktapegirl.github.io/distance-nerd-stuff/college.html
 - 🚴 Strava dashboard — https://ducktapegirl.github.io/distance-nerd-stuff/strava.html
+- 🖼 Today's e-paper card — https://ducktapegirl.github.io/distance-nerd-stuff/epaper.html
 
 ## What's actually here
 
@@ -20,8 +22,15 @@ activities (2024+), and a **Running Log**: my college running log that predated 
   searchable page.
 - **An e-paper feed** — the same data cut into 63 single-fact "cards" for a
   little 800×480 gray-scale panel stuck to the fridge. Sixteen of them
-  rotate, one an hour. No color, no JavaScript, nothing smaller than 26 px,
-  because at 235 PPI the whole screen is about the size of a credit card.
+  rotate, one an hour; a couple are keyed to the date and sit out the days
+  they have nothing to say, so a given build renders a few short of 63. No
+  color, no JavaScript, nothing smaller than 26 px, because at 235 PPI the
+  whole screen is about the size of a credit card.
+- **…and a second, much smaller panel** — the same sixteen-card rotation
+  redrawn for a 2.9″ 296×128 display that has four *colors* instead of four
+  grays: black, white, red and yellow, no dithering and nothing under 14 px.
+  Same data, same hour, a tenth of the room, so most cards had to be drawn
+  again rather than scaled down.
 
 All of it is static pages, rebuilt from data + a few Python scripts, and
 published with GitHub Pages.
@@ -41,10 +50,14 @@ how it works under the hood? See [`strava-data/AGENTS.md`](strava-data/AGENTS.md
 Want something fixed or added? [Open an issue](https://github.com/ducktapegirl/distance-nerd-stuff/issues/new/choose) — there are three forms, and each needs the right tag:
 
 - **Bug report** — something's broken, wrong, or looks off. This form auto-tags itself **`bug`**.
-- **New view / chart idea** — propose a question you want a dashboard to answer. This form
-  auto-tags itself **`enhancement`**.
+- **New view / chart idea** — propose a question you want a dashboard to answer, or a fact
+  you'd like an e-paper card to carry. This form auto-tags itself **`enhancement`**.
 - **General enhancement** — anything else you'd like improved that isn't a new chart or view
   (navigation, layout, exports, workflow, etc.). This form auto-tags itself **`enhancement`**.
+
+All three start by asking which page or panel you mean — either dashboard, the landing page, or
+one of the two e-paper panels — because a fix that's right for a scrolling web page is usually
+wrong for a fixed 296×128 one.
 
 Filing an issue with the `bug` or `enhancement` tag doesn't trigger anything by itself — only I
 can apply the `agent:ready` label, and nothing happens until I do. Once it's applied, the issue
@@ -87,9 +100,15 @@ uv run python -m http.server 8765 --directory running-log
 | `http://127.0.0.1:8765/` | landing page — the front door to both dashboards |
 | `http://127.0.0.1:8765/college.html` | Running Log dashboard |
 | `http://127.0.0.1:8765/strava.html` | Strava dashboard |
-| `http://127.0.0.1:8765/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
-| `http://127.0.0.1:8765/epaper.html` | exactly what the panel gets today |
+| `http://127.0.0.1:8765/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation (local only) |
+| `http://127.0.0.1:8765/epaper.html` | exactly what the big panel gets today |
 | `http://127.0.0.1:8765/epaper/<id>.html` | one card on its own, e.g. `/epaper/haiku.html` |
+| `http://127.0.0.1:8765/epaper_xiao-all.html` | the same proof sheet for the small four-color panel (local only) |
+| `http://127.0.0.1:8765/epaper_xiao.html` | exactly what the small panel gets today |
+| `http://127.0.0.1:8765/epaper_xiao/<id>.html` | one small-panel card on its own |
+
+The two `-all.html` proof sheets are **local only** — the deploy builds with `--no-sheets`, so
+they never reach Pages.
 
 Use **`127.0.0.1`**, not `localhost` — the Strava dashboard's maps are
 restricted by MapTiler to that origin. On Windows, prefix commands with
@@ -97,14 +116,18 @@ restricted by MapTiler to that origin. On Windows, prefix commands with
 
 For the e-paper cards there's an automated pass over all of it — the feed's
 structure, and every card's text size, stroke width, overlap and clipping at
-800×480:
+real panel size:
 
 ```bash
-uv run python tools/epaper_check.py
+uv run python tools/epaper_check.py                # the 800×480 gray panel
+uv run python tools/epaper_check.py --panel xiao   # the 296×128 four-color one
 ```
 
-It writes a screenshot of each card to `tools/preview-output/epaper/`, so you
-can look at what the numbers passed.
+It writes a screenshot of each card to `tools/preview-output/epaper/` (or
+`…/epaper_xiao/`), so you can look at what the numbers passed. Worth running
+both: the cards are hand-placed at fixed coordinates with no reflow, so a
+long name quietly prints one label on top of another and nothing else
+catches it.
 
 See [`CLAUDE.md`](CLAUDE.md) for the full build pipeline (fetch → analyze →
 build → deploy) and [`Project Docs/Handoffs/migration.md`](Project%20Docs/Handoffs/migration.md) for

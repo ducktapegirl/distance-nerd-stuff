@@ -6,18 +6,25 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. The fields below aren't bureaucracy — most bugs in this repo
-        turn out to be **specific to one theme or one screen width**, so the theme/viewport
-        answers are usually what makes a report reproducible.
+        Thanks for reporting. The fields below aren't bureaucracy — most bugs on the web
+        dashboards turn out to be **specific to one theme or one screen width**, so the
+        theme/viewport answers are usually what makes a report reproducible.
+
+        Filing about an **e-paper card**? Theme and screen size don't apply — pick the
+        "not applicable" options and name the card instead. The panels are fixed-size and
+        have no light/dark mode.
 
   - type: dropdown
     id: dashboard
     attributes:
-      label: Which dashboard?
+      label: Which page or panel?
       options:
         - Strava dashboard (strava.html)
         - Running Log (college.html)
-        - Both
+        - Landing page (index.html)
+        - e-paper, Sticky panel - 800x480 grayscale (epaper.html)
+        - e-paper, XIAO panel - 2.9-inch four-color (epaper_xiao.html)
+        - More than one of the above
         - Not sure
     validations:
       required: true
@@ -25,12 +32,13 @@ body:
   - type: input
     id: section
     attributes:
-      label: Which tab or section?
+      label: Which tab, section, or card?
       description: >
-        Strava tabs: overview, volume, trends, segments, map, exploratory.
-        Running Log tabs: overview, volume, mix, performance, races, patterns.
-        Name the chart if you can.
-      placeholder: e.g. performance → pace-over-time chart
+        Strava tabs: overview, volume, trends, segments, map, exploratory, art.
+        Running Log tabs: overview, volume, mix, performance, races, patterns, art.
+        For e-paper, name the card — its title, or its id from the proof sheet or its
+        own URL (e.g. epaper/monthly-volume.html). Name the chart if you can.
+      placeholder: e.g. performance → pace-over-time chart, or e-paper card "Monthly Volume"
     validations:
       required: false
 
@@ -58,6 +66,7 @@ body:
         - Light
         - System
         - Happens in both light and dark
+        - Not applicable - e-paper card
         - Not sure
     validations:
       required: true
@@ -72,6 +81,7 @@ body:
         - Tablet
         - Desktop
         - Happens on both phone and desktop
+        - Not applicable - e-paper panel (fixed size)
         - Not sure
     validations:
       required: true
@@ -80,7 +90,11 @@ body:
     id: browser
     attributes:
       label: Browser and device
-      placeholder: e.g. Safari on iPhone 14, or Chrome on macOS
+      description: >
+        For an e-paper bug, say where you saw it instead — on the physical panel, or in
+        a browser on the proof sheet. A card can look fine in a browser and still be
+        unreadable on the panel.
+      placeholder: e.g. Safari on iPhone 14, or Chrome on macOS, or "on the Sticky panel"
     validations:
       required: false
 

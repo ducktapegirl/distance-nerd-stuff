@@ -13,10 +13,14 @@ body:
   - type: dropdown
     id: dashboard
     attributes:
-      label: Which dashboard?
+      label: Which page or panel?
       options:
         - Strava dashboard (strava.html)
         - Running Log (college.html)
+        - Landing page (index.html)
+        - e-paper, Sticky panel - 800x480 grayscale (epaper.html)
+        - e-paper, XIAO panel - 2.9-inch four-color (epaper_xiao.html)
+        - The build or data pipeline behind one of them
         - Either / not sure
     validations:
       required: true
