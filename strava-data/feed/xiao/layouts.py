@@ -187,8 +187,11 @@ def then_now(c, left, right, pal=DEFAULT):
         ht, hs = S.fit_text(str(headline), 30, half - 16)
         c.add(S.text(x, BODY_TOP + 56, ht, hs, "bold", fill=pal.ink))
         if sub:
-            st, ss = S.fit_text(str(sub).upper(), MIN_TEXT, half - 16, ratio=0.62, tracking=1)
-            c.add(S.text(x, BODY_TOP + 80, st, ss, fill=pal.ink, tracking=1))
+            # No letter-spacing and the wider box: 12 characters at the floor
+            # becomes 15, which is what "7 SPORTS 7 DAYS" — the longest this
+            # can ever say — needs. Both halves, so the two stay matched.
+            st, ss = S.fit_text(str(sub).upper(), MIN_TEXT, half - 8, ratio=0.62)
+            c.add(S.text(x, BODY_TOP + 80, st, ss, fill=pal.ink))
     return c
 
 
