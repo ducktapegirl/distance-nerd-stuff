@@ -246,6 +246,12 @@ in `template.py`.
   `select`/`setYear`/`fadeToYear` no-ops when its target is already current), so a
   clock click round-tripping through `openDetail` back to `__yearClockGoTo` cannot
   loop or fight the highlight it just set.
+- **Default year and deep link**: opens on the **latest** year in the log (2007 —
+  partial, ending 12 May). `college.html#art?year=YYYY` opens on that year instead
+  (an unknown year keeps the default), a later hash edit re-selects it, and clicking
+  a year button writes `#art?year=YYYY` back with `replaceState` so the address bar
+  is always a shareable link. `__yearClockGoTo` does not write the hash — it fires
+  from other tabs.
 - **Edge cases**: A calendar-selected date with no running spoke (a cross-training-only
   or rest day) clears any existing highlight but shows nothing new — there's no bar to
   light up, by design. Partial years (2003 starts 31 Aug, 2007 ends 12 May) get a

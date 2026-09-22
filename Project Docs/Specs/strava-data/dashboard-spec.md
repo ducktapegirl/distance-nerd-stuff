@@ -1984,6 +1984,12 @@ Every activity of a calendar year in one figure, with a picker for each year pre
   lights both. This is the reason the two views are stacked rather than shown side by side.
 - **Center readout, family filter, drag-to-scrub.** A day is ~7px of arc at the rim, so tapping a
   spoke is not viable on touch — dragging moves a hand around the year instead.
+- **Default year and deep link.** Opens on the **latest** year in the data — in practice the
+  current, partial year (the fetch cron keeps it current; the data, not the wall clock, decides,
+  so the build stays deterministic). `strava.html#art?year=YYYY` opens on that year instead (an
+  unknown year keeps the default); a year-button click or arrow key writes `#art?year=YYYY` back
+  with `replaceState`, so the address bar is always a shareable link. The Running Log's Year
+  Clock follows the same contract.
 
 ### Rules this view has that the others do not
 
