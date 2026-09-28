@@ -33,7 +33,6 @@ on:
       - "running-log/running_log.csv"
       - "running-log/running_log_story.html"
       - "landing/**"
-      - "build_landing.py"
       - "nerd_common/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -83,7 +82,7 @@ jobs:
       # The landing page. No new dependencies and no network: stdlib plus
       # nerd_common, reading the two CSVs directly.
       - name: Build landing page
-        run: uv run python build_landing.py
+        run: uv run python landing/build_landing.py
 
       # No new dependencies: the feed is stdlib + numpy, deliberately without
       # Plotly or a MapTiler key. This is a build check only — the rendered

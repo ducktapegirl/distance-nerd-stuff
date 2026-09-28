@@ -27,7 +27,7 @@ Human-facing documents (not agent-facing config) live under **`Project Docs/`**,
 strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segments.py → build_dashboard.py → ../running-log/strava.html
                     build_feed.py + feed/ → ../running-log/{feed.xml, epaper.html, epaper-all.html, feed.json, epaper/<id>.html} (e-paper output)
 running-log/        college.html, index.html (landing), running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
-landing/            build_landing.py + landing/ package → running-log/index.html (the site's front door)
+landing/            build_landing.py (entrypoint) + the landing package → running-log/index.html (the site's front door)
 nerd_common/        installed package of shared design tokens, Plotly theme, formatters, theme_ui (the light/dark control), geometry (GPS projection + simplification for all the SVG art)
 Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
   Plans/              proposed/future work + cross-cutting
@@ -129,7 +129,7 @@ uv run python "running-log/visualize_log.py"
 ## Build the landing page
 
 ```bash
-uv run python build_landing.py   # writes running-log/index.html
+uv run python landing/build_landing.py   # writes running-log/index.html
 ```
 
 The site's front door: two glass tiles, running log (`college.html`) on the left and Strava
@@ -138,7 +138,7 @@ data. **Three outbound links and no more** — the two dashboards, plus a footer
 for filing issues. It is a door, not a site index: the e-paper proof sheet and the story page
 stay reachable from where they already are.
 
-`build_landing.py` is a thin entrypoint; the work is in the `landing/` package (`config.py`,
+`landing/build_landing.py` is a thin entrypoint; the work is in the rest of the `landing/` package (`config.py`,
 `data.py`, `art.py`, `template.py`, `page.py`). Its dependency rule is tighter than either
 dashboard's: **stdlib + `nerd_common` only.** It never imports `running-log/dashboard/` or
 `strava-data/dashboard/` — those pull in Plotly and a MapTiler key — and it ships no Plotly, no
@@ -354,7 +354,7 @@ uv sync                                          # install dependencies
 uv run python running-log/visualize_log.py       # build running-log/college.html
 uv run python strava-data/build_dashboard.py     # build running-log/strava.html
 uv run python strava-data/build_feed.py          # build the e-paper feed (+ local-only proof sheets)
-uv run python build_landing.py                   # build running-log/index.html (landing page)
+uv run python landing/build_landing.py           # build running-log/index.html (landing page)
 uv run python -m http.server 8765 --directory "running-log"
 ```
 
