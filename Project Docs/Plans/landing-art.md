@@ -267,7 +267,7 @@ Drive it directly:
    anything into `landing/art.py`. Judging a tile alone is how the pair ends up looking alike.
 4. Share the proofs with the user for voting.
 5. After user input, only then replace the two function bodies in `landing/art.py`, rebuild with
-   `uv run python build_landing.py`, and check the real page.
+   `uv run python landing/build_landing.py`, and check the real page.
 
 Related reading: `strava-data/dashboard/art_year.py` (theme-aware SVG at scale),
 `running-log/dashboard/year_clock.py` (the college data drawn as a clock),
