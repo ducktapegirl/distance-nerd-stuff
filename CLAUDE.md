@@ -260,7 +260,8 @@ string says so; don't "fix" it to use `asof`.
 `--probe` reports usability). It checks `feed.xml` and then every page at 800×480 for text below
 26 px, effective strokes below 3 px, overlapping text, and anything drawn off-panel — the cards
 are hand-placed at absolute user units with no reflow, so a longer name silently prints one label
-on top of another and no other check will catch it. It is **not** in CI, for the same reason the
+on top of another and no other check will catch it. It writes a screenshot of each card to
+`tools/preview-output/epaper/`, so you can look at what the numbers passed. It is **not** in CI, for the same reason the
 mobile pass isn't: `uv sync --no-dev` excludes Playwright.
 
 Panel rules — these are constraints, not preferences, and `svg.py` enforces the first two:
@@ -343,13 +344,22 @@ Needs Playwright (dev dep) only for `--png`.
 
 ## Preview
 
-A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
-define preview servers. Otherwise run
-manually — both dashboards' HTML lives under `running-log/`:
+**When the user asks to "open the test page" / "preview the site", build everything, serve it,
+and open `http://127.0.0.1:8765/<page>` in the browser pane** (pick the page from the table
+below; the landing page `/` if they don't say). Everything builds into `running-log/`, which is
+also what GitHub Pages publishes; none of the generated HTML is committed.
 
 ```bash
+uv sync                                          # install dependencies
+uv run python running-log/visualize_log.py       # build running-log/college.html
+uv run python strava-data/build_dashboard.py     # build running-log/strava.html
+uv run python strava-data/build_feed.py          # build the e-paper feed (+ local-only proof sheets)
+uv run python build_landing.py                   # build running-log/index.html (landing page)
 uv run python -m http.server 8765 --directory "running-log"
 ```
+
+A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
+define the same server as a preview config instead of running it by hand.
 
 **Any change made outside `main` (a feature branch, an uncommitted working-tree edit, a PR
 under review) must be validated by serving it locally, not just by reading the diff.** Rebuild
@@ -359,13 +369,15 @@ the affected dashboard(s) and start/confirm the preview server above so the user
 interaction) — skip it only for changes a browser can't show anything for (pure data pipeline
 code, CI config, docs).
 
+Paths are relative to `http://127.0.0.1:8765`:
+
 | Page | What it is |
 |---|---|
-| `/index.html` | landing page — the two dashboards' front door |
+| `/` (`/index.html`) | landing page — the two dashboards' front door |
 | `/college.html`, `/strava.html` | the two dashboards |
 | `/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
 | `/epaper.html` | exactly what the panel gets today |
-| `/epaper/<id>.html` | one card on its own |
+| `/epaper/<id>.html` | one card on its own, e.g. `/epaper/haiku.html` |
 
 When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy MapTiler API restrictions.
 
