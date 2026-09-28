@@ -28,7 +28,7 @@ strava-data/        authorize.py (OAuth bootstrap), fetch.py → analyze_segment
                     build_feed.py + feed/ → ../running-log/{epaper.html, epaper/<id>.html} (in use, SenseCraft) + {epaper/<id>.png, feed.json} (in use, TRMNL) + feed.xml (proof of concept)
                     + feed/xiao/ → ../running-log/{epaper_xiao.html, epaper_xiao/<id>.html} (in use) + {epaper_xiao.png, epaper_xiao.bin, feed_xiao.xml} (proof of concept)
 running-log/        college.html, index.html (landing), running_log.csv, parse_log.py/visualize_log.py/qa.py + dashboard/ package, strava.html (Strava dashboard output), source/ (_archive/ for non-input files)
-landing/            build_landing.py + landing/ package → running-log/index.html (the site's front door)
+landing/            build_landing.py (entrypoint) + the landing package → running-log/index.html (the site's front door)
 nerd_common/        installed package of shared design tokens, Plotly theme, formatters, theme_ui (the light/dark control), geometry (GPS projection + simplification for all the SVG art)
 Project Docs/       human-facing docs, each category with per-dashboard subfolders (strava-data/, running-log/):
   Plans/              proposed/future work + cross-cutting
@@ -130,7 +130,7 @@ uv run python "running-log/visualize_log.py"
 ## Build the landing page
 
 ```bash
-uv run python build_landing.py   # writes running-log/index.html
+uv run python landing/build_landing.py   # writes running-log/index.html
 ```
 
 The site's front door: two glass tiles, running log (`college.html`) on the left and Strava
@@ -139,7 +139,7 @@ data. **Three outbound links and no more** — the two dashboards, plus a footer
 for filing issues. It is a door, not a site index: the e-paper proof sheet and the story page
 stay reachable from where they already are.
 
-`build_landing.py` is a thin entrypoint; the work is in the `landing/` package (`config.py`,
+`landing/build_landing.py` is a thin entrypoint; the work is in the rest of the `landing/` package (`config.py`,
 `data.py`, `art.py`, `template.py`, `page.py`). Its dependency rule is tighter than either
 dashboard's: **stdlib + `nerd_common` only.** It never imports `running-log/dashboard/` or
 `strava-data/dashboard/` — those pull in Plotly and a MapTiler key — and it ships no Plotly, no
@@ -290,7 +290,8 @@ string says so; don't "fix" it to use `asof`.
 `--probe` reports usability). It checks `feed.xml` and then every page at 800×480 for text below
 26 px, effective strokes below 3 px, overlapping text, and anything drawn off-panel — the cards
 are hand-placed at absolute user units with no reflow, so a longer name silently prints one label
-on top of another and no other check will catch it. It is **not** in CI, for the same reason the
+on top of another and no other check will catch it. It writes a screenshot of each card to
+`tools/preview-output/epaper/` (`…/epaper_xiao/` with `--panel xiao`), so you can look at what the numbers passed. It is **not** in CI, for the same reason the
 mobile pass isn't: `uv sync --no-dev` excludes Playwright.
 
 Panel rules — these are constraints, not preferences, and `svg.py` enforces the first two:
@@ -375,13 +376,22 @@ Needs Playwright (dev dep) only for `--png`.
 
 ## Preview
 
-A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
-define preview servers. Otherwise run
-manually — both dashboards' HTML lives under `running-log/`:
+**When the user asks to "open the test page" / "preview the site", build everything, serve it,
+and open `http://127.0.0.1:8765/<page>` in the browser pane** (pick the page from the table
+below; the landing page `/` if they don't say). Everything builds into `running-log/`, which is
+also what GitHub Pages publishes; none of the generated HTML is committed.
 
 ```bash
+uv sync                                          # install dependencies
+uv run python running-log/visualize_log.py       # build running-log/college.html
+uv run python strava-data/build_dashboard.py     # build running-log/strava.html
+uv run python strava-data/build_feed.py          # build the e-paper feed (+ local-only proof sheets)
+uv run python landing/build_landing.py           # build running-log/index.html (landing page)
 uv run python -m http.server 8765 --directory "running-log"
 ```
+
+A local, gitignored `.claude/launch.json` (not committed — set it up per your machine) can
+define the same server as a preview config instead of running it by hand.
 
 **Any change made outside `main` (a feature branch, an uncommitted working-tree edit, a PR
 under review) must be validated by serving it locally, not just by reading the diff.** Rebuild
@@ -391,13 +401,18 @@ the affected dashboard(s) and start/confirm the preview server above so the user
 interaction) — skip it only for changes a browser can't show anything for (pure data pipeline
 code, CI config, docs).
 
+Paths are relative to `http://127.0.0.1:8765`:
+
 | Page | What it is |
 |---|---|
-| `/index.html` | landing page — the two dashboards' front door |
+| `/` (`/index.html`) | landing page — the two dashboards' front door |
 | `/college.html`, `/strava.html` | the two dashboards |
 | `/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
 | `/epaper.html` | exactly what the panel gets today |
-| `/epaper/<id>.html` | one card on its own |
+| `/epaper/<id>.html` | one card on its own, e.g. `/epaper/haiku.html` |
+| `/epaper_xiao-all.html` | the same proof sheet for the small four-color XIAO panel (local only) |
+| `/epaper_xiao.html` | exactly what the small panel gets today |
+| `/epaper_xiao/<id>.html` | one small-panel card on its own |
 
 When accessing locally, use **`http://127.0.0.1`** instead of `localhost` to satisfy MapTiler API restrictions.
 
