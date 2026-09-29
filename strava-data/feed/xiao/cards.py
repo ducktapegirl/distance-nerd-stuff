@@ -545,9 +545,9 @@ def mosaic(b, o, pal=DEFAULT):
         return None
     cols, rows = 6, 2
     picks = [tracks[(o + i * 7) % len(tracks)] for i in range(cols * rows)]
-    c = _mk("mosaic", f"{len(tracks)} routes, 12 of them",
+    c = _mk("mosaic", f"12 of {len(tracks)} routes",
             "Every GPS track in the log reduced to 64 points each; 12 shown, rotating daily.",
-            f"{len(tracks)} routes · 12 today", b, pal)
+            f"12 of {len(tracks)} routes", b, pal)
     cw = (W - 2 * PAD) / cols
     ch = L.BODY_H / rows
     side = min(cw, ch) - 6
