@@ -24,6 +24,8 @@ OUT_RSS   = os.path.join(_OUT_DIR, "feed.xml")
 OUT_PAGE  = os.path.join(_OUT_DIR, "epaper.html")
 OUT_SHEET = os.path.join(_OUT_DIR, "epaper-all.html")
 OUT_JSON  = os.path.join(_OUT_DIR, "feed.json")
+# Every activity's haiku, newest first - the history behind the haiku card.
+OUT_HAIKU = os.path.join(_OUT_DIR, "haiku.html")
 # One static page per card, for pinning a single card by URL.
 OUT_CARD_DIR = os.path.join(_OUT_DIR, "epaper")
 

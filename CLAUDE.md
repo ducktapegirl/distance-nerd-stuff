@@ -198,7 +198,7 @@ as they navigate.
 ## Build the e-paper feed (reTerminal Sticky / SenseCraft HMI)
 
 ```bash
-uv run python strava-data/build_feed.py   # writes running-log/{feed.xml,epaper.html,epaper-all.html,feed.json}
+uv run python strava-data/build_feed.py   # writes running-log/{feed.xml,epaper.html,epaper-all.html,feed.json,haiku.html}
 ```
 
 A **second, independent output target** alongside the dashboard, for a reTerminal Sticky ePaper
@@ -238,6 +238,13 @@ The Journey cards follow real interstates. `strava-data/tools/gen_journey.py` pu
 92129, writing `assets/journey_routes.json` (25 KB). **Re-run it only when the corridors change** —
 the dashboard build does no routing and no network I/O. To send a journey somewhere else, edit
 `CORRIDORS` there, not in `feed/journey.py`.
+
+**`haiku.html` is the haiku card's back catalog** — every activity's poem, newest first, built by
+`feed/haikus.py` and published (it is not a proof sheet, so `--no-sheets` leaves it alone). It is
+**regenerated each build, not logged**: `metrics.haiku` seeds on the activity id, so the page
+calls it for every activity with the same `sightings` map the card uses and the two cannot
+disagree. The flip side is that editing a word bank in `metrics.py` rewrites the old poems too —
+the page shows what each activity would get today, not a frozen record of what the panel showed.
 
 Idea catalog and design rationale: [`Project Docs/Plans/strava-data/epaper-feed-brainstorm.md`](Project%20Docs/Plans/strava-data/epaper-feed-brainstorm.md).
 Getting it onto the panel — pairing, URLs, and the three refresh clocks:
@@ -410,6 +417,7 @@ Paths are relative to `http://127.0.0.1:8765`:
 | `/epaper-all.html` | proof sheet — every card at real panel size, filterable to the rotation |
 | `/epaper.html` | exactly what the panel gets today |
 | `/epaper/<id>.html` | one card on its own, e.g. `/epaper/haiku.html` |
+| `/haiku.html` | every activity's haiku, newest first — the haiku card's history |
 | `/epaper_xiao-all.html` | the same proof sheet for the small four-color XIAO panel (local only) |
 | `/epaper_xiao.html` | exactly what the small panel gets today |
 | `/epaper_xiao/<id>.html` | one small-panel card on its own |

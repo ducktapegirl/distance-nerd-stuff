@@ -10,7 +10,10 @@ activities (2024+), and a **Running Log**: my college running log that predated 
 - 🚪 Landing page — https://ducktapegirl.github.io/distance-nerd-stuff/
 - 🏃 Running Log — https://ducktapegirl.github.io/distance-nerd-stuff/college.html
 - 🚴 Strava dashboard — https://ducktapegirl.github.io/distance-nerd-stuff/strava.html
-- 🖼 Today's e-paper card — https://ducktapegirl.github.io/distance-nerd-stuff/epaper.html
+- 🖼 E-paper displays — the fridge panels, one card an hour
+  - Today's card, big gray panel — https://ducktapegirl.github.io/distance-nerd-stuff/epaper.html
+  - Today's card, small four-color panel — https://ducktapegirl.github.io/distance-nerd-stuff/epaper_xiao.html
+  - Every haiku so far — https://ducktapegirl.github.io/distance-nerd-stuff/haiku.html
 
 ## What's actually here
 
