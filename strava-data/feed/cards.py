@@ -528,11 +528,11 @@ def c19b_journey_bike(b, o):
 def c20_split(b, o):
     split = M.sport_split(b["acts"], b["asof"])[:5]
     total = sum(n for _, n in split) or 1
-    c = _mk("split", f"Last year: {F.sport(split[0][0])} {split[0][1]} vs "
+    c = _mk("split", f"Last 365 days: {F.sport(split[0][0])} {split[0][1]} vs "
                      f"{F.sport(split[1][0])} {split[1][1]}",
             "Activity counts by sport over the last 365 days — running and mountain biking "
             "are almost exactly level.",
-            "sport split", b, 20, "C",
+            "sports · last 365 days", b, 20, "C",
             "activity counts by sport over the trailing 365 days")
     L.bar_rows(c, [(F.sport(name), f"{n}", n / split[0][1]) for name, n in split],
                label_w=330, value_w=100)
