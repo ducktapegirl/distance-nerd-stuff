@@ -282,6 +282,11 @@ def route_card(c, path, pw, ph, lines=(), region=None):
 
 # --- 9. route over a stat grid ------------------------------------------
 
+# Start dot radius plus the finish square's half-diagonal, rounded up: the
+# distance at which the two markers begin to touch. Panel pixels, not meters -
+# the question is whether the marks collide, not how far apart the ends are.
+LOOP_PX = 24
+
 def route_stats(c, path, pw, ph, stats):
     """A route across the top, a 4x2 grid of numbers under it.
 
@@ -291,6 +296,11 @@ def route_stats(c, path, pw, ph, stats):
     The route gets whatever the grid does not need, rather than a fixed height:
     two rows of numbers plus their labels have to clear ``BOT_RULE``, or the
     second row's labels land on top of the footer.
+
+    The start is a gray dot with an ink ring and the finish a black square.
+    When they land within ``LOOP_PX`` of each other the route is a loop, and
+    it gets a single, larger start/finish dot, since a square inside a ring
+    reads as a glitch.
     """
     stats = list(stats)[:8]
     rows = 1 if len(stats) <= 4 else 2
@@ -302,8 +312,13 @@ def route_stats(c, path, pw, ph, stats):
     ox, oy = CX - pw * k / 2, ry + (rh - ph * k) / 2
     pts = [(ox + x * k, oy + y * k) for x, y in path]
     c.add(S.polyline(pts, sw=5))
-    c.add(S.circle(pts[0][0], pts[0][1], 10, fill=WHITE, stroke=BLACK, sw=4))
-    c.add(S.rect(pts[-1][0] - 8, pts[-1][1] - 8, 16, 16, fill=BLACK))
+    (sx, sy), (ex, ey) = pts[0], pts[-1]
+    if math.hypot(ex - sx, ey - sy) < LOOP_PX:
+        # A loop: one start/finish dot, a size up, so the two marks never stack.
+        c.add(S.circle(sx, sy, 13, fill=DARK, stroke=BLACK, sw=3))
+    else:
+        c.add(S.circle(sx, sy, 11, fill=DARK, stroke=BLACK, sw=3))
+        c.add(S.rect(ex - 8, ey - 8, 16, 16, fill=BLACK))
 
     cols = 4
     cw = (W - 2 * PAD) / cols
