@@ -40,17 +40,17 @@ published with GitHub Pages.
 
 ## Built by a team of robots (sort of)
 
-The Strava dashboard isn't hand-coded — it's built and maintained by a
-small crew of Claude agents, each with one job: one decides what's
-interesting in the data, one designs how a new chart should look, one writes
-the actual code, one checks the result before it ships. I (a human) approve
-each stage along the way. It's equal parts "I wanted these specific charts"
-and "I wanted to see how far an agentic build pipeline could go." Curious
-how it works under the hood? See [`strava-data/AGENTS.md`](strava-data/AGENTS.md).
+The Strava dashboard is my attempt at a subagent + orchestrator framework.
+It's built and maintained by a small crew of Claude agents, each with one job: 
+one decides what's interesting in the data, one designs how a new chart should 
+look, one writes the actual code, one checks the result before it ships. 
+I (a human) approve each stage along the way. It's equal parts "I wanted these
+specific charts" and "I wanted to see how far an agentic build pipeline could go." 
+Curious how it works under the hood? See [`strava-data/AGENTS.md`](strava-data/AGENTS.md).
 
 ## Filing an issue
 
-Want something fixed or added? [Open an issue](https://github.com/ducktapegirl/distance-nerd-stuff/issues/new/choose) — there are three forms, and each needs the right tag:
+Want something fixed or added? [Open an issue](https://github.com/ducktapegirl/distance-nerd-stuff/issues/new/choose). There are three forms, and each needs the right tag:
 
 - **Bug report** — something's broken, wrong, or looks off. This form auto-tags itself **`bug`**.
 - **New view / chart idea** — propose a question you want a dashboard to answer, or a fact
