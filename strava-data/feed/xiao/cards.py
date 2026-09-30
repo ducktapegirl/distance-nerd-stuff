@@ -2,8 +2,8 @@
 
 One function per rotation id, same ids as ``feed.cards`` so a card names the
 same idea on both panels. The rotation itself is this panel's own (see
-``ROTATION``): the sixteen the Sticky cycles plus six ports from the rest of
-its catalog. The data layer is shared
+``ROTATION``): the sixteen the Sticky cycles plus eighteen ports from the rest
+of its catalog. The data layer is shared
 unchanged (``metrics``, ``places``, ``journey``, ``geo``); only the drawing is
 new, because the drawing is what a panel a tenth the size and with no gray
 changes.
@@ -647,6 +647,224 @@ def route(b, o, pal=DEFAULT):
     return c
 
 
+# The second batch of ports, 2026-09-30: the rest of the Sticky cards that sit
+# on a single number, a row of numbers, a few bars or one short line of text.
+
+@card(5, "A", "ACWR band crossed with days-since; a word, not a number")
+def fresh(b, o, pal=DEFAULT):
+    a = M.acwr(b["acts"], b["asof"])
+    since = M.streaks(b["acts"], b["asof"])["days_since"]
+    r = a["ratio"] or 1.0
+    if since >= 5:
+        word, note = "RUSTY", f"{since} days off"
+    elif r > 1.5:
+        word, note = "COOKED", f"load {r:.2f}"
+    elif r > 1.3:
+        word, note = "SPICY", f"load {r:.2f}"
+    elif r < 0.8:
+        word, note = "FRESH", f"load {r:.2f}"
+    else:
+        word, note = "READY", f"load {r:.2f}"
+    c = _mk("fresh", f"Current state: {word.lower()}",
+            f"With a load ratio of {r:.2f} and {since} day{'s' if since != 1 else ''} since the "
+            f"last activity, the verdict is {word.lower()}.", "state of the athlete", b, pal)
+    # The three warnings take the accent; ready and fresh are ink.
+    L.hero(c, word, sub=note, size=52, y=80, pal=pal,
+           fill=pal.accent if word in ("RUSTY", "COOKED", "SPICY") else None)
+    return c
+
+
+@card(8, "B", "gaps between consecutive active days")
+def rest(b, o, pal=DEFAULT):
+    r = M.rest_days(b["acts"], b["asof"])
+    c = _mk("rest", f"{r['rest_days']} rest days, longest gap {r['longest_gap']}",
+            f"{r['rest_days']} rest days across the whole log, and the longest unbroken "
+            f"break was {r['longest_gap']} days.", "rest days", b, pal)
+    L.stat_row(c, [(r["rest_days"], "rest days"), (r["longest_gap"], "max gap"),
+                   (r["since_rest"], "days on")], y=82, size=34, pal=pal)
+    return c
+
+
+@card(23, "D", "count of pr_date values inside trailing windows")
+def pr_pace(b, o, pal=DEFAULT):
+    pr = M.latest_pr(b["segs"], b["asof"])
+    if pr is None:
+        return None
+    k = pr["counts"]
+    c = _mk("pr-pace", f"{k[30]} PRs in 30 days, {k[365]} in a year",
+            f"Segment personal records are landing at {k[30]} per month: {k[90]} in 90 days "
+            f"and {k[365]} over the last year.", "segment prs", b, pal)
+    L.stat_row(c, [(k[30], "30 days"), (k[90], "90 days"), (k[365], "a year")],
+               y=82, size=34, pal=pal, fills=[pal.accent, None, None])
+    return c
+
+
+@card(34, "F", "start points clustered at a 6 mi radius; box table for states")
+def passport(b, o, pal=DEFAULT):
+    pts = P.start_points(b["acts"])
+    regions = P.count_regions(pts)
+    states, _unc = P.count_states(pts)
+    c = _mk("passport", f"{regions} regions, {len(states)} states and provinces",
+            f"Activities cluster into {regions} distinct regions across {len(states)} states "
+            f"and provinces: {', '.join(states)}.", "passport", b, pal)
+    L.stat_row(c, [(len(pts), "located"), (regions, "regions"), (len(states), "states")],
+               y=64, size=28, pal=pal)
+    # Spaces, not the Sticky's middots: nine codes only fit at the floor bare.
+    st, ss = S.fit_text(" ".join(states), 18, W - 2 * PAD)
+    c.add(S.text(L.CX, 112, st, ss, "bold", anchor="middle", fill=pal.ink))
+    return c
+
+
+@card(41, "G", "pace and heart rate against temperature band, runs only")
+def heat_verdict(b, o, pal=DEFAULT):
+    runs = [r for r in b["acts"] if M.is_run(r) and M.mf(r["average_temp_c"]) is not None
+            and M.mf(r["average_speed_kmh"]) and M.mf(r["average_heartrate"])]
+    if len(runs) < 20:
+        return None
+    bands = [("COOL", -99, 8.9), ("MILD", 8.9, 16.7), ("WARM", 16.7, 23.9), ("HOT", 23.9, 99)]
+    rows = []
+    for name, lo, hi in bands:
+        sel = [r for r in runs if lo <= M.mf(r["average_temp_c"]) < hi]
+        if not sel:
+            continue
+        pace = sum(60 / (M.mf(r["average_speed_kmh"]) * KM_TO_MI) for r in sel) / len(sel)
+        hr = sum(M.mf(r["average_heartrate"]) for r in sel) / len(sel)
+        rows.append((name, pace, hr, len(sel)))
+    if len(rows) < 2:
+        return None
+    cool, hot = rows[0], rows[-1]
+    dp = (hot[1] - cool[1]) * 60
+    c = _mk("heat-verdict", f"Heat costs {abs(dp):.0f}s/mi, not heartbeats",
+            f"From {cool[0].lower()} to {hot[0].lower()} runs, pace moves "
+            f"{abs(dp):.0f} seconds per mile while average heart rate shifts only "
+            f"{abs(hot[2] - cool[2]):.0f} bpm.", "the heat verdict", b, pal)
+    lo, hi = min(r[1] for r in rows), max(r[1] for r in rows)
+    # Bar length is pace (longer = slower), as on the Sticky; the hottest band
+    # takes the accent.
+    L.bars(c, [(f"{name} {mmss(p * 60)}", f"{hr:.0f} bpm", (p - lo) / ((hi - lo) or 1) * 0.9 + 0.1)
+               for name, p, hr, _n in rows], label_w=104, value_w=62, pal=pal,
+           fills=[None] * (len(rows) - 1) + [pal.accent])
+    return c
+
+
+@card(45, "H", "max distance by sport group, and max single-activity elevation")
+def longest(b, o, pal=DEFAULT):
+    """The three records as numbers, not the Sticky's bars: a run, a ride and a
+    climb share no unit, so the bars were only ever decoration."""
+    lr = M.longest(b["acts"], M.is_run)
+    lb = M.longest(b["acts"], M.is_bike)
+    le = M.longest(b["acts"], lambda r: True, key="_ft")
+    c = _mk("longest", f"Longest run {lr['_mi']:.1f} mi, longest ride {lb['_mi']:.1f} mi",
+            f"Records: {lr['_mi']:.1f} miles running (\"{lr['name']}\"), {lb['_mi']:.1f} "
+            f"riding (\"{lb['name']}\"), and {le['_ft']:,.0f} feet climbed in one day.",
+            "longest ever", b, pal)
+    L.stat_row(c, [(f"{lr['_mi']:.1f}", "run mi"), (f"{lb['_mi']:.1f}", "ride mi"),
+                   (f"{le['_ft']:,.0f}", "climb ft")], y=82, size=34, pal=pal,
+               fills=[pal.run, pal.bike, None])
+    return c
+
+
+@card(46, "H", "max kudos_count in activities.csv")
+def kudos(b, o, pal=DEFAULT):
+    a = M.top_kudos(b["acts"])
+    if not a:
+        return None
+    c = _mk("kudos", f"Most kudos: “{a['name']}” ({a['kudos_count']})",
+            f"\"{a['name']}\" drew {a['kudos_count']} kudos, more than any other activity.",
+            "peak kudos", b, pal)
+    L.hero(c, a["kudos_count"], unit="kudos", size=44, y=66, pal=pal, fill=pal.accent)
+    nt, ns = S.fit_text(a["name"], 18, W - 2 * PAD)
+    c.add(S.text(PAD, 94, nt, ns, "bold", fill=pal.ink))
+    tt, ts = S.fit_text(f"{a['_mi']:.1f} MI · {F.sport(a['sport_type']).upper()} · "
+                        f"{a['_date'].year}",
+                        MIN_TEXT, W - 2 * PAD, ratio=0.62, tracking=1)
+    c.add(S.text(PAD, 116, tt, ts, fill=pal.ink, tracking=1))
+    return c
+
+
+@card(48, "I", "a +/- 3 day window centered 365 days back")
+def year_ago(b, o, pal=DEFAULT):
+    hits = M.year_ago_week(b["acts"], b["asof"])
+    if not hits:
+        return None
+    mi = sum(r["_mi"] for r in hits)
+    a = max(hits, key=lambda r: r["_mi"])
+    c = _mk("year-ago", f"A year ago this week: {mi:.1f} mi over {len(hits)} activities",
+            f"In the same week last year there were {len(hits)} activities totaling "
+            f"{mi:.1f} miles, the biggest being \"{a['name']}\" at {a['_mi']:.1f} mi.",
+            "a year ago this week", b, pal)
+    L.stat_row(c, [(len(hits), "outings"), (f"{mi:.0f}", "miles"),
+                   (f"{sum(r['_ft'] for r in hits):,.0f}", "feet")], y=64, size=28, pal=pal)
+    nt, ns = S.fit_text(f"Top: {a['name']}", 16, W - 2 * PAD)
+    c.add(S.text(L.CX, 112, nt, ns, "bold", anchor="middle", fill=pal.ink))
+    return c
+
+
+@card(49, "I", "the oldest row in activities.csv")
+def first(b, o, pal=DEFAULT):
+    a = b["acts"][0]
+    days = (b["asof"] - a["_date"]).days
+    c = _mk("first", f"It started with “{a['name']}”",
+            f"The first activity in the log: {a['_mi']:.1f} mi of "
+            f"{F.sport_activity(a['sport_type'])} on {F.day(a['_date'], '%d %B %Y')}.",
+            "where it began", b, pal)
+    # Name on the left, days-ago on the right; the description goes.
+    for i, line in enumerate(S.wrap_text(a["name"], 20, 176)):
+        c.add(S.text(PAD, 50 + i * 22, line, 20, "bold", fill=pal.ink))
+    c.add(S.text(W - PAD, 66, f"{days:,}", 34, "bold", anchor="end", fill=pal.accent),
+          S.text(W - PAD, 84, "DAYS AGO", MIN_TEXT, "bold", anchor="end", fill=pal.ink,
+                 tracking=1))
+    tt, ts = S.fit_text(f"{F.day(a['_date'], '%d %b %Y')} · {a['_mi']:.1f} mi".upper(),
+                        MIN_TEXT, W - 2 * PAD, ratio=0.62, tracking=1)
+    c.add(S.text(PAD, 116, tt, ts, fill=pal.ink, tracking=1))
+    return c
+
+
+@card(54, "K", "row counts and on-disk size of the fetched data")
+def dataset(b, o, pal=DEFAULT):
+    d = M.dataset_stats(b["acts"])
+    c = _mk("dataset", f"{d['acts']} activities, {d['streams']} GPS streams, {d['mb']:.0f} MB",
+            f"The log behind these cards: {d['acts']} activities, {d['streams']} per-second "
+            f"GPS stream files totaling {d['mb']:.0f} MB, plus segment efforts and laps.",
+            "the dataset itself", b, pal)
+    L.stat_row(c, [(d["acts"], "outings"), (d["streams"], "gps files"),
+                   (f"{d['mb']:.0f}", "megabytes")], y=82, size=34, pal=pal)
+    return c
+
+
+@card(55, "K", "device_name counts across the log")
+def devices(b, o, pal=DEFAULT):
+    dv = M.devices(b["acts"])
+    if not dv:
+        return None
+    top = dv[0][1]
+    c = _mk("devices", f"{dv[0][0]} recorded {dv[0][1]} of {len(b['acts'])}",
+            "Every activity in the log, by the device that recorded it.", "recorded by", b, pal)
+    L.bars(c, [(name, str(n), n / top) for name, n in dv[:4]], label_w=176, value_w=36,
+           pal=pal)
+    return c
+
+
+@card(56, "K", "laps/{id}.csv for the newest activity with more than one lap")
+def laps(b, o, pal=DEFAULT):
+    a = M.last_with_laps(b["acts"])
+    if not a:
+        return None
+    all_laps = M.laps_for(a)
+    rows = []
+    for lap in all_laps[:4]:
+        mi = (M.mf(lap["distance_km"]) or 0) * KM_TO_MI
+        secs = M.mf(lap["moving_time_s"]) or 0
+        rows.append((lap["name"], f"{mi:.1f} · {mmss(secs)}", secs))
+    peak = max(r[2] for r in rows) or 1
+    # The activity name rides in the masthead, as on ``latest``.
+    c = _mk("laps", f"Lap splits — {a['name']}",
+            f"{len(all_laps)} laps on \"{a['name']}\", {F.day(a['_date'])}; "
+            f"bar length is moving time.", a["name"], b, pal)
+    L.bars(c, [(n, v, s / peak) for n, v, s in rows], label_w=84, value_w=92, pal=pal)
+    return c
+
+
 # ══ mockup only ══════════════════════════════════════════════════════════════
 
 @card(37, "F", "every GPS track, simplified to 64 points, twelve tiled")
@@ -679,8 +897,8 @@ def mosaic(b, o, pal=DEFAULT):
 
 # This panel's own rotation. It began as the Sticky's sixteen, in the Sticky's
 # order, and is no longer tied to it: the owner decided 2026-09-30 that the two
-# panels need not show the same card in the same hour, so the six ports above
-# joined. Both still key the hour the same way (hours since the epoch, UTC,
+# panels need not show the same card in the same hour, so the eighteen ports
+# above joined. Both still key the hour the same way (hours since the epoch, UTC,
 # modulo the pool), but the pools differ in length, so they drift apart.
 ROTATION = [
     "strip", "sparkline", "everest", "journey-run", "journey-bike", "split",
@@ -688,6 +906,8 @@ ROTATION = [
     "wildlife", "week-2004", "anniversary", "haiku",
     # Ported 2026-09-30.
     "days-since", "streak", "week", "leaderboard", "bike-odo", "route",
+    "fresh", "rest", "pr-pace", "passport", "heat-verdict", "longest",
+    "kudos", "year-ago", "first", "dataset", "devices", "laps",
 ]
 
 

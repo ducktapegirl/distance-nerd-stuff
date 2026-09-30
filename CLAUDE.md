@@ -339,7 +339,7 @@ layouts,cards,page}.py` are the drawing surface. Rules that differ from the Stic
   hex — so the color models on the proof sheet are one table swap. Yellow is the light tone (area
   wash, never text or a thin stroke); red is the single accent.
 - **`xiao/cards.py` reuses the Sticky's card ids but has its own `ROTATION`**: the Sticky's 16 plus
-  six ports (`days-since`, `streak`, `week`, `leaderboard`, `bike-odo`, `route`). The two panels are
+  eighteen ports from the rest of its catalog (listed in `xiao/page.py:AUDIT`). The two panels are
   deliberately **not synced**: both key the hour the same way, but the pools differ in length. Add a
   card there as `@card(idea, family, recipe)` composed from `xiao/layouts.py` and list its id in
   `ROTATION`; `rotation=False` keeps it sheet-only.

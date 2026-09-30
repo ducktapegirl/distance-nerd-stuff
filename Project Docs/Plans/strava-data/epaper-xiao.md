@@ -1,6 +1,6 @@
 # The Sticky rotation on a 2.9″ four-color XIAO panel
 
-**Status:** built, all 16 Sticky rotation cards adapted plus 6 ports (2026-09-30), owner's decisions applied 2026-09-13 ·
+**Status:** built, all 16 Sticky rotation cards adapted plus 18 ports (2026-09-30), owner's decisions applied 2026-09-13 ·
 **Created:** 2026-09-12 · **Owner:** unassigned
 
 Companion to `strava-data/feed/xiao/` and the review sheet it builds, `epaper_xiao-all.html`.
@@ -60,9 +60,21 @@ density this panel does not have.
 | `leaderboard` (24) | port | Four bar rows of the five, count only; the best times move to the summary. Long segment names ellipsize. |
 | `bike-odo` (32) | port | Odometer numeral, name and make, the bike glyph at the right. |
 | `route` (36) | port | `latest`'s route-left frame for the date-picked route; name, miles, climb and month. |
+| `fresh` (5) | port | One word as the numeral, the load ratio under it; red for rusty, spicy or cooked. |
+| `rest` (8) | port | Rest days, longest gap and days since a rest, across. |
+| `pr-pace` (23) | port | Segment PRs in 30 / 90 / 365 days; the 30-day count is the accent. |
+| `passport` (34) | port | Located / regions / states across, the state codes on one line under them. |
+| `heat-verdict` (41) | port | Four temperature bands as bars of pace, heart rate on the right; hot is the accent. |
+| `longest` (45) | port | Longest run, longest ride, biggest climb as three numbers; the Sticky's bars shared no unit. |
+| `kudos` (46) | port | The kudos count in red, the activity's name, then miles, sport and year. |
+| `year-ago` (48) | port | The same week a year back as three totals, the biggest outing's name under them. |
+| `first` (49) | port | The first activity's name, its date and miles; days since, in red, at the right. |
+| `dataset` (54) | port | Activities, GPS files and megabytes across. |
+| `devices` (55) | port | Up to four recording devices as bars. |
+| `laps` (56) | port | Four laps as bars of moving time; the activity name moves into the masthead. |
 
 Rotation: this panel's own list (`xiao/cards.py:ROTATION`) — the Sticky's 16 in the Sticky's order,
-then the six ports, 22 in all. It is keyed the same way as the Sticky's (UTC hours since the epoch,
+then the eighteen ports, 34 in all. It is keyed the same way as the Sticky's (UTC hours since the epoch,
 modulo the pool, `card_of_the_hour`), but the pools differ in length, so the two panels no longer
 show the same card in the same hour. The owner dropped that requirement on 2026-09-30. Cards with no data this fetch (no GPS stream on the
 newest activity, no UV this ISO week) drop out exactly as they do on the Sticky.
@@ -134,7 +146,7 @@ Taken on the review sheet, read back from its store, and applied:
 1. **Journey:** the CONUS **map**, for both cards ("match the run"). The milepost strip stays on the
    sheet as the alternative.
 2. **Mosaic:** **reinstated** at 2 × 6. The rotation is the Sticky's full 16 again, hour for hour.
-   (Superseded 2026-09-30: the panels no longer need to be synced, and six more cards were ported.)
+   (Superseded 2026-09-30: the panels no longer need to be synced, and eighteen more cards were ported.)
 3. **Hall of fame:** three names, as shipped.
 4. **Color model:** "per card", and every card pair chose **A · semantic** — so A throughout;
    `DEFAULT` is unchanged. The journey-bike color pair was left open and stays A with the rest.
