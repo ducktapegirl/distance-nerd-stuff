@@ -16,6 +16,7 @@ from pathlib import Path
 _HERE = Path(__file__).parent   # running-log/
 CSV_PATH  = _HERE / "running_log.csv"
 HTML_PATH = _HERE / "college.html"
+LAPS_CSV_PATH = _HERE / "mit_track_laps.csv"
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -331,6 +332,35 @@ def check_year_clock_css_vars(rows, html):
     return True, '.yc-month, .yc-num, .yc-sub use var(--text-*)'
 
 
+def check_track_laps_card(rows, html):
+    """The "Laps Around MIT's Tracks" card is present and its two rendered
+    totals equal round(sum of laps) per track in mit_track_laps.csv."""
+    if not LAPS_CSV_PATH.exists():
+        return False, f"{LAPS_CSV_PATH.name} not found"
+    text = LAPS_CSV_PATH.read_text(encoding="utf-8-sig")
+    sums = {"indoor": 0.0, "outdoor": 0.0}
+    for r in csv.DictReader(io.StringIO(text)):
+        track = (r.get("track") or "").strip().lower()
+        laps = _safe_float(r.get("laps") or "")
+        if track in sums and laps is not None:
+            sums[track] += laps
+    if 'class="card laps-card"' not in html:
+        return False, "Laps Around MIT's Tracks card not found in college.html"
+    failures = []
+    shown = {}
+    for track, total in sums.items():
+        m = re.search(rf'data-laps-{track}="(\d+)"', html)
+        if m is None:
+            failures.append(f"no data-laps-{track} total rendered")
+            continue
+        shown[track] = int(m.group(1))
+        if shown[track] != round(total):
+            failures.append(f"{track}: rendered {shown[track]}, CSV sum {total:.2f}")
+    if failures:
+        return False, "; ".join(failures)
+    return True, f"laps card present; indoor {shown['indoor']}, outdoor {shown['outdoor']} match CSV"
+
+
 def check_heatmap_css_vars(rows, html):
     """.hm-month and .hm-dow should use fill: var(--text-tertiary), not hardcoded hex."""
     hex_fill = re.compile(r'fill\s*:\s*#')
@@ -366,6 +396,7 @@ CHECKS = [
     ("HTML Structure",   check_detail_panel_no_hex),
     ("HTML Structure",   check_easy_pace_no_fill),
     ("HTML Structure",   check_year_clock_present),
+    ("HTML Structure",   check_track_laps_card),
     ("Theme & CSS",      check_year_clock_css_vars),
     ("Theme & CSS",      check_theme_system),
     ("Theme & CSS",      check_stat_card_hover_removed),

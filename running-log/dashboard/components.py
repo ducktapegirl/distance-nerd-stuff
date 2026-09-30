@@ -245,3 +245,51 @@ def notes_search_html(rows):
       <div class="notes-list" id="notes-list"></div>
       <script id="notes-data" type="application/json">{rows_json}</script>
     </div>"""
+
+
+def track_laps_card_html(summary):
+    """The "Laps Around MIT's Tracks" card: two per-track totals and a
+    per-school-year indoor/outdoor bar. Plain HTML/CSS (no Plotly), so every
+    color is a CSS custom property and both themes come from the cascade.
+    Returns "" when there is no summary (the card is omitted entirely)."""
+    if not summary:
+        return ""
+    tracks = summary["tracks"]
+
+    def figure(key, label):
+        t = tracks[key]
+        k = t["by_kind_display"]
+        return f"""
+          <div class="laps-fig laps-fig-{key}">
+            <div class="laps-fig-label">{label}</div>
+            <div class="laps-num" data-laps-{key}="{t['laps_display']}">{t['laps_display']:,}</div>
+            <div class="laps-miles">≈ {t['miles']:,.1f} mi</div>
+            <div class="laps-split">{k['workout']} workouts · {k['race']} races · {k['easy']} easy</div>
+          </div>"""
+
+    max_total = max((y["total"] for y in summary["years"]), default=0.0)
+    year_rows = ""
+    for y in summary["years"]:
+        in_pct  = (y["indoor"]  / max_total * 100) if max_total else 0.0
+        out_pct = (y["outdoor"] / max_total * 100) if max_total else 0.0
+        in_n, out_n, tot_n = (int(round(y[k])) for k in ("indoor", "outdoor", "total"))
+        aria = (f"{y['label']}: {in_n} indoor laps and {out_n} outdoor laps, "
+                f"{tot_n} total")
+        year_rows += f"""
+          <div class="laps-year">
+            <div class="laps-year-label">{y['label']}</div>
+            <div class="laps-bar" role="img" aria-label="{html.escape(aria)}">
+              <span class="laps-seg laps-seg-indoor" style="width:{in_pct:.2f}%"></span><span class="laps-seg laps-seg-outdoor" style="width:{out_pct:.2f}%"></span>
+            </div>
+            <div class="laps-year-total">{tot_n}</div>
+          </div>"""
+
+    return f"""
+      <div class="card laps-card">
+        <div class="card-title">Laps Around MIT's Tracks</div>
+        <div class="laps-figs">{figure("indoor", "Indoor · 200 m")}{figure("outdoor", "Outdoor · 400 m")}
+        </div>
+        <div class="laps-years">{year_rows}
+        </div>
+        <div class="laps-caption">Hard running only, with no warm-ups or recovery; tallied from the log by hand.</div>
+      </div>"""

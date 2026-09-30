@@ -1,0 +1,111 @@
+date,track,meters,laps,kind,note
+2003-09-02,outdoor,6436,16.09,workout,4x mile
+2003-10-22,outdoor,3600,9.0,workout,1600 + 4x300 + 4x200
+2003-10-29,outdoor,3900,9.75,workout,200-300-400-500-400-300-200 ladder + 1600
+2003-11-05,outdoor,4000,10.0,workout,5x800
+2003-11-12,outdoor,4000,10.0,workout,6x400 + 1600
+2003-12-08,indoor,3200,16.0,workout,2x(400 + 800 + 400)
+2003-12-10,indoor,3000,15.0,race,"Vs. Springfield and USM, MIT: 3000 m"
+2004-01-10,indoor,1500,7.5,race,"Alumnae Meet, MIT: 1500"
+2004-01-10,indoor,800,4.0,race,"Alumnae Meet, MIT: 800"
+2004-01-20,indoor,3575,17.88,workout,15' tempo at ~6:45 pace
+2004-01-21,indoor,3800,19.0,workout,600 + 800 + 1000 + 800 + 600
+2004-01-26,indoor,3600,18.0,workout,1200 + 4x400 + 4x200
+2004-01-28,indoor,3000,15.0,workout,6x300 + 1200
+2004-01-31,indoor,1609,8.04,race,"TechTrack Classic, @ MIT: mile"
+2004-01-31,indoor,800,4.0,race,"TechTrack Classic, @ MIT: 800"
+2004-02-03,indoor,4000,20.0,workout,4x800 + 4x200
+2004-02-05,indoor,3200,16.0,workout,8 laps ins-and-outs + 1600
+2004-02-09,indoor,3800,19.0,workout,3x1000 + 4x200
+2004-02-11,indoor,2400,12.0,workout,1200 + 2x600
+2004-02-14,indoor,3000,15.0,race,"MIT Co-ed Invitational, @ MIT: 3000m"
+2004-02-17,indoor,3200,16.0,workout,800 + 4x400 + 800
+2004-02-19,indoor,1000,5.0,workout,5x200
+2004-02-21,indoor,5000,25.0,race,"New England Div. 3 Championships, @ MIT: 5000m"
+2004-03-16,indoor,5000,25.0,workout,5x1000 (indoor: snow)
+2004-03-29,outdoor,3200,8.0,workout,4x800
+2004-03-31,outdoor,4809,12.02,workout,6x400 + 4x200 + mile tempo
+2004-04-05,indoor,3200,16.0,workout,8x400 (indoor)
+2004-04-05,outdoor,1609,4.02,workout,mile tempo (outside)
+2004-04-07,outdoor,5200,13.0,workout,2.5 mi ins-and-outs + 1200
+2004-04-13,indoor,2800,14.0,workout,6x400 + 2x200
+2004-04-15,outdoor,2400,6.0,workout,4x400 + 4x200
+2004-04-21,outdoor,2800,7.0,workout,6x400 + 2x200
+2004-04-28,outdoor,3000,7.5,workout,3x600 + 300 + 3x300
+2004-10-14,outdoor,1609,4.02,easy,mile on the track
+2004-10-19,outdoor,4800,12.0,workout,800 + 10 laps ins-and-outs
+2004-10-21,outdoor,1600,4.0,workout,2 laps ins-and-outs + 800
+2004-10-27,outdoor,3900,9.75,workout,200-300-400-500-400-300-200 ladder + 1600
+2004-11-10,outdoor,3600,9.0,workout,5x400 + 1600
+2005-02-02,indoor,4300,21.5,workout,3x1200 + 400 + 300
+2005-02-12,indoor,3000,15.0,race,"MIT Coed Invite, MIT: 3k"
+2005-03-07,outdoor,4800,12.0,workout,3x1600
+2005-03-08,indoor,7242,36.21,easy,4.5 mi easy (hail)
+2005-03-09,indoor,4000,20.0,workout,2x10 laps ins-and-outs
+2005-03-14,outdoor,5000,12.5,workout,5x1000
+2005-03-29,outdoor,4800,12.0,workout,4x1200
+2005-03-31,outdoor,4000,10.0,workout,6x400 + 1600
+2005-04-01,outdoor,400,1.0,easy,warm-up lap
+2005-04-02,outdoor,2600,6.5,workout,relay legs: 1600 + 1000 (rained-out meet)
+2005-04-04,outdoor,4800,12.0,workout,4x800 + 1600
+2005-04-06,outdoor,4400,11.0,workout,1200 + 8x400
+2005-04-09,outdoor,3000,7.5,race,"Engineer's Cup, MIT: 3k steeple"
+2005-04-09,outdoor,5000,12.5,race,"Engineer's Cup, MIT: 5k"
+2005-04-12,outdoor,4800,12.0,workout,3x1600
+2005-04-14,outdoor,1200,3.0,workout,6x200
+2005-04-19,outdoor,4800,12.0,workout,2x800 + 4x400 + 1600
+2005-04-21,outdoor,1200,3.0,workout,6x200
+2005-04-23,outdoor,1500,3.75,race,"MIT Coed Invite, MIT: 1500"
+2005-04-23,outdoor,800,2.0,race,"MIT Coed Invite, MIT: 800"
+2005-04-25,outdoor,4800,12.0,workout,2 mi ins-and-outs + 4x400
+2005-04-27,outdoor,3600,9.0,workout,1200 + 3x400 + 1200
+2005-05-04,outdoor,3000,7.5,workout,400 + 800 + 1000 + 800
+2005-05-11,outdoor,3200,8.0,workout,1200 + 2x600 + 2x400
+2005-08-27,outdoor,3200,8.0,workout,2-mile time trial
+2005-09-06,outdoor,5600,14.0,workout,7x800
+2005-09-20,outdoor,5000,12.5,workout,800 + 1600 + 1600 + 800 + 200
+2005-10-04,outdoor,4800,12.0,workout,1600 + 2x800 + 1600
+2005-10-26,outdoor,4000,10.0,workout,1600 + 2x800 + 2x400
+2005-11-04,outdoor,4000,10.0,workout,3x800 + 4x400
+2005-11-08,outdoor,2800,7.0,workout,2x800 + 3x400
+2005-11-21,indoor,455,2.27,workout,55 m + 400 test
+2005-12-10,indoor,3000,15.0,race,"Intrasquad Meet, MIT: 3k"
+2006-01-24,indoor,4520,22.6,workout,4x800 + 3x400 (stopped 120 m into 4th)
+2006-01-31,indoor,5200,26.0,workout,2x800 + 6x400 + 6x200
+2006-02-11,indoor,1609,8.04,race,"MIT Coed Invite, MIT: mile"
+2006-02-14,indoor,3600,18.0,workout,6x400 + 6x200
+2006-03-16,outdoor,1609,4.02,workout,mile over hurdles
+2006-03-17,outdoor,6400,16.0,workout,8x800
+2006-03-23,outdoor,6400,16.0,workout,8x800
+2006-04-04,outdoor,6000,15.0,workout,5x800 + 5x400
+2006-04-11,outdoor,5600,14.0,workout,4x800 + 6x400
+2006-04-18,outdoor,4800,12.0,workout,3x800 + 4x400 + 4x200
+2006-04-22,outdoor,5000,12.5,race,"MIT Co-ed Invite, MIT: 5k"
+2006-04-25,outdoor,3600,9.0,workout,2x800 + 3x400 + 4x200
+2006-04-29,outdoor,3000,7.5,race,"NEWMAC Championships, MIT: 3k steeple"
+2006-05-02,outdoor,2400,6.0,workout,4x400 + 4x200
+2006-05-09,outdoor,3200,8.0,workout,4x400 + 8x200
+2006-05-13,outdoor,3000,7.5,race,"All-New England Championships, MIT: 3k steeple"
+2006-05-15,outdoor,2400,6.0,workout,4x400 + 4x200
+2006-08-26,outdoor,3200,8.0,workout,3200 time trial
+2006-09-19,outdoor,6400,16.0,workout,4x1600
+2006-09-26,outdoor,6000,15.0,workout,1200 + 2x1600 + 2x800
+2006-10-17,outdoor,4800,12.0,workout,2x1600 + 2x800
+2006-11-03,outdoor,4800,12.0,workout,1600 + 2x800 + 4x400
+2006-11-07,outdoor,3600,9.0,workout,3x800 + 3x400
+2006-12-16,indoor,1609,8.04,race,"Intrasquad Meet, MIT: mile"
+2006-12-16,indoor,1600,8.0,race,"Intrasquad Meet, MIT: DMR 1600"
+2007-01-06,indoor,5000,25.0,race,"Alumni Meet, MIT: 5k"
+2007-01-23,indoor,6000,30.0,workout,3x800 + 6x400 + 6x200
+2007-02-10,indoor,1609,8.04,race,"MIT Coed Invitational, MIT: mile"
+2007-02-13,indoor,3200,16.0,workout,8x400
+2007-03-15,outdoor,6400,16.0,workout,8x800
+2007-03-22,outdoor,6400,16.0,workout,8x800
+2007-04-03,outdoor,4800,12.0,workout,4x800 + 4x400
+2007-04-07,outdoor,1500,3.75,race,"Time Trial, MIT: 1500m steeple"
+2007-04-14,outdoor,3000,7.5,race,"State of Maine Meet, MIT: 3k steeple"
+2007-04-17,outdoor,5000,12.5,workout,2x800 + 3x600 + 4x400
+2007-04-21,outdoor,5000,12.5,race,"Spring Invitational, MIT: 5k"
+2007-04-24,outdoor,4800,12.0,workout,12x400
+2007-05-01,outdoor,3200,8.0,workout,8x400
+2007-05-08,outdoor,3200,8.0,workout,8x400

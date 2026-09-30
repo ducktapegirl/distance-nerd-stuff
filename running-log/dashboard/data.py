@@ -1,14 +1,23 @@
 """CSV loading, row-level parsing/formatting, and race-classification helpers."""
 
 import csv
+import os
 
 from nerd_common.format import fmt_pace, maybe_float
 
-from dashboard.config import CSV_PATH, WORKOUT_TYPE_MAP
+from dashboard.config import CSV_PATH, LAPS_CSV_PATH, WORKOUT_TYPE_MAP
 
 
 def load_rows():
     with open(CSV_PATH, encoding="utf-8-sig") as f:
+        return list(csv.DictReader(f))
+
+
+def load_track_laps():
+    """Rows of the hand-curated MIT track-laps tally; [] if the file is missing."""
+    if not os.path.exists(LAPS_CSV_PATH):
+        return []
+    with open(LAPS_CSV_PATH, encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
 
 

@@ -127,6 +127,12 @@ uv run python "running-log/parse_log.py"
 uv run python "running-log/visualize_log.py"
 ```
 
+`running-log/mit_track_laps.csv` is a second, **hand-curated** input: the per-day count of laps
+on MIT's indoor (200 m) and outdoor (400 m) tracks, shown as the "Laps Around MIT's Tracks" card
+on Workout Mix. It records judgment calls (Fenway, BU and home sessions left out) that can't be
+recovered from the log text, so edit its rows by hand and never regenerate it from
+`running_log.csv`. `qa.py` checks the rendered totals against it.
+
 ## Build the landing page
 
 ```bash

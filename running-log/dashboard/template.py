@@ -926,6 +926,72 @@ main {{
   margin-top: 4px;
 }}
 
+/* Laps Around MIT's Tracks — plain HTML/CSS card, colors from theme tokens only */
+.laps-figs {{
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  margin-bottom: 20px;
+}}
+.laps-fig {{
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px 18px;
+  min-width: 0;
+}}
+.laps-fig-indoor  {{ --laps-color: var(--accent); }}
+.laps-fig-outdoor {{ --laps-color: var(--race); }}
+.laps-fig-label {{
+  font-size: 11px; font-weight: 600;
+  color: var(--laps-color);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}}
+.laps-num {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 32px; font-weight: 700;
+  color: var(--laps-color);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-top: 8px;
+}}
+.laps-miles {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}}
+.laps-split {{
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}}
+.laps-years {{ display: flex; flex-direction: column; gap: 8px; }}
+.laps-year {{
+  display: grid;
+  grid-template-columns: 64px 1fr 44px;
+  align-items: center;
+  gap: 12px;
+}}
+.laps-year-label, .laps-year-total {{
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+}}
+.laps-year-total {{ text-align: right; color: var(--text-primary); }}
+.laps-bar {{
+  display: flex; height: 12px;
+  border-radius: 3px; overflow: hidden;
+}}
+.laps-seg {{ display: block; height: 100%; }}
+.laps-seg-indoor  {{ background: var(--accent); }}
+.laps-seg-outdoor {{ background: var(--race); }}
+.laps-caption {{
+  margin-top: 14px;
+  font-size: 11px;
+  font-family: 'Geist Mono', monospace;
+  color: var(--text-secondary);
+}}
+
 /* Sparklines — vertically stacked rows */
 .spark-grid {{
   display: flex; flex-direction: column;
@@ -999,6 +1065,7 @@ main {{
 @media (max-width: 640px) {{
   .stat-grid {{ grid-template-columns: repeat(2, 1fr); }}
   .type-stat-grid {{ grid-template-columns: repeat(2, 1fr); }}
+  .laps-figs {{ grid-template-columns: 1fr; }}
   .spark-card {{ grid-template-columns: 70px 1fr; row-gap: 6px; }}
   .spark-card .spark-chart {{ grid-column: 1 / -1; }}
   main {{ padding: 20px 14px 60px; }}

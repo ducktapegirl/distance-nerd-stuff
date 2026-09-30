@@ -6,6 +6,9 @@ _HERE    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = _HERE
 CSV_PATH = os.path.join(BASE_DIR, "running_log.csv")
 OUT_PATH = os.path.join(BASE_DIR, "college.html")
+# Hand-curated per-day tally of laps on MIT's indoor (200 m) and outdoor (400 m)
+# tracks. Edited by hand, never derived from running_log.csv.
+LAPS_CSV_PATH = os.path.join(BASE_DIR, "mit_track_laps.csv")
 
 
 # ─── Design tokens (from Project Docs/Specs/running-log/design_handoff_running_log/readme.md) ──
