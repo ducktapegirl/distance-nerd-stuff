@@ -9,7 +9,8 @@ from dashboard.sections import (
     section_art, section_overview, section_patterns, section_performance,
     section_races, section_volume, section_workout_mix,
 )
-from dashboard.stats import build_race_records, compute_stats
+from dashboard.data import load_track_laps
+from dashboard.stats import build_race_records, compute_stats, compute_track_laps
 from dashboard.template import (
     CSS, JS, THEME_INIT_JS, hash_init_js, view_paint_css,
 )
@@ -32,14 +33,15 @@ def _compute_page_data(rows):
     stats = compute_stats(rows)
     races_by_cat = build_race_records(rows)
     day_index_json = json.dumps(build_day_index(rows)).replace("</", "<\\/")
-    return stats, races_by_cat, day_index_json
+    track_laps = compute_track_laps(load_track_laps())
+    return stats, races_by_cat, day_index_json, track_laps
 
 
-def _build_sections(rows, stats, races_by_cat):
+def _build_sections(rows, stats, races_by_cat, track_laps=None):
     return (
         section_overview(rows, stats)
         + section_volume(rows)
-        + section_workout_mix(rows, races_by_cat)
+        + section_workout_mix(rows, races_by_cat, track_laps)
         + section_performance(rows, races_by_cat)
         + section_races(races_by_cat)
         + section_patterns(rows, stats)
@@ -134,6 +136,6 @@ def _assemble_html(rows, sections, day_index_json):
 
 
 def build_html(rows):
-    stats, races_by_cat, day_index_json = _compute_page_data(rows)
-    sections = _build_sections(rows, stats, races_by_cat)
+    stats, races_by_cat, day_index_json, track_laps = _compute_page_data(rows)
+    sections = _build_sections(rows, stats, races_by_cat, track_laps)
     return _assemble_html(rows, sections, day_index_json)

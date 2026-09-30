@@ -154,3 +154,77 @@ def compute_pr_cards(races_by_cat):
         else:
             cards.append({"label": label, "time": "—", "season": "no data", "color": color})
     return cards
+
+
+# ─── Laps Around MIT's Tracks ────────────────────────────────────────────────
+# Input is the hand-curated mit_track_laps.csv (see data.load_track_laps).
+
+TRACK_LAP_TRACKS = ("indoor", "outdoor")
+TRACK_LAP_KINDS  = ("workout", "race", "easy")
+# The four college school years the log covers, in display order. Any row that
+# falls outside them is appended after these, sorted, rather than dropped.
+TRACK_LAP_YEARS  = ("2003–04", "2004–05", "2005–06", "2006–07")
+METERS_PER_MILE  = 1609.344
+
+
+def _school_year_label(date_str):
+    """'2004-02-10' -> '2003–04' (school year runs August through July)."""
+    y, m = int(date_str[0:4]), int(date_str[5:7])
+    start = y if m >= 8 else y - 1
+    return f"{start}–{(start + 1) % 100:02d}"
+
+
+def compute_track_laps(rows):
+    """Per-track lap/mile totals and a per-school-year indoor/outdoor split.
+
+    Returns None when there are no usable rows. Rows are sorted by date (ties
+    broken on track, kind, meters, laps) before summing so float totals are
+    reproducible byte for byte.
+    """
+    clean = []
+    for r in rows or []:
+        d = (r.get("date") or "").strip()
+        track = (r.get("track") or "").strip().lower()
+        kind = (r.get("kind") or "").strip().lower()
+        laps = maybe_float(r.get("laps"))
+        meters = maybe_float(r.get("meters"))
+        if len(d) < 7 or track not in TRACK_LAP_TRACKS or laps is None:
+            continue
+        try:
+            year = _school_year_label(d)
+        except ValueError:
+            continue
+        clean.append((d, track, kind, meters or 0.0, laps, year))
+    if not clean:
+        return None
+    clean.sort()
+
+    tracks = {
+        t: {"laps": 0.0, "meters": 0.0, "by_kind": {k: 0.0 for k in TRACK_LAP_KINDS}}
+        for t in TRACK_LAP_TRACKS
+    }
+    by_year = defaultdict(lambda: {t: 0.0 for t in TRACK_LAP_TRACKS})
+    for d, track, kind, meters, laps, year in clean:
+        t = tracks[track]
+        t["laps"] += laps
+        t["meters"] += meters
+        if kind in t["by_kind"]:
+            t["by_kind"][kind] += laps
+        by_year[year][track] += laps
+
+    for t in tracks.values():
+        t["laps_display"] = int(round(t["laps"]))
+        t["miles"] = round(t["meters"] / METERS_PER_MILE, 1)
+        t["by_kind_display"] = {k: int(round(v)) for k, v in t["by_kind"].items()}
+
+    extra = sorted(y for y in by_year if y not in TRACK_LAP_YEARS)
+    years = []
+    for label in list(TRACK_LAP_YEARS) + extra:
+        v = by_year.get(label, {t: 0.0 for t in TRACK_LAP_TRACKS})
+        years.append({
+            "label":   label,
+            "indoor":  v["indoor"],
+            "outdoor": v["outdoor"],
+            "total":   v["indoor"] + v["outdoor"],
+        })
+    return {"tracks": tracks, "years": years}

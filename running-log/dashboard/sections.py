@@ -17,7 +17,9 @@ from dashboard.charts import (
     chart_seasonal_sparklines, chart_weekly, chart_workout_donut,
     chart_workout_mix_by_season, compute_pr_progression_axis_overrides,
 )
-from dashboard.components import heatmap_html, notes_search_html, pr_card_html, stat_card_html
+from dashboard.components import (
+    heatmap_html, notes_search_html, pr_card_html, stat_card_html, track_laps_card_html,
+)
 from dashboard.data import map_type, maybe_float
 from dashboard.stats import compute_pr_cards
 from dashboard.theme import fig_html
@@ -86,7 +88,7 @@ def section_volume(rows):
     </section>"""
 
 
-def section_workout_mix(rows, races_by_cat):
+def section_workout_mix(rows, races_by_cat, track_laps=None):
     counts = defaultdict(int)
     for r in rows:
         if r["is_race"] == "1":
@@ -114,6 +116,7 @@ def section_workout_mix(rows, races_by_cat):
         {fig_html(chart_workout_donut(rows, races_by_cat), height=300, div_id="chart-donut")}
       </div>
       <div class="type-stat-grid">{type_cards}</div>
+      {track_laps_card_html(track_laps)}
       {(lambda res: f'''<div class="card">
         <div class="card-title-row">
           <div class="card-title">Miles by Workout Type per Season</div>

@@ -25,6 +25,7 @@ on:
       - "running-log/visualize_log.py"
       - "running-log/qa.py"
       - "running-log/running_log.csv"
+      - "running-log/mit_track_laps.csv"
       - "running-log/running_log_story.html"
       - "landing/**"
       - "build_landing.py"

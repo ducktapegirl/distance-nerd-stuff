@@ -33,6 +33,10 @@ Machine-readable facts every shared `dash-*` agent loads first when the orchestr
     does **not** exist in the data.
   - No GPS, heart rate, elevation, cadence, power, or per-split arrays exist. This is the
     data-poverty contrast with Strava — plan views accordingly.
+- **Second input**: `running-log/mit_track_laps.csv`, the hand-curated per-day tally of laps on
+  MIT's indoor (200 m) and outdoor (400 m) tracks, loaded by `dashboard.data.load_track_laps()`.
+  It is edited by hand, never derived from `running_log.csv`; see "Laps Around MIT's Tracks" under
+  Workout Mix.
 - **Build command**: `uv run python running-log/visualize_log.py` (run from repo root).
 - **Output HTML**: `running-log/college.html` (gitignored — rebuilt by `deploy.yml`).
 - **Static QA**: `uv run python running-log/qa.py` (exit 0 = pass, 1 = fail).
@@ -163,6 +167,33 @@ The dashboard ships six sections. `NAV_VIEWS` (order = tab order; first is defau
   **no `fill:tozeroy`** — `qa.py` asserts this).
 - **Miles by Workout Type per Season** — `chart_workout_mix_by_season`, fine-grained
   stacked types (`WORKOUT_MIX_COLORS`).
+- **Laps Around MIT's Tracks** — `track_laps_card_html(summary)` in `components.py`, placed
+  directly after the `type-stat-grid`. Plain HTML/CSS card (**not Plotly**, so no chart id,
+  no `applyChartTheme()` entry, no mobile JS).
+  - **Data:** `running-log/mit_track_laps.csv` — a **hand-curated input**, not derived from
+    `running_log.csv`. Columns `date,track,meters,laps,kind,note`; `track` ∈ `indoor|outdoor`,
+    `kind` ∈ `workout|race|easy`; one row per counted day (one per event on a race day). It
+    records judgment calls the build cannot make from log text (Fenway/BU/home sessions
+    excluded; season decides indoor vs. outdoor unless the log says otherwise). The owner
+    confirmed it entry by entry on 2026-09-30. Edit rows by hand; never regenerate it from the log.
+  - **Units:** indoor laps are **200 m** (MIT's indoor track), outdoor laps are **400 m**. Only the
+    hard running counts: no warm-ups, cool-downs or recovery; races count at race distance.
+  - **Transform:** `data.load_track_laps()` (`[]` if the file is missing) →
+    `stats.compute_track_laps(rows)` → per track: total laps (sum of `laps`, rounded to an
+    integer for display), miles (`meters / 1609.344`, one decimal place), and laps by `kind`; plus
+    a per-school-year breakdown (Aug–Jul, labeled `2003–04` … `2006–07`) of indoor/outdoor laps.
+    Deterministic: rows are sorted by date before summing, and years are emitted in fixed order.
+  - **Layout:** card title "Laps Around MIT's Tracks". Two figures side by side: **Indoor · 200 m**
+    (color `var(--accent)`) and **Outdoor · 400 m** (color `var(--race)`), each a large mono
+    number with "≈ N mi" and a small "workouts · races · easy" split beneath. Below the figures,
+    one row per school year: label, a horizontal bar whose indoor and outdoor segments are
+    widths proportional to laps (scaled to the largest year's total), and the year total. Caption:
+    "Hard running only, with no warm-ups or recovery; tallied from the log by hand."
+    Figures stack to one column at ≤ 640 px. Colors come only from existing tokens that are
+    defined in both `:root` and `:root.light`.
+  - **Empty state:** if the CSV is missing or empty, the card is omitted entirely.
+  - **QA:** `qa.py` asserts that the card is present and that its two rendered totals equal the
+    CSV sums.
 
 ### 4. Performance — `section_performance` (eyebrow RACING)
 - **Combined pace-over-time / season-best** — `chart_pace_timeline`,
