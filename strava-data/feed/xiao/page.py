@@ -53,7 +53,7 @@ def _shell(title, body):
 
 # ── the audit, as data ──────────────────────────────────────────────────────
 # One row per rotation card, in rotation order: the Sticky's sixteen, then
-# the six ported from the rest of its catalog. The sheet renders it;
+# the eighteen ported from the rest of its catalog. The sheet renders it;
 # the prose lives in Project Docs/Plans/strava-data/epaper-xiao.md.
 
 AUDIT = [
@@ -79,6 +79,18 @@ AUDIT = [
     ("leaderboard", 24, "port", "Four bar rows of the five, count only; the best times move to the summary."),
     ("bike-odo", 32, "port", "Odometer numeral, name and make, the bike glyph in the bike color."),
     ("route", 36, "port", "The latest card's route-left frame for the date-picked route; name, miles, climb and date."),
+    ("fresh", 5, "port", "One word as the numeral, the load ratio under it; red for rusty, spicy or cooked."),
+    ("rest", 8, "port", "Rest days, longest gap and days since a rest, across."),
+    ("pr-pace", 23, "port", "Segment PRs in 30 / 90 / 365 days; the 30-day count is the accent."),
+    ("passport", 34, "port", "Located / regions / states across, the state codes on one line under them."),
+    ("heat-verdict", 41, "port", "Four temperature bands as bars of pace, heart rate on the right; hot is the accent."),
+    ("longest", 45, "port", "Longest run, longest ride, biggest climb as three numbers; the Sticky's bars shared no unit."),
+    ("kudos", 46, "port", "The kudos count in red, the activity's name, then miles, sport and year."),
+    ("year-ago", 48, "port", "The same week a year back as three totals, the biggest outing's name under them."),
+    ("first", 49, "port", "The first activity's name, its date and miles; days since, in red, at the right."),
+    ("dataset", 54, "port", "Activities, GPS files and megabytes across."),
+    ("devices", 55, "port", "Up to four recording devices as bars."),
+    ("laps", 56, "port", "Four laps as bars of moving time; the activity name moves into the masthead."),
 ]
 
 _SHEET_CSS = """
@@ -304,7 +316,7 @@ def render_sheet(cards, mockups, asof, rotation, today_card):
 <header class="head">
   <p class="eyebrow">XIAO ePaper · 2.9″ quadruple color · 296 × 128</p>
   <h1>The Sticky rotation, on a strip a tenth the size</h1>
-  <p class="standfirst">The reTerminal Sticky's rotation plus six more of its cards, redrawn for Seeed's 2.9″
+  <p class="standfirst">The reTerminal Sticky's rotation plus eighteen more of its cards, redrawn for Seeed's 2.9″
   four-color panel: 296 × 128 at 112 PPI, black / white / red / yellow, no gray, no anti-aliasing,
   a 25-second refresh. Floors are the Sticky's translated through the pixel density and rounded
   up for a panel that cannot soften an edge: nothing under 14&nbsp;px, no stroke under 2&nbsp;px,
