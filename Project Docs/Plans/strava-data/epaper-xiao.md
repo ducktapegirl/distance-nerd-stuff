@@ -1,6 +1,6 @@
 # The Sticky rotation on a 2.9″ four-color XIAO panel
 
-**Status:** built, all 16 rotation cards adapted, owner's decisions applied 2026-09-13 ·
+**Status:** built, all 16 Sticky rotation cards adapted plus 6 ports (2026-09-30), owner's decisions applied 2026-09-13 ·
 **Created:** 2026-09-12 · **Owner:** unassigned
 
 Companion to `strava-data/feed/xiao/` and the review sheet it builds, `epaper_xiao-all.html`.
@@ -54,9 +54,17 @@ density this panel does not have.
 | `week-2004` (60) | adapt | The then / now band keeps both headline numbers and the average paces; the day lists go. |
 | `anniversary` (61) | adapt | When-line (accent on the day), distance · time, race name, date. Comments go. |
 | `haiku` (62) | adapt | Three lines at 18 px shrinking to 14, full width, no glyph. Never ellipsized — checked. |
+| `days-since` (2) | port | One numeral and the last sport's glyph. Reads 0 most days, because "today" is the last day with data. |
+| `streak` (7) | port | Current streak as the numeral, best ever at the right; the numeral turns red on a record. |
+| `week` (4) | port | The three totals across, the activity count under them. |
+| `leaderboard` (24) | port | Four bar rows of the five, count only; the best times move to the summary. Long segment names ellipsize. |
+| `bike-odo` (32) | port | Odometer numeral, name and make, the bike glyph at the right. |
+| `route` (36) | port | `latest`'s route-left frame for the date-picked route; name, miles, climb and month. |
 
-Rotation: the Sticky's list, all 16, in the Sticky's order, keyed on the same UTC hour
-(`xiao/cards.py:ROTATION`, `card_of_the_hour`). Cards with no data this fetch (no GPS stream on the
+Rotation: this panel's own list (`xiao/cards.py:ROTATION`) — the Sticky's 16 in the Sticky's order,
+then the six ports, 22 in all. It is keyed the same way as the Sticky's (UTC hours since the epoch,
+modulo the pool, `card_of_the_hour`), but the pools differ in length, so the two panels no longer
+show the same card in the same hour. The owner dropped that requirement on 2026-09-30. Cards with no data this fetch (no GPS stream on the
 newest activity, no UV this ISO week) drop out exactly as they do on the Sticky.
 
 ## 2 · The 296 × 128 layout system
@@ -126,11 +134,12 @@ Taken on the review sheet, read back from its store, and applied:
 1. **Journey:** the CONUS **map**, for both cards ("match the run"). The milepost strip stays on the
    sheet as the alternative.
 2. **Mosaic:** **reinstated** at 2 × 6. The rotation is the Sticky's full 16 again, hour for hour.
+   (Superseded 2026-09-30: the panels no longer need to be synced, and six more cards were ported.)
 3. **Hall of fame:** three names, as shipped.
 4. **Color model:** "per card", and every card pair chose **A · semantic** — so A throughout;
    `DEFAULT` is unchanged. The journey-bike color pair was left open and stays A with the rest.
 
-To revisit any of them: `DROPPED` and the `variant=` defaults in `xiao/cards.py`, and `DEFAULT` in
+To revisit any of them: `ROTATION` and the `variant=` defaults in `xiao/cards.py`, and `DEFAULT` in
 `xiao/config.py`.
 
 ## Verification

@@ -52,7 +52,8 @@ def _shell(title, body):
 
 
 # ── the audit, as data ──────────────────────────────────────────────────────
-# One row per Sticky rotation card, in rotation order. The sheet renders it;
+# One row per rotation card, in rotation order: the Sticky's sixteen, then
+# the six ported from the rest of its catalog. The sheet renders it;
 # the prose lives in Project Docs/Plans/strava-data/epaper-xiao.md.
 
 AUDIT = [
@@ -72,6 +73,12 @@ AUDIT = [
     ("week-2004", 60, "adapt", "The then / now band keeps both headline numbers and the average paces; the day lists go."),
     ("anniversary", 61, "adapt", "When-line (red on the day), distance · time, race name, date. The comments go."),
     ("haiku", 62, "adapt", "Three lines at 18 px shrinking to 14, full width, no glyph. Never ellipsized - checked."),
+    ("days-since", 2, "port", "One numeral and the last sport's glyph. Reads 0 most days: today is the last day with data."),
+    ("streak", 7, "port", "Current streak as the numeral, best ever at the right; the numeral turns red on a record."),
+    ("week", 4, "port", "The three totals across, the activity count under them."),
+    ("leaderboard", 24, "port", "Four bar rows of the five, count only; the best times move to the summary."),
+    ("bike-odo", 32, "port", "Odometer numeral, name and make, the bike glyph in the bike color."),
+    ("route", 36, "port", "The latest card's route-left frame for the date-picked route; name, miles, climb and date."),
 ]
 
 _SHEET_CSS = """
@@ -265,7 +272,7 @@ def render_sheet(cards, mockups, asof, rotation, today_card):
     (no GPS stream on the newest activity, no UV this week) drops out here
     exactly as it does on the Sticky, and the spec row says so."""
     rot = set(rotation)
-    verdict_cls = {"adapt": "", "adapt · mockup": "", "drop · mockup": " v-drop"}
+    verdict_cls = {"adapt": "", "port": "", "adapt · mockup": "", "drop · mockup": " v-drop"}
     audit_rows = "".join(
         f'<tr><td class="no">{idea:02d}</td><td class="id">{esc(cid)}</td>'
         f'<td><span class="v{verdict_cls.get(v, "")}">{esc(v)}</span></td>'
@@ -297,14 +304,14 @@ def render_sheet(cards, mockups, asof, rotation, today_card):
 <header class="head">
   <p class="eyebrow">XIAO ePaper · 2.9″ quadruple color · 296 × 128</p>
   <h1>The Sticky rotation, on a strip a tenth the size</h1>
-  <p class="standfirst">The same rotation as the reTerminal Sticky, redrawn for Seeed's 2.9″
+  <p class="standfirst">The reTerminal Sticky's rotation plus six more of its cards, redrawn for Seeed's 2.9″
   four-color panel: 296 × 128 at 112 PPI, black / white / red / yellow, no gray, no anti-aliasing,
   a 25-second refresh. Floors are the Sticky's translated through the pixel density and rounded
   up for a panel that cannot soften an edge: nothing under 14&nbsp;px, no stroke under 2&nbsp;px,
   and every fill one of the four colors — the build raises on anything else. Each proof is the
   file the panel would fetch, shown at 1× (close to physical size on an ordinary monitor).</p>
   <dl class="spec">
-    <div><dt>Rotation</dt><dd>{len(rotation)} of the Sticky's {len(AUDIT)}</dd></div>
+    <div><dt>Rotation</dt><dd>{len(rotation)} cards</dd></div>
     <div><dt>Built this fetch</dt><dd>{len(cards)}</dd></div>
     <div><dt>Panel</dt><dd>2.9″ · {PPI} PPI</dd></div>
     <div><dt>Physical size</dt><dd>66.9 × 29.1 mm</dd></div>
@@ -328,7 +335,7 @@ def render_sheet(cards, mockups, asof, rotation, today_card):
   <button type="button" data-key="quant" data-val="2" aria-pressed="false">Shipped PNG</button>
 </div>
 
-<section><div class="roll"><span class="letter">1</span><h2>Audit of the Sticky rotation</h2>
+<section><div class="roll"><span class="letter">1</span><h2>Audit of the rotation</h2>
 <span class="count">{len(AUDIT)} cards</span></div>
 <p class="lede">The test is whether the card's <em>idea</em> survives at ≥ 14 px text, ≥ 2 px
 strokes and four colors in a 2.3 : 1 strip. "Adapt" keeps the fact and the graphic with less of

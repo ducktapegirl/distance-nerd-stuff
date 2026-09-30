@@ -1,7 +1,9 @@
-"""The Sticky rotation, re-drawn for a 296x128 four-color strip.
+"""Sticky cards, re-drawn for a 296x128 four-color strip.
 
-One function per surviving rotation id, same ids as ``feed.cards`` so the two
-panels show the same idea in the same hour. The data layer is shared
+One function per rotation id, same ids as ``feed.cards`` so a card names the
+same idea on both panels. The rotation itself is this panel's own (see
+``ROTATION``): the sixteen the Sticky cycles plus six ports from the rest of
+its catalog. The data layer is shared
 unchanged (``metrics``, ``places``, ``journey``, ``geo``); only the drawing is
 new, because the drawing is what a panel a tenth the size and with no gray
 changes.
@@ -26,7 +28,6 @@ from .. import fmt as F
 from .. import geo, journey
 from .. import metrics as M
 from .. import places as P
-from ..cards import ROTATION as STICKY_ROTATION
 from . import layouts as L
 from . import svg as S
 from ..config import KM_TO_MI
@@ -533,6 +534,119 @@ def haiku(b, o, pal=DEFAULT):
     return c
 
 
+# ══ Ported from the Sticky's catalog ═════════════════════════════════════════
+# Six cards from outside the Sticky's rotation, redrawn here so this panel has
+# a rotation of its own. Same ids as the Sticky's versions, so each card's
+# per-card page and PNG name the same idea on both panels.
+
+@card(2, "A", "asof date minus the last active date")
+def days_since(b, o, pal=DEFAULT):
+    st = M.streaks(b["acts"], b["asof"])
+    n = st["days_since"]
+    a = b["acts"][-1]
+    c = _mk("days-since", f"{n} days since the last activity",
+            f"The last recorded activity was {n} day{'s' if n != 1 else ''} ago.",
+            "days since", b, pal)
+    L.hero(c, n, sub="day since an activity" if n == 1 else "days since an activity",
+           size=56, y=82, pal=pal)
+    g = _sport_glyph(a["sport_type"])
+    if g:
+        c.add(g(W - PAD - 64, 34, 64, _sport_color(a["sport_type"], pal)))
+    return c
+
+
+@card(7, "B", "consecutive days back from the last data day with an activity")
+def streak(b, o, pal=DEFAULT):
+    st = M.streaks(b["acts"], b["asof"])
+    cur, best = st["current"], st["longest"]
+    c = _mk("streak", f"{cur}-day streak (best ever {best})",
+            f"Currently {cur} consecutive active day{'s' if cur != 1 else ''}; the longest "
+            f"run ever is {best}.", "active streak", b, pal)
+    # A streak that ties the record is the one thing to look at.
+    L.hero(c, cur, sub="day active streak", size=56, y=82, pal=pal,
+           fill=pal.accent if cur and cur >= best else None)
+    c.add(S.text(W - PAD, 58, f"{best}", 30, "bold", anchor="end", fill=pal.ink),
+          S.text(W - PAD, 76, "BEST EVER", MIN_TEXT, "bold", anchor="end", fill=pal.ink,
+                 tracking=1))
+    return c
+
+
+@card(4, "A", "sum over the 7-day window ending at the last data day")
+def week(b, o, pal=DEFAULT):
+    t = M.totals(M.window(b["acts"], b["asof"], 7))
+    c = _mk("week", f"Last 7 days: {t['mi']:.0f} mi, {t['ft']:,.0f} ft",
+            f"{t['n']} activities in the last seven days: {t['mi']:.1f} miles, "
+            f"{t['hours']:.1f} moving hours and {t['ft']:,.0f} feet of climbing.",
+            "last 7 days", b, pal)
+    L.stat_row(c, [(f"{t['mi']:.0f}", "miles"), (f"{t['hours']:.1f}", "hours"),
+                   (f"{t['ft']:,.0f}", "feet")], y=76, size=34, pal=pal)
+    c.add(S.text(L.CX, 118, f"{t['n']} ACTIVIT{'Y' if t['n'] == 1 else 'IES'}", MIN_TEXT,
+                 anchor="middle", fill=pal.ink, tracking=1))
+    return c
+
+
+@card(24, "D", "top segments by effort_count, with best_time_s")
+def leaderboard(b, o, pal=DEFAULT):
+    """Four rows of the Sticky's five, count only: the best times would take
+    the width the segment names need, so they move to the summary."""
+    rows = M.segment_leaderboard(b["segs"], 4)
+    if not rows:
+        return None
+    top = rows[0]["n"]
+    c = _mk("leaderboard", f"Most-ridden: {rows[0]['name']} ×{rows[0]['n']}",
+            f"The most-repeated segments, led by {rows[0]['name']} at {rows[0]['n']} "
+            f"efforts and a best of {mmss(rows[0]['best_s'])}.", "home leaderboard", b, pal)
+    L.bars(c, [(r["name"], f"{r['n']}×", r["n"] / top) for r in rows],
+           label_w=184, value_w=36, pal=pal,
+           fills=[pal.accent] + [None] * (len(rows) - 1))
+    return c
+
+
+@card(32, "E", "gear.json converted_distance for non-retired bikes")
+def bike_odo(b, o, pal=DEFAULT):
+    bk = M.bikes(b["gear"])
+    if not bk:
+        return None
+    g = bk[0]
+    mi = g.get("converted_distance") or 0.0
+    make = f"{g.get('brand_name') or ''} {g.get('model_name') or ''}".strip()
+    c = _mk("bike-odo", f"{g['name']} — {mi:,.0f} mi",
+            (f"{make}, " if make else "") + f"{mi:,.0f} miles on the odometer.",
+            "the bike", b, pal)
+    gs = 72
+    c.add(S.glyph_bike(W - PAD - gs, 38, gs, pal.bike))
+    # Captions stop short of the glyph rather than using hero's full-width subs.
+    L.hero(c, f"{mi:,.0f}", unit="mi", size=48, y=74, pal=pal)
+    max_w = W - 2 * PAD - gs - 4
+    nt, ns = S.fit_text(g["name"].upper(), MIN_TEXT, max_w, ratio=0.68, tracking=1)
+    c.add(S.text(PAD, 96, nt, ns, "bold", fill=pal.ink, tracking=1))
+    if make:
+        mt, ms = S.fit_text(make.upper(), MIN_TEXT, max_w, ratio=0.62)
+        c.add(S.text(PAD, 114, mt, ms, fill=pal.ink))
+    return c
+
+
+@card(36, "F", "one GPS stream chosen by date ordinal, aspect-fitted")
+def route(b, o, pal=DEFAULT):
+    r = M.route_of_day(b["acts"], o)
+    if r is None:
+        return None
+    a = r["act"]
+    c = _mk("route", f"Route of the day — {a['name']}",
+            f"{a['_mi']:.1f} mi, {a['_ft']:.0f} ft of climbing, {F.day(a['_date'])}.",
+            "route of the day", b, pal)
+    L.route(c, r["path"], r["w"], r["h"], (PAD, L.BODY_TOP, 92, L.BODY_H), pal=pal,
+            stroke=_sport_color(a["sport_type"], pal))
+    x = 106
+    for i, line in enumerate(S.wrap_text(a["name"], 16, W - PAD - x)):
+        c.add(S.text(x, 44 + i * 18, line, 16, "bold", fill=pal.ink))
+    c.add(S.text(x, 98, f"{a['_mi']:.1f} MI", 28, "bold", fill=pal.ink))
+    st, ss = S.fit_text(f"{a['_ft']:,.0f} FT · {F.day(a['_date'], '%b %Y')}".upper(),
+                        MIN_TEXT, W - PAD - x, ratio=0.62, tracking=1)
+    c.add(S.text(x, 118, st, ss, fill=pal.ink, tracking=1))
+    return c
+
+
 # ══ mockup only ══════════════════════════════════════════════════════════════
 
 @card(37, "F", "every GPS track, simplified to 64 points, twelve tiled")
@@ -563,12 +677,18 @@ def mosaic(b, o, pal=DEFAULT):
 
 # ══ assembly ═════════════════════════════════════════════════════════════════
 
-# The Sticky's hand-picked rotation, in the Sticky's order, minus anything
-# the audit dropped - nothing, since the owner reinstated the mosaic. Both
-# panels key the hour the same way, so they show the same idea at the same
-# time.
-DROPPED = ()
-ROTATION = [cid for cid in STICKY_ROTATION if cid not in DROPPED]
+# This panel's own rotation. It began as the Sticky's sixteen, in the Sticky's
+# order, and is no longer tied to it: the owner decided 2026-09-30 that the two
+# panels need not show the same card in the same hour, so the six ports above
+# joined. Both still key the hour the same way (hours since the epoch, UTC,
+# modulo the pool), but the pools differ in length, so they drift apart.
+ROTATION = [
+    "strip", "sparkline", "everest", "journey-run", "journey-bike", "split",
+    "hours", "mosaic", "latest", "segment-month", "hall-of-fame", "uv-week",
+    "wildlife", "week-2004", "anniversary", "haiku",
+    # Ported 2026-09-30.
+    "days-since", "streak", "week", "leaderboard", "bike-odo", "route",
+]
 
 
 def build_cards(bundle, today=None, pal=DEFAULT):
