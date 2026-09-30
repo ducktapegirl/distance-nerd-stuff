@@ -338,9 +338,11 @@ layouts,cards,page}.py` are the drawing surface. Rules that differ from the Stic
   page. Cards ask a `Palette` for a *role* (`ink`, `accent`, `wash`, `run`, `bike`, `ramp`) — never a
   hex — so the color models on the proof sheet are one table swap. Yellow is the light tone (area
   wash, never text or a thin stroke); red is the single accent.
-- **`xiao/cards.py` reuses the Sticky's card ids**, all 16 (`DROPPED` is empty since the owner
-  reinstated the mosaic); both panels key the hour the same way. Add a card there as `@card(idea, family, recipe)` composed from
-  `xiao/layouts.py`; `rotation=False` keeps it sheet-only.
+- **`xiao/cards.py` reuses the Sticky's card ids but has its own `ROTATION`**: the Sticky's 16 plus
+  six ports (`days-since`, `streak`, `week`, `leaderboard`, `bike-odo`, `route`). The two panels are
+  deliberately **not synced**: both key the hour the same way, but the pools differ in length. Add a
+  card there as `@card(idea, family, recipe)` composed from `xiao/layouts.py` and list its id in
+  `ROTATION`; `rotation=False` keeps it sheet-only.
 - `epaper_xiao-all.html` carries the audit, the rotation at 1× / 2×, a "panel preview" toggle that
   thresholds the render to the four colors, and the mockup pairs still awaiting a decision — see
   [`Project Docs/Plans/strava-data/epaper-xiao.md`](Project%20Docs/Plans/strava-data/epaper-xiao.md).

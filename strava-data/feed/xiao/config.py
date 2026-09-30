@@ -3,7 +3,7 @@
 A second, smaller e-paper target beside the reTerminal Sticky: Seeed's 2.9"
 Quadruple Color ePaper (296x128, black / white / red / yellow) on the XIAO
 ePaper Display Board, driven by SenseCraft HMI's Web function exactly like
-the Sticky. Same data, same rotation, a different drawing surface.
+the Sticky. Same data, its own rotation, a different drawing surface.
 
 The floors below are derived from the Sticky's, not guessed. That panel is
 235 PPI and its 26 px text floor is 2.8 mm of em; this one is 112 PPI

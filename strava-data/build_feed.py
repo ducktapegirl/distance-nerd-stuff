@@ -68,7 +68,7 @@ def _sheet(path, render, sheets):
 
 
 def build_xiao(bundle, today, now, sheets):
-    """The second panel: the same rotation on the 296x128 four-color XIAO
+    """The second panel: its own rotation on the 296x128 four-color XIAO
     display, written beside the Sticky's outputs. Same clocks, same data."""
     cards = xiao_cards.build_cards(bundle, today)
     today_card = xiao_cards.card_of_the_hour(cards, now)
@@ -164,8 +164,8 @@ def main():
                        "title": c.title, "summary": c.summary,
                        "recipe": c.recipe, "in_rotation": c.id in set(ROTATION)}
                       for c in cards],
-            # The second panel, keyed on the same hour. Its cards reuse the
-            # Sticky's ids, so this is the rotation and which of it shows.
+            # The second panel. Its own rotation (Sticky ids, a different
+            # list), keyed the same way; this is the list and which of it shows.
             "xiao": {"card_of_the_hour": xiao_today.id,
                      "png": f"{SITE}/epaper_xiao.png", "feed": f"{SITE}/feed_xiao.xml",
                      "rotation": list(xiao_cards.ROTATION),
