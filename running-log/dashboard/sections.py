@@ -116,7 +116,6 @@ def section_workout_mix(rows, races_by_cat, track_laps=None):
         {fig_html(chart_workout_donut(rows, races_by_cat), height=300, div_id="chart-donut")}
       </div>
       <div class="type-stat-grid">{type_cards}</div>
-      {track_laps_card_html(track_laps)}
       {(lambda res: f'''<div class="card">
         <div class="card-title-row">
           <div class="card-title">Miles by Workout Type per Season</div>
@@ -129,6 +128,7 @@ def section_workout_mix(rows, races_by_cat, track_laps=None):
         </div>
         {fig_html(res[0], height=440, div_id="chart-mix-by-season")}
       </div>''')(chart_workout_mix_by_season(rows))}
+      {track_laps_card_html(track_laps)}
       <div class="card">
         <div class="card-title">Easy Run Pace Over Time</div>
         {fig_html(chart_easy_pace(rows), height=300, div_id="chart-easy-pace")}
