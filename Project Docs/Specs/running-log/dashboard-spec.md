@@ -168,7 +168,7 @@ The dashboard ships six sections. `NAV_VIEWS` (order = tab order; first is defau
 - **Miles by Workout Type per Season** — `chart_workout_mix_by_season`, fine-grained
   stacked types (`WORKOUT_MIX_COLORS`).
 - **Laps Around MIT's Tracks** — `track_laps_card_html(summary)` in `components.py`, placed
-  directly after the `type-stat-grid`. Plain HTML/CSS card (**not Plotly**, so no chart id,
+  directly after the "Miles by Workout Type per Season" card (before Easy Run Pace). Plain HTML/CSS card (**not Plotly**, so no chart id,
   no `applyChartTheme()` entry, no mobile JS).
   - **Data:** `running-log/mit_track_laps.csv` — a **hand-curated input**, not derived from
     `running_log.csv`. Columns `date,track,meters,laps,kind,note`; `track` ∈ `indoor|outdoor`,
