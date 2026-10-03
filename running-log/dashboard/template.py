@@ -926,7 +926,8 @@ main {{
   margin-top: 4px;
 }}
 
-/* Laps Around MIT's Tracks — plain HTML/CSS card, colors from theme tokens only */
+/* Laps Around MIT's Tracks — plain HTML/CSS card, colors from theme tokens only:
+   indoor = violet var(--long), outdoor = amber var(--tempo); a swatch carries the color, label text stays neutral */
 .laps-figs {{
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
   margin-bottom: 20px;
@@ -938,14 +939,15 @@ main {{
   padding: 16px 18px;
   min-width: 0;
 }}
-.laps-fig-indoor  {{ --laps-color: color-mix(in srgb, var(--workout) 55%, var(--text-primary)); }}
-.laps-fig-outdoor {{ --laps-color: var(--workout); }}
+.laps-fig-indoor  {{ --laps-color: var(--long); }}
+.laps-fig-outdoor {{ --laps-color: var(--tempo); }}
 .laps-fig-label {{
   font-size: 11px; font-weight: 600;
-  color: var(--laps-color);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }}
+.laps-swatch {{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:7px; vertical-align:-1px; background: var(--laps-color); }}
 .laps-num {{
   font-family: 'Geist Mono', monospace;
   font-size: 32px; font-weight: 700;
@@ -983,8 +985,8 @@ main {{
   border-radius: 3px; overflow: hidden;
 }}
 .laps-seg {{ display: block; height: 100%; }}
-.laps-seg-indoor  {{ background: color-mix(in srgb, var(--workout) 45%, transparent); margin-right: 2px; }}
-.laps-seg-outdoor {{ background: var(--workout); }}
+.laps-seg-indoor  {{ background: var(--long); margin-right: 2px; }}
+.laps-seg-outdoor {{ background: var(--tempo); }}
 .laps-caption {{
   margin-top: 14px;
   font-size: 11px;

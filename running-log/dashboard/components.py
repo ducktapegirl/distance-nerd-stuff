@@ -261,7 +261,7 @@ def track_laps_card_html(summary):
         k = t["by_kind_display"]
         return f"""
           <div class="laps-fig laps-fig-{key}">
-            <div class="laps-fig-label">{label}</div>
+            <div class="laps-fig-label"><span class="laps-swatch" aria-hidden="true"></span>{label}</div>
             <div class="laps-num" data-laps-{key}="{t['laps_display']}">{t['laps_display']:,}</div>
             <div class="laps-miles">≈ {t['miles']:,.1f} mi</div>
             <div class="laps-split">{k['workout']} workouts · {k['race']} races · {k['easy']} easy</div>

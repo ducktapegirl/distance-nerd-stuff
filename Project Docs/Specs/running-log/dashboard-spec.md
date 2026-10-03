@@ -184,11 +184,12 @@ The dashboard ships six sections. `NAV_VIEWS` (order = tab order; first is defau
     a per-school-year breakdown (Aug–Jul, labeled `2003–04` … `2006–07`) of indoor/outdoor laps.
     Deterministic: rows are sorted by date before summing, and years are emitted in fixed order.
   - **Layout:** card title "Laps Around MIT's Tracks". Two figures side by side: **Indoor · 200 m**
-    and **Outdoor · 400 m**, both in the page's Workout blue so the card doesn't reuse the
-    Race/Workout pair that red and blue already mean on this view. Outdoor is `var(--workout)`
-    for text and bar. Indoor text is `color-mix(in srgb, var(--workout) 55%, var(--text-primary))`
-    and its bar segment is `color-mix(in srgb, var(--workout) 45%, transparent)` with a 2 px gap.
-    Each figure is a large mono
+    and **Outdoor · 400 m**, indoor in violet `var(--long)` and outdoor in amber
+    `var(--tempo)`. Each track's color is used identically for its big number, a 10 px swatch
+    before its label, and its bar segment, so text and bars pair up at a glance; the label text
+    itself is `var(--text-secondary)`. Chosen by the owner on 2026-10-03 from a four-option proof
+    sheet, knowing violet and amber also mean Long and Tempo elsewhere on the page.
+    Indoor segments have a 2 px gap before outdoor. Each figure is a large mono
     number with "≈ N mi" and a small "workouts · races · easy" split beneath. Below the figures,
     one row per school year: label, a horizontal bar whose indoor and outdoor segments are
     widths proportional to laps (scaled to the largest year's total), and the year total. Caption:
