@@ -28,7 +28,6 @@ on:
       - "running-log/mit_track_laps.csv"
       - "running-log/running_log_story.html"
       - "landing/**"
-      - "build_landing.py"
       - "nerd_common/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -92,7 +91,7 @@ jobs:
       # CSVs for its tile stats, so it comes after them by convention rather
       # than necessity — it imports neither build package.
       - name: Build landing page
-        run: uv run python build_landing.py
+        run: uv run python landing/build_landing.py
 
       # E-paper feed for both panels via SenseCraft HMI. Writes feed.xml /
       # epaper.html / feed.json and the XIAO's epaper_xiao.{html,png,bin} /

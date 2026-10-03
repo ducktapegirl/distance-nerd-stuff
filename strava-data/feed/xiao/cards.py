@@ -249,9 +249,12 @@ def journey_bike(b, o, pal=DEFAULT, variant="map"):
 @card(20, "C", "activity counts by sport over the trailing 365 days")
 def split(b, o, pal=DEFAULT):
     rows = M.sport_split(b["acts"], b["asof"])[:4]
-    c = _mk("split", f"Last year: {F.sport(rows[0][0])} {rows[0][1]} vs "
+    # The window goes in the kicker: "sport split · last 365 days" is 27
+    # characters and the masthead holds about 23 at the floor.
+    c = _mk("split", f"Last 365 days: {F.sport(rows[0][0])} {rows[0][1]} vs "
                      f"{F.sport(rows[1][0])} {rows[1][1]}",
-            "Activity counts by sport over the last 365 days.", "sport split", b, pal)
+            "Activity counts by sport over the last 365 days.", "sports · last 365 days",
+            b, pal)
     L.bars(c, [(F.sport(name), f"{n}", n / rows[0][1]) for name, n in rows],
            label_w=112, value_w=36, pal=pal,
            fills=[_sport_color(name, pal) for name, _ in rows])
@@ -542,9 +545,9 @@ def mosaic(b, o, pal=DEFAULT):
         return None
     cols, rows = 6, 2
     picks = [tracks[(o + i * 7) % len(tracks)] for i in range(cols * rows)]
-    c = _mk("mosaic", f"{len(tracks)} routes, 12 of them",
+    c = _mk("mosaic", f"12 of {len(tracks)} routes",
             "Every GPS track in the log reduced to 64 points each; 12 shown, rotating daily.",
-            f"{len(tracks)} routes · 12 today", b, pal)
+            f"12 of {len(tracks)} routes", b, pal)
     cw = (W - 2 * PAD) / cols
     ch = L.BODY_H / rows
     side = min(cw, ch) - 6
