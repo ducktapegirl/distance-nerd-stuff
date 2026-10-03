@@ -21,7 +21,9 @@ import sys
 from datetime import date, datetime, timezone
 
 from feed.cards import FAMILIES, ROTATION, build_cards, card_of_the_day, rotation_pool
-from feed.config import OUT_CARD_DIR, OUT_JSON, OUT_PAGE, OUT_RSS, OUT_SHEET, SITE
+from feed.config import (OUT_CARD_DIR, OUT_HAIKU, OUT_JSON, OUT_PAGE, OUT_RSS, OUT_SHEET,
+                         SITE)
+from feed import haikus
 from feed import raster as sticky_raster
 from feed.metrics import load
 from feed.page import render_card_page, render_contact_sheet, render_page
@@ -140,6 +142,9 @@ def main():
         OUT_PAGE: render_page(rotation_pool(cards), today_card),
         **_sheet(OUT_SHEET, lambda: render_contact_sheet(cards, asof, ROTATION, FAMILIES),
                  sheets),
+        # Public, unlike the sheets: the haiku card's back catalog, regenerated
+        # from the data each build rather than logged.
+        OUT_HAIKU: haikus.render(bundle["acts"], asof),
         OUT_JSON: json.dumps({
             "as_of": asof.isoformat(),
             "built": today.isoformat(),

@@ -38,7 +38,7 @@ Walked through explicitly (three question rounds + a full-repo audit for hardcod
 assumptions) — pinned here so the phases below aren't re-litigating settled ground.
 
 - **One root-level `FORKING.md` is the entry point.** Not per-folder READMEs, not just expanding
-  the README's "Poking at the code" section. One place that says: what's forkable
+  the README's "Can I use this?" section. One place that says: what's forkable
   (`strava-data/`), what to ignore (`running-log/`), the change-checklist, and why `strava.html`
   publishes inside a folder named "running-log" (intentional Pages-root plumbing, not a mistake).
 - **Formally depends on the adaptive-superlatives plan.** That plan's Phase 3 already covers the
@@ -143,8 +143,8 @@ Path TBD (likely `Docs/` doesn't exist — sensible home is next to `FORKING.md`
 4. **`strava-data/.env.example`.**
 5. **Write the BYOD setup walkthrough.**
 6. **Write root `FORKING.md`.**
-7. **Update `README.md`:** retire the "you can't just clone this" paragraph in "Poking at the
-   code" (point at `FORKING.md` instead); this plan is already in the Future-work list.
+7. **Update `README.md`:** retire the "you can't just clone this" paragraph in "Can I use
+   this?" (point at `FORKING.md` instead); this plan is already listed in `Plans/README.md`.
 8. **QA — synthetic fork smoke test** (mirrors the superlatives plan's QA): clone fresh, empty
    `data/`, no credentials → build either succeeds degraded or fails with a clear message, never
    crashes; published HTML contains no `goatcounter` reference when unset; walk the checklist

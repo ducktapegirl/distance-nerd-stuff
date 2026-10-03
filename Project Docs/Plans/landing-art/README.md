@@ -6,7 +6,7 @@ The exploration record behind the two artworks on
 
 ```bash
 uv run python tools/proof_landing_art.py   # the 14 SVGs + proofs.html
-uv run python build_landing.py             # the page that ships
+uv run python landing/build_landing.py     # the page that ships
 ```
 
 `proof_landing_art.py` is **not** wired into any build or workflow — same

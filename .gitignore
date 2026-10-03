@@ -30,6 +30,7 @@ running-log/epaper_xiao/
 running-log/epaper_xiao.png
 running-log/epaper_xiao.bin
 running-log/feed_xiao.xml
+running-log/haiku.html
 
 # Python
 __pycache__/
