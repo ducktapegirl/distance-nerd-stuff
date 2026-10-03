@@ -1881,6 +1881,12 @@ DATE_CHART_IDS.forEach(id => {
         }
       }
       try { Plotly.relayout(el, upd); } catch (e) { /* chart may not be ready */ }
+      // Outside pie labels sit on the card, so they must follow the theme; inside labels keep BG_BASE on the colored slice.
+      var pies = [];
+      (el.data || []).forEach(function(t, ti) { if (t && t.type === 'pie') pies.push(ti); });
+      if (pies.length) {
+        try { Plotly.restyle(el, {'outsidetextfont.color': textSecondary}, pies); } catch (e) { /* chart may not be ready */ }
+      }
     });
   }
   // Reachable from the tab router so a lazily-rendered section's charts get
