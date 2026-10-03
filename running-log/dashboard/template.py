@@ -938,8 +938,8 @@ main {{
   padding: 16px 18px;
   min-width: 0;
 }}
-.laps-fig-indoor  {{ --laps-color: var(--accent); }}
-.laps-fig-outdoor {{ --laps-color: var(--race); }}
+.laps-fig-indoor  {{ --laps-color: color-mix(in srgb, var(--workout) 55%, var(--text-primary)); }}
+.laps-fig-outdoor {{ --laps-color: var(--workout); }}
 .laps-fig-label {{
   font-size: 11px; font-weight: 600;
   color: var(--laps-color);
@@ -983,8 +983,8 @@ main {{
   border-radius: 3px; overflow: hidden;
 }}
 .laps-seg {{ display: block; height: 100%; }}
-.laps-seg-indoor  {{ background: var(--accent); }}
-.laps-seg-outdoor {{ background: var(--race); }}
+.laps-seg-indoor  {{ background: color-mix(in srgb, var(--workout) 45%, transparent); margin-right: 2px; }}
+.laps-seg-outdoor {{ background: var(--workout); }}
 .laps-caption {{
   margin-top: 14px;
   font-size: 11px;
