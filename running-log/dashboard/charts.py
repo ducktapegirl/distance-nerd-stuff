@@ -112,7 +112,9 @@ def chart_workout_donut(rows, races_by_cat):
     fig = go.Figure(go.Pie(
         labels=labels, values=values, hole=0.55,
         marker=dict(colors=colors, line=dict(color=BG_BASE, width=2)),
-        textinfo="percent", textfont=dict(family=PLOT_FONT_FAMILY, size=11, color=BG_BASE),
+        textinfo="percent", textfont=dict(family=PLOT_FONT_FAMILY, size=11),
+        insidetextfont=dict(family=PLOT_FONT_FAMILY, size=11, color=BG_BASE),
+        outsidetextfont=dict(family=PLOT_FONT_FAMILY, size=11, color=TEXT_SECONDARY),
         hovertemplate="%{label}: %{value} (%{percent})<extra></extra>",
         sort=False,
     ))
