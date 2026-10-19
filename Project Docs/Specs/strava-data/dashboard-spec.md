@@ -627,6 +627,16 @@ def lloyd(Z, k, init, iters=300, tol=1e-10):
 
 ## Places — Build-Ready Spec
 
+> **How to read the numbers in the Places sections.** Counts and totals (activities, regions,
+> trips, miles, track points, `json_kb`) were the values *when each pass was built*: they are
+> history, not targets. The build computes all of them live and prints them as `[places] …`
+> lines, so read current values there, not here, and don't refresh them in this file. Nothing in
+> the build compares against them any more (the drift NOTEs were retired 2026-10-19).
+> The exception is **editorial claims**: hardcoded copy that asserts a fact about the data
+> (`Highest point · 14,507 ft`, `Northernmost · 49.3°N`, the Peaks record book). These are
+> checked against `activities.csv` by `strava-data/qa.py::check_places_superlatives_still_true`,
+> which fails only when a new activity makes a claim false.
+
 > Building or designing here? Prefer the **`maptiler` skill** for MapTiler/MapLibre specifics
 > (tile styles, static maps, SDK/data-driven styling) over ad hoc implementation or research.
 > If it isn't available on this machine, fall back to reading `charts_places.py`/`template.py`
@@ -785,7 +795,7 @@ eyebrow, the map, five labels, a legend, one mono stat line.
   never recomputed from `g`).
 - At JS boot, convert once to `Float32Array` u/v: `u=(lng-PD.lng0)/PD.lngspan`,
   `v=(PD.lat1-lat)/PD.latspan` (float32 precision in 0..1 far exceeds the 5-dec source).
-- Build console line (ASCII only): `[places] hero: tracks=324 pts=21372 json_kb=~470`.
+- Build console line (ASCII only), example from Pass A: `[places] hero: tracks=324 pts=21372 json_kb=~470`.
 
 #### Projection & camera (replaces the mock's `proj`)
 The analyst's equirectangular + cos-lat projection, letterboxed, with the mock's `{s, fx, fy}`
@@ -954,11 +964,8 @@ Port the mock's floating chrome, restyled onto dashboard components:
   — `data-frame`/`data-base` only; all listeners scoped inside `#places-hero`.
 - Stat line is exact: **`319 activities · 28 regions · 9 states & provinces`** (319 = activities
   with start_latlng; 324 tracks are drawn — the 5 extra are valid-GPS tracks without start_latlng;
-  do not "fix" the mismatch). **These were the Pass A pins; the stat line is computed live.**
-  Snapshot as of 2026-10-19: `365 activities · 31 regions · 10 states & provinces`, SD label
-  `198 activities · 2025–now`, Boston `137 activities · 2024–2025`. The build no longer compares
-  against any of these (the old `count drift vs pinned` NOTE was retired), so new data means a
-  doc refresh here, not a console warning. Positions/gradients per mock footer; legend dot for Hike is the
+  do not "fix" the mismatch). These were the Pass A values; the stat line and both home
+  sub-lines are computed live (see the note at the top of Places). Positions/gradients per mock footer; legend dot for Hike is the
   `HIKE_COLOR` literal (documented exception above); the other three dots are CSS vars so light
   mode retints them for free.
 - No tagline `<h1>` (pre-spec removed it); eyebrow only. Canvas gets `role="img"`
@@ -988,10 +995,11 @@ Port the mock's floating chrome, restyled onto dashboard components:
 - Zoom floor 0.65 / ceiling 400; 5-decimal coords (~1.1 m) stay smooth at ceiling; RDP epsilon
   ~11 m gives a slightly chunky street trace at extreme zoom — accepted (heatmap aesthetic, not
   route inspection).
-- JSON budget: assert <= 0.6 MB and warn if total points drift >5% from 21,372 (data refresh).
+- JSON budget: warn if the injected JSON exceeds 0.6 MB. (The old ±5% total-points drift
+  warning was retired; the budget is the real limit.)
 
 #### Verify vs recipe (developer asserts / QA checks)
-- `tracks=324`, `total_pts=21372` (±5% tolerance only on data refresh), `json <= 0.6 MB`.
+- At Pass A: `tracks=324`, `total_pts=21372`. Standing check: `json <= 0.6 MB`.
 - Bucket counts `211/74/11/15/13` (Running incl. 5 Walks / MTB incl. 11 EBike + 4 Ride /
   Trail·ski / Hike / silent Other) — sum 324.
 - Frame constants: `lng0=-126.121, lngspan=58.135, lat1=49.982, latspan=18.027, ww=43.8977,
@@ -1069,9 +1077,9 @@ Reuse the hero's already-decimated tracks; filter to each home by the track grou
   - `era` = the home-era label, **hardcoded per home** (`2025–now` SD, `2024–2025` Boston) with
     an en-dash. This is the "moved away" narrative, NOT literal min/max (Boston has 4 return-visit
     activities in 2026 -> a literal `2024-2026` would muddy the story; keep the era label).
-  - Print an ASCII line `[places] homes: sd_mi=782 sd_seg="..."x34 bos_mi=530 bos_seg="..."x20`
-    and a soft `[places] NOTE:` if `mi` drifts far from 782/530 or the segment winner changes (so a
-    refetch surfacing a different/joke-named winner is visible to QA -- do NOT hard-assert).
+  - Print an ASCII line `[places] homes: sd_mi=… sd_seg="..."xN bos_mi=… bos_seg="..."xN` so a
+    refetch surfacing a different/joke-named segment winner is visible in the build log. (The old
+    drift NOTE against 782/530 was retired 2026-10-19; see the note at the top of Places.)
 
 ### Card markup + layout
 ```html
@@ -1145,8 +1153,8 @@ A stripped static draw (no pan/zoom/labels/controls) -- port only the hero's pro
   tighter) as a DARK inset in BOTH light and dark page themes.
 - Stat lines exact today: SD `782 mi` / `Most-repeated segment` / `Canyon entrance via Salix &middot; 34&times;`
   / `2025&ndash;now`; Boston `530 mi` / `Cataldo East &middot; 20&times;` / `2024&ndash;2025`.
-- Names computed live; build print `[places] homes:` shows sd_mi=782 bos_mi=530 and the two segment
-  winners; no drift NOTE today.
+- Names computed live; build print `[places] homes:` shows both `mi` values and the two segment
+  winners.
 - Streams loaded once (no second 344-file parse; hero build line unchanged tracks=324 pts=22045).
 - Long segment names don't clip/overflow the card; overline wording identical on both cards; no arrow.
 - Units policy still 0 (`min/km`,`km/h`,`kph`,`°C`); ASCII-only in Python prints.
@@ -1179,7 +1187,8 @@ beside a single morning run. Restraint over completeness.
   `start_latlng` falls OUTSIDE both home boxes (`_SD_BOX`/`_BOS_BOX`), sort by
   `start_date_local`, and split into clusters wherever the day-gap to the previous away activity
   `> 5 days`. Geography is ignored inside a cluster (the Pacific-NW trip roams Seattle→Vancouver
-  ~180 mi and MUST stay one trip). As of 2026-10-19: **12 clusters → 8 featured trips + 4 brief stops.**
+  ~180 mi and MUST stay one trip). At Pass C: 11 clusters → 7 featured trips + 4 brief stops
+  (Santa Fe, added 2026-10-19, made it 8 featured).
 - **Featured vs brief:** a cluster is a **featured stamp** if it matches a curated trip (below);
   a single-day/single-activity cluster with no curated match is a **brief-stop chip**. An
   UNMATCHED multi-day cluster degrades gracefully to an auto-featured stamp (first-activity title
@@ -1204,8 +1213,9 @@ beside a single morning run. Restraint over completeness.
     (no region, its top-climbing activity's title as caption). To curate it: add an entry to
     `_PASSPORT_TRIPS` in `charts_places.py` (list order = filmstrip order; `sig` must be a title
     substring unique to that trip and picks the thumbnail activity); optionally add a key-trip box +
-    detail line for a hero map label (`_build_labels`, west→east); then refresh the dated counts in
-    this section. Santa Fe (Sep 24–25 2026, an anniversary trip) was added this way on 2026-10-19;
+    detail line for a hero map label (`_build_labels`, west→east). Counts update themselves; if
+    the trip sets a new record (higher, farther north/east), `qa.py` fails and names the copy to
+    edit. Santa Fe (Sep 24–25 2026, an anniversary trip) was added this way on 2026-10-19;
     its `sig` is the Windsor Trail ride, the trip's 10,311 ft high point.
 
   - **`sig` selects the signature activity ONLY — it must never filter the trip's route set.**
@@ -1247,7 +1257,7 @@ beside a single morning run. Restraint over completeness.
   live title + `Mon YYYY`; each chip flies the hero to its activity box on click.
 - **Header meta:** `<featured> trips · <states> states & <provinces> provinces`, all live: trips =
   featured count; states/provinces from `_STATE_BOXES` over ALL away-activity start points. Today
-  **8 trips · 8 states & 1 province** as of 2026-10-19 (CA MI WA ME VT NH NY NM + BC).
+  **7 trips · 7 states & 1 province** at Pass C.
 
 ### Peaks record book (Module 4) — pinned 6 rows
 Genuinely singular moments; **catches home-adjacent giants trip-clustering misses (Wrinkle B —
@@ -1308,17 +1318,17 @@ by id. Titles may contain emoji (`Snow Snake 🐍`) — fine in HTML; Python `pr
 - **No new palette hex** (blue/slate/amber/violet are existing tokens). **No new data files.**
 
 ### Build prints (ASCII only)
-`[places] passport: featured=8 brief=4 states=8 provinces=1 geom_aids=8 json_kb=~68` (as of 2026-10-19)
+Example: `[places] passport: featured=8 brief=4 states=8 provinces=1 geom_aids=8 json_kb=~68`
 (`geom_aids`/`json_kb` track data growth — `json_kb` covers every day of every trip, so it rises
 as trips gain activities.)
-`[places] peaks: rows=6 highest=14507ft`
-The build no longer emits a featured-count drift NOTE: every new trip would have tripped it.
-The numbers above are a dated snapshot; refresh them here when a trip is added (see "Adding a
-trip"). A curated `sig` that matches no cluster simply produces no stamp — QA's
-`multiday_trip_day_counts` still guards the Whitney / Stanley Park / Maine Hut trips by name.
+`[places] peaks: rows=6 highest=<computed>ft`
+No count is pinned, so a new trip produces no warning. A curated `sig` that matches no cluster
+simply produces no stamp; QA's `multiday_trip_day_counts` still guards the Whitney / Stanley
+Park / Maine Hut trips by name, and `places_superlatives_still_true` guards the badge and
+record-book claims.
 
 ### Verify vs recipe (developer asserts / QA checks)
-- 8 featured stamps in curated order (as of 2026-10-19); Santa Fe first, then Whitney with
+- Featured stamps in curated order; Santa Fe first, then Whitney with
   `Highest point · 14,507 ft`; Maine
   `Easternmost · 70.2°W` (NOT northernmost); Vancouver `Northernmost · 49.3°N`. 4 brief chips.
 - Each thumbnail: a recognizable route colored by grade (Whitney climbs hard/amber to its peak;

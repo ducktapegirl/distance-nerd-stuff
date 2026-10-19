@@ -228,6 +228,72 @@ def check_peaks_do_not_clobber_trip_fly_box(rows, html):
                   f'trip box wins, loop priority-gated')
 
 
+def check_places_superlatives_still_true(rows, html):
+    """
+    The record-book values and trip badges are hand-written copy that makes a
+    claim about the data ("Northernmost · 49.3°N"). Counts are left to the build
+    to compute and are never pinned; claims like these are the one kind of
+    hardcoded number worth guarding, because a new trip can make them false.
+
+    The expected values are derived from activities.csv here, then compared
+    against every place the copy lives -- the dashboard's _PEAKS_DEF, the
+    passport badges, the hero label detail lines, and feed/places.py's
+    duplicate PEAKS list.
+    """
+    from dashboard import charts_places as cp
+    from feed import places as feed_places
+
+    def ft(m):
+        return round(m * 3.28084)
+
+    def num(r, k):
+        return cp.mf(r.get(k)) or 0
+
+    away = [r for r in rows if cp._act_latlng(r) and cp._act_home(r) is None]
+    highest = max(rows, key=lambda r: num(r, "elev_high_m"))
+    climb = max(rows, key=lambda r: num(r, "total_elevation_gain_m"))
+    north = max(away, key=lambda r: cp._act_latlng(r)[0])
+    east = max(away, key=lambda r: cp._act_latlng(r)[1])
+    giant = cp._find_act(rows, "San Jacinto")
+
+    truth = {
+        "HIGHEST POINT": ("{:,} ft".format(ft(num(highest, "elev_high_m"))), highest),
+        "LONGEST SINGLE CLIMB": ("{:,} ft".format(ft(num(climb, "total_elevation_gain_m"))), climb),
+        "NORTHERNMOST": ("%.1f°N" % cp._act_latlng(north)[0], north),
+        "EASTERNMOST": ("%.1f°W" % -cp._act_latlng(east)[1], east),
+    }
+    if giant is not None:
+        truth["HOME-ADJACENT GIANT"] = (
+            "{:,} ft".format(int(round(ft(num(giant, "elev_high_m")), -2))), giant)
+
+    hint = ("edit charts_places.py (_PEAKS_DEF, _PASSPORT_TRIPS badges, _*_DETAIL) "
+            "and feed/places.py PEAKS together")
+    failures = []
+
+    copies = [("_PEAKS_DEF", d["overline"], d["value"]) for d in cp._PEAKS_DEF]
+    copies += [("feed PEAKS", o, v) for o, v, _t in feed_places.PEAKS]
+    for where, overline, value in copies:
+        if overline in truth and truth[overline][0] != value:
+            want, act = truth[overline]
+            failures.append(f'{where} {overline} says {value!r}, data says {want!r} '
+                            f'({act.get("name")})')
+
+    badges = {"hi": "HIGHEST POINT", "north": "NORTHERNMOST", "east": "EASTERNMOST"}
+    for spec in cp._PASSPORT_TRIPS:
+        if spec["badge"] and spec["badge"][0] in badges:
+            want = truth[badges[spec["badge"][0]]][0]
+            if want not in spec["badge"][1]:
+                failures.append(f'{spec["sig"]!r} badge {spec["badge"][1]!r} lacks {want!r}')
+    for name, detail, key in (("_SIERRA_DETAIL", cp._SIERRA_DETAIL, "HIGHEST POINT"),
+                              ("_VANCOUVER_DETAIL", cp._VANCOUVER_DETAIL, "NORTHERNMOST")):
+        if truth[key][0] not in detail:
+            failures.append(f'{name} {detail!r} lacks {truth[key][0]!r}')
+
+    if failures:
+        return False, '; '.join(failures) + ' -- ' + hint
+    return True, f'{len(truth)} superlatives match the data in every copy'
+
+
 def check_art_theme_vars(rows, html):
     """
     The Art tab's year clock is themed by CSS custom properties (--art-*)
@@ -354,6 +420,7 @@ CHECKS = [
     ("Places Hero -- Trip Data", check_multiday_trip_day_counts),
     ("Places Hero -- Trip Data", check_trip_fly_box_contains_route),
     ("Places Hero -- Trip Data", check_peaks_do_not_clobber_trip_fly_box),
+    ("Places Hero -- Trip Data", check_places_superlatives_still_true),
     ("Art -- Theme",             check_art_theme_vars),
     ("Art -- Theme",             check_new_art_theme_vars),
 ]

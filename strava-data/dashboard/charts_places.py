@@ -460,10 +460,6 @@ def chart_places_hero(rows):
     if json_bytes > 0.6 * 1024 * 1024:
         print("[places] WARNING: injected JSON %.2f MB exceeds 0.6 MB budget"
               % (json_bytes / 1048576.0))
-    drift = abs(total_pts - 21372) / 21372.0
-    if drift > 0.05:
-        print("[places] WARNING: total points %d drift %.1f%% from 21372 (>5%%)"
-              % (total_pts, drift * 100))
 
     # The Street/Terrain basemap now comes from MapLibre + MapTiler tiles at
     # runtime, so the old inlined vector coastline / hillshade PNG are no longer
@@ -488,9 +484,6 @@ def chart_places_hero(rows):
 _HOME_ERA = {"sd": "2025–now", "bos": "2024–2025"}
 # Home boxes reused for the live start_latlng-in-box stats (Pass-A 155/137 defn).
 _HOME_BOX = {"sd": _SD_BOX, "bos": _BOS_BOX}
-# Pinned stat targets for the soft drift NOTE (never hard-assert).
-_HOME_PINNED = {"sd": {"mi": 782, "seg": "Canyon entrance via Salix"},
-                "bos": {"mi": 530, "seg": "Cataldo East"}}
 
 
 def _metro_frame(la0, la1, ln0, ln1, margin=0.06):
@@ -647,7 +640,7 @@ def chart_places_homes(rows):
 
     ph_json = json.dumps(PH, separators=(",", ":"), ensure_ascii=False)
 
-    # ── Build print + soft drift NOTE (ASCII only) ────────────────────────────
+    # ── Build print (ASCII only) ──────────────────────────────────────────────
     # Display stats live in `stats`/_HOME_ERA (server-side rendered), NOT in PH.
     print('[places] homes: sd_mi=%d sd_seg="%s"x%d bos_mi=%d bos_seg="%s"x%d'
           % (stats["sd"]["mi"], _ascii(stats["sd"]["seg"]), stats["sd"]["segN"],
@@ -657,16 +650,6 @@ def chart_places_homes(rows):
           % (thumb_pts["sd"], thumb_pts["bos"],
              thumb_ctr["sd"][0], thumb_ctr["sd"][1],
              thumb_ctr["bos"][0], thumb_ctr["bos"][1]))
-    notes = []
-    for home in ("sd", "bos"):
-        pin = _HOME_PINNED[home]
-        if abs(stats[home]["mi"] - pin["mi"]) > 8:
-            notes.append("%s mi=%d (pinned %d)" % (home, stats[home]["mi"], pin["mi"]))
-        if stats[home]["seg"] != pin["seg"]:
-            notes.append('%s seg="%s" (pinned "%s")'
-                         % (home, _ascii(stats[home]["seg"]), pin["seg"]))
-    if notes:
-        print("[places] NOTE: homes drift vs pinned: %s" % "; ".join(notes))
 
     def _card(home, name, cid):
         st = stats[home]
@@ -2368,7 +2351,8 @@ def chart_places_peaks(rows):
             overline=_html_escape(p["overline"]), title=_html_escape(p["title"]),
             coord=coord))
 
-    print("[places] peaks: rows=%d highest=14507ft" % len(peaks))
+    hi_m = max((mf(r.get("elev_high_m")) or 0 for r in rows), default=0)
+    print("[places] peaks: rows=%d highest=%dft" % (len(peaks), round(hi_m * 3.28084)))
 
     return (_PEAKS_TEMPLATE
             .replace("__ROWS__", "".join(rows_html))

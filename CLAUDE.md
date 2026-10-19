@@ -501,6 +501,7 @@ the Art sections of `Project Docs/Specs/strava-data/dashboard-spec.md` and
 - Every figure must use `tidy_dark(fig)` then per-chart overrides, wrapped with `fig_html(fig, H, div_id=...)`.
 - Any color introduced in a chart must be covered by `applyChartTheme()` so both themes work.
 - `Project Docs/Specs/strava-data/dashboard-spec.md` is the source of truth for what views exist and their build recipes.
+- **Never pin data-derived counts** (activities, trips, miles, points) in code or docs as something to check against. Every fetch moves them, so a pin is only noise. The build computes and prints them. Hardcoded copy that *claims* a fact about the data (a "Northernmost · 49.3°N" badge, the Peaks record book) is checked against the CSV by `strava-data/qa.py`, which fails only when the claim stops being true.
 
 **Display units policy** (never deviate without updating the spec):
 - Running pace: **min/mi** (`M:SS` format), axes reversed (faster = up/right). Never min/km.
