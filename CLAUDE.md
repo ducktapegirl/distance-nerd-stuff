@@ -531,7 +531,7 @@ Strava data is fetched by **`.github/workflows/strava-fetch.yml`** (cron + manua
 
 ## CI on pull requests
 
-`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy, plus `Project Docs/**`, `tools/**`, and root `*.md` for the spelling check below): `uv sync --no-dev` → `uv run python tools/check_us_spelling.py` → build both dashboards → build the e-paper feed → `uv run python running-log/qa.py`. The qa step must come **after** the builds — its Group B checks read the freshly generated `college.html` as text. The spelling check runs first and needs no build — see "Writing prose — US English" above and the script's own docstring.
+`.github/workflows/pr-checks.yml` runs on `pull_request` against `main` (same path filter as the deploy, plus `Project Docs/**`, `tools/**`, and root `*.md` for the spelling check below): `uv sync --no-dev` → `uv run python tools/check_us_spelling.py` → build both dashboards → build the e-paper feed → `uv run python running-log/qa.py` → `uv run python strava-data/qa.py`. Both qa steps must come **after** the builds, because they read the freshly generated `college.html` / `strava.html` as text. The Strava suite also fails when new data makes a hardcoded superlative false (see "Strava dashboard architecture"). The spelling check runs first and needs no build — see "Writing prose — US English" above and the script's own docstring.
 
 Two things it deliberately does **not** do, and shouldn't be "fixed" to do:
 - **It uses `pull_request`, never `pull_request_target`.** The repo is public; `pull_request_target` would run fork-authored code with secrets and a write token.

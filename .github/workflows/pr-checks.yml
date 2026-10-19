@@ -1,8 +1,8 @@
 name: PR checks
 
 # Static quality gate for pull requests. Checks US-English spelling repo-wide,
-# builds both dashboards from source, and runs the running-log regression
-# suite. Previously PRs had no checks at all —
+# builds both dashboards from source, and runs both regression suites
+# (running-log/qa.py and strava-data/qa.py). Previously PRs had no checks at all —
 # deploy.yml only runs on push to main, and neither workflow executed qa.py — so
 # a PR could only be validated by hand.
 #
@@ -30,6 +30,7 @@ on:
       - "running-log/parse_log.py"
       - "running-log/visualize_log.py"
       - "running-log/qa.py"
+      - "strava-data/qa.py"
       - "running-log/running_log.csv"
       - "running-log/mit_track_laps.csv"
       - "running-log/running_log_story.html"
@@ -96,3 +97,10 @@ jobs:
       # generated running-log/college.html as text.
       - name: Run Running Log QA suite
         run: uv run python running-log/qa.py
+
+      # Must run after the Strava build: its Group A checks read
+      # running-log/strava.html. Also holds places_superlatives_still_true,
+      # which fails when new data makes hardcoded record-book copy false --
+      # fix the copy, not the check. Needs no MAPTILER_KEY (passes Glow-only).
+      - name: Run Strava QA suite
+        run: uv run python strava-data/qa.py
