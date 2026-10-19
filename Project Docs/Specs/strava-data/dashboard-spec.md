@@ -900,6 +900,7 @@ name `600 13px/11px 'Geist', ui-sans-serif, sans-serif`, coord/sub
 | SIERRA | centroid of trip first-points inside lat 36.0..37.2, lng -118.9..-117.9 | `SIERRA` · `Whitney · 14,507 ft` | faint-always, alpha 0.8 (0.9 under lens) |
 | MAINE | box lat 44.6..45.6, lng -71.2..-69.9 | `MAINE` · `hut ski · 3 days` | faint-always 0.8 (0.9) |
 | VANCOUVER | box lat 48.9..49.5, lng -124.3..-122.9 (spans Nanaimo + Stanley Park, Wrinkle A — centroid mid-cluster is correct at this scale) | `VANCOUVER` · `49.3°N · northernmost` | faint-always 0.8 (0.9) |
+| SANTA FE | box lat 35.4..36.0, lng -106.2..-105.6 (Atalaya, Windsor Trail, Dale Ball — added 2026-10-19) | `SANTA FE` · `anniversary · 10,311 ft` | faint-always 0.8 (0.9) |
 
 - The VANCOUVER sub-line uses the analyst's verified northernmost pin (49.29°N — FLAG 3); do NOT
   ship any "northernmost Maine" copy. `155` is the verified SD count — not the pre-spec's ~145.
@@ -953,7 +954,11 @@ Port the mock's floating chrome, restyled onto dashboard components:
   — `data-frame`/`data-base` only; all listeners scoped inside `#places-hero`.
 - Stat line is exact: **`319 activities · 28 regions · 9 states & provinces`** (319 = activities
   with start_latlng; 324 tracks are drawn — the 5 extra are valid-GPS tracks without start_latlng;
-  do not "fix" the mismatch). Positions/gradients per mock footer; legend dot for Hike is the
+  do not "fix" the mismatch). **These were the Pass A pins; the stat line is computed live.**
+  Snapshot as of 2026-10-19: `365 activities · 31 regions · 10 states & provinces`, SD label
+  `198 activities · 2025–now`, Boston `137 activities · 2024–2025`. The build no longer compares
+  against any of these (the old `count drift vs pinned` NOTE was retired), so new data means a
+  doc refresh here, not a console warning. Positions/gradients per mock footer; legend dot for Hike is the
   `HIKE_COLOR` literal (documented exception above); the other three dots are CSS vars so light
   mode retints them for free.
 - No tagline `<h1>` (pre-spec removed it); eyebrow only. Canvas gets `role="img"`
@@ -994,7 +999,8 @@ Port the mock's floating chrome, restyled onto dashboard components:
   recomputed from the margined frame).
 - View centers: SD `fx=0.1547, fy=0.9476`; Boston `fx=0.9417, fy=0.4211`; All `s=1, fx=fy=0.5`.
 - Label strings exact: `155 activities · 2025–now` (NOT 145), `137 activities · 2024–2025`,
-  `Whitney · 14,507 ft`, `hut ski · 3 days`, `49.3°N · northernmost` (no Maine-northernmost copy).
+  `Whitney · 14,507 ft`, `hut ski · 3 days`, `49.3°N · northernmost` (no Maine-northernmost copy),
+  `anniversary · 10,311 ft` (Santa Fe). Counts are the Pass A pins — see the dated snapshot above.
 - Stat line exact: `319 activities · 28 regions · 9 states & provinces`.
 - Trips button: camera target equals the All target (no zoom); lens multipliers `x0.20` (g<2) /
   `min(0.92, x1.55)` (g==2); home labels 0.34 / key trips 0.9.
@@ -1173,7 +1179,7 @@ beside a single morning run. Restraint over completeness.
   `start_latlng` falls OUTSIDE both home boxes (`_SD_BOX`/`_BOS_BOX`), sort by
   `start_date_local`, and split into clusters wherever the day-gap to the previous away activity
   `> 5 days`. Geography is ignored inside a cluster (the Pacific-NW trip roams Seattle→Vancouver
-  ~180 mi and MUST stay one trip). Today: **11 clusters → 7 featured trips + 4 brief stops.**
+  ~180 mi and MUST stay one trip). As of 2026-10-19: **12 clusters → 8 featured trips + 4 brief stops.**
 - **Featured vs brief:** a cluster is a **featured stamp** if it matches a curated trip (below);
   a single-day/single-activity cluster with no curated match is a **brief-stop chip**. An
   UNMATCHED multi-day cluster degrades gracefully to an auto-featured stamp (first-activity title
@@ -1185,13 +1191,22 @@ beside a single morning run. Restraint over completeness.
 
   | # | `sig` substr | Region overline | Caption | Badge |
   |---|---|---|---|---|
-  | 0 | `Whitney` | `Sierra Nevada · CA` | `Mt. Whitney from Whitney Portal & JMT` | `hi` `Highest point · 14,507 ft` |
-  | 1 | `Maine Hut` | `Western Maine` | `Maine Hut Trail — Days 1–3` | `east` `Easternmost · 70.2°W` |
-  | 2 | `Stanley Park` | `Seattle → Vancouver` | `Vancouver — Stanley Park` | `north` `Northernmost · 49.3°N` |
-  | 3 | `Snow Snake` | `Northern Michigan` | `Snow Snake` | — |
-  | 4 | `Muggy` | `Mid-Michigan` | `Muggy in Michigan` | — |
-  | 5 | `Jay Peak` | `Jay Peak · VT` | `Jay Peak Spring Riding` | — |
-  | 6 | `Whaleback` | `Upper Valley · VT/NH` | `Whaleback & Hanover holiday` | — |
+  | 0 | `Windsor Trail` | `Santa Fe · NM` | `Anniversary getaway` | — |
+  | 1 | `Whitney` | `Sierra Nevada · CA` | `Mt. Whitney from Whitney Portal & JMT` | `hi` `Highest point · 14,507 ft` |
+  | 2 | `Maine Hut` | `Western Maine` | `Maine Hut Trail — Days 1–3` | `east` `Easternmost · 70.2°W` |
+  | 3 | `Stanley Park` | `Seattle → Vancouver` | `Vancouver — Stanley Park` | `north` `Northernmost · 49.3°N` |
+  | 4 | `Snow Snake` | `Northern Michigan` | `Snow Snake` | — |
+  | 5 | `Muggy` | `Mid-Michigan` | `Muggy in Michigan` | — |
+  | 6 | `Jay Peak` | `Jay Peak · VT` | `Jay Peak Spring Riding` | — |
+  | 7 | `Whaleback` | `Upper Valley · VT/NH` | `Whaleback & Hanover holiday` | — |
+
+  - **Adding a trip.** A new multi-day trip already appears on its own as an auto-featured stamp
+    (no region, its top-climbing activity's title as caption). To curate it: add an entry to
+    `_PASSPORT_TRIPS` in `charts_places.py` (list order = filmstrip order; `sig` must be a title
+    substring unique to that trip and picks the thumbnail activity); optionally add a key-trip box +
+    detail line for a hero map label (`_build_labels`, west→east); then refresh the dated counts in
+    this section. Santa Fe (Sep 24–25 2026, an anniversary trip) was added this way on 2026-10-19;
+    its `sig` is the Windsor Trail ride, the trip's 10,311 ft high point.
 
   - **`sig` selects the signature activity ONLY — it must never filter the trip's route set.**
     The hero route line for a stamp draws **every member of the cluster**, one `LineString`
@@ -1225,13 +1240,14 @@ beside a single morning run. Restraint over completeness.
   (eps 0.0001) + cap 120 points, emit three parallel arrays — `path` (u/v fit to the activity's
   OWN cos-lat bbox, centered/letterboxed into 0..1), `grade` (per-vertex `grade_pct/12` clamped to
   ±1 → descent/flat/climb color), `elev` (per-vertex `altitude_m` normalized 0..1 for the profile).
-  Only ~11 distinct stream files are read (7 signatures + peaks, deduped) — NOT all 344.
+  Only the signature + peak streams are read for thumbnails (8 signatures + peaks, deduped), plus
+  each trip's member days for its hero line — NOT every stream.
 - **Brief stops** (4 today): `The worst timing choice · Jun 2025` · `Baldface Circle Trail · Jun 2025`
   · `Omni Mt. Washington · Jul 2025` · `Mt San Jacinto from Marion Trailhead · Aug 2025`. Chip text =
   live title + `Mon YYYY`; each chip flies the hero to its activity box on click.
 - **Header meta:** `<featured> trips · <states> states & <provinces> provinces`, all live: trips =
   featured count; states/provinces from `_STATE_BOXES` over ALL away-activity start points. Today
-  **7 trips · 7 states & 1 province**.
+  **8 trips · 8 states & 1 province** as of 2026-10-19 (CA MI WA ME VT NH NY NM + BC).
 
 ### Peaks record book (Module 4) — pinned 6 rows
 Genuinely singular moments; **catches home-adjacent giants trip-clustering misses (Wrinkle B —
@@ -1292,15 +1308,18 @@ by id. Titles may contain emoji (`Snow Snake 🐍`) — fine in HTML; Python `pr
 - **No new palette hex** (blue/slate/amber/violet are existing tokens). **No new data files.**
 
 ### Build prints (ASCII only)
-`[places] passport: featured=7 brief=4 states=7 provinces=1 geom_aids=7 json_kb=~57`
+`[places] passport: featured=8 brief=4 states=8 provinces=1 geom_aids=8 json_kb=~68` (as of 2026-10-19)
 (`geom_aids`/`json_kb` track data growth — `json_kb` covers every day of every trip, so it rises
-as trips gain activities; only `featured`/`brief` are pinned.)
+as trips gain activities.)
 `[places] peaks: rows=6 highest=14507ft`
-Soft `[places] NOTE:` if featured count drifts from 7 or a curated `sig` matches zero clusters
-(a retitle/refetch surfaced) — never a hard assert (deploy must not break on data growth).
+The build no longer emits a featured-count drift NOTE: every new trip would have tripped it.
+The numbers above are a dated snapshot; refresh them here when a trip is added (see "Adding a
+trip"). A curated `sig` that matches no cluster simply produces no stamp — QA's
+`multiday_trip_day_counts` still guards the Whitney / Stanley Park / Maine Hut trips by name.
 
 ### Verify vs recipe (developer asserts / QA checks)
-- 7 featured stamps in curated order; Whitney first with `Highest point · 14,507 ft`; Maine
+- 8 featured stamps in curated order (as of 2026-10-19); Santa Fe first, then Whitney with
+  `Highest point · 14,507 ft`; Maine
   `Easternmost · 70.2°W` (NOT northernmost); Vancouver `Northernmost · 49.3°N`. 4 brief chips.
 - Each thumbnail: a recognizable route colored by grade (Whitney climbs hard/amber to its peak;
   Michigan stays flat/slate) with a violet elevation profile; theme-aware (dark ground/dark mode,

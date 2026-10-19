@@ -37,6 +37,7 @@ _BOS_BOX = (41.9, 42.9, -71.8, -70.7)
 _SIERRA_BOX    = (36.0, 37.2, -118.9, -117.9)
 _MAINE_BOX     = (44.6, 45.6, -71.2, -69.9)
 _VANCOUVER_BOX = (48.9, 49.5, -124.3, -122.9)
+_SANTA_FE_BOX  = (35.4, 36.0, -106.2, -105.6)
 
 # View-button framing boxes (lat_lo, lat_hi, lng_lo, lng_hi).
 _VIEW_SD_BOX  = (32.55, 33.25, -117.40, -116.85)
@@ -50,13 +51,15 @@ _BOS_ERA  = "2024–2025"
 _SIERRA_DETAIL    = "Whitney · 14,507 ft"
 _MAINE_DETAIL     = "hut ski · 3 days"
 _VANCOUVER_DETAIL = "49.3°N · northernmost"
+_SANTA_FE_DETAIL  = "anniversary · 10,311 ft"
 
 # States / provinces bounding-box table (name, lat_lo, lat_hi, lng_lo, lng_hi),
 # priority-ordered: the tightly-interleaved New England states (VT/NH/ME) resolve
 # before MA, then broad North-America coverage so plausible future trips land
 # somewhere. Each start point is assigned to the FIRST matching box; distinct
-# assigned boxes are counted. Verified to yield the pinned 9 (CA MA MI WA ME VT
-# NH NY BC) with zero uncovered points on today's 319 start points.
+# assigned boxes are counted. As of 2026-10-19 the away start points resolve to
+# 8 states + 1 province (CA MI WA ME VT NH NY NM + BC) with zero uncovered points;
+# the current counts are recorded in the spec, not checked here.
 _STATE_BOXES = [
     ("CA", 32.30, 42.10, -124.50, -114.00),
     ("WA", 45.50, 49.00, -124.85, -116.90),
@@ -378,9 +381,10 @@ def _build_labels(tracks, fr, sd_n, bos_n):
         labels.append({"k": "home", "name": name, "coord": "", "sub": sub,
                        "u": round(u, 4), "v": round(v, 4)})
 
-    # Key trips, west -> east (Vancouver, Sierra, Maine).
+    # Key trips, west -> east (Vancouver, Sierra, Santa Fe, Maine).
     for name, box, detail in (("VANCOUVER", _VANCOUVER_BOX, _VANCOUVER_DETAIL),
                               ("SIERRA", _SIERRA_BOX, _SIERRA_DETAIL),
+                              ("SANTA FE", _SANTA_FE_BOX, _SANTA_FE_DETAIL),
                               ("MAINE", _MAINE_BOX, _MAINE_DETAIL)):
         cen, ntrip = trip_centroid(box)
         if cen is None:
@@ -449,14 +453,6 @@ def chart_places_hero(rows):
               "(counted as an 'unknown' bucket): %s"
               % (len(counts["uncovered"]),
                  ", ".join("%.3f,%.3f" % (la, ln) for la, ln in counts["uncovered"])))
-    # Soft drift note vs the analyst pins (never hard-assert -- data grows).
-    _pinned = {"act": 319, "sd": 155, "bos": 137, "regions": 28, "states": 9}
-    _diffs = ["%s %d!=%d" % (k, counts[k], _pinned[k])
-              for k in ("act", "sd", "bos", "regions", "states")
-              if counts[k] != _pinned[k]]
-    if _diffs:
-        print("[places] NOTE: count drift vs pinned (319/155/137/28/9): %s"
-              % ", ".join(_diffs))
     if dropped:
         print("[places] WARNING: dropped key-trip labels (no contained tracks): %s"
               % ",".join(dropped))
@@ -1886,6 +1882,8 @@ _SPORT_TAG = {
 # thumbnail. Badge facts are the PINNED superlatives (northernmost = Vancouver,
 # NOT the mock's factually-wrong "Maine 45.2N"). badge = (css_class, text) | None.
 _PASSPORT_TRIPS = [
+    {"sig": "Windsor Trail", "region": "Santa Fe · NM",
+     "caption": "Anniversary getaway",                "badge": None},
     {"sig": "Whitney",      "region": "Sierra Nevada · CA",
      "caption": "Mt. Whitney from Whitney Portal & JMT",
      "badge": ("hi",    "Highest point · 14,507 ft")},
@@ -2348,9 +2346,6 @@ def chart_places_passport(rows):
           "geom_aids=%d json_kb=~%d"
           % (len(featured), len(brief), n_states, n_prov, geom,
              round(len(pc_json.encode("utf-8")) / 1024.0)))
-    if len(featured) != 7:
-        print("[places] NOTE: passport featured=%d (pinned 7) -- trip set drifted"
-              % len(featured))
 
     return (_PASSPORT_TEMPLATE
             .replace("__STAMPS__", "".join(stamps))
