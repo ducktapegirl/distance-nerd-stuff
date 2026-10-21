@@ -15,6 +15,7 @@ from collections import Counter
 from datetime import date, datetime, timedelta
 
 from nerd_common.format import maybe_float as mf
+from nerd_common.segments import drop_excluded
 
 from .config import (
     ACT_CSV, ATHLETE_JSON, BIKE_TYPES, GEAR_JSON, KM_TO_MI, M_TO_FT,
@@ -66,8 +67,9 @@ def load():
         r["_ft"] = (mf(r["total_elevation_gain_m"]) or 0.0) * M_TO_FT
     acts.sort(key=lambda r: r["_dt"])
 
-    segs = _read_csv(SEG_CSV) if os.path.exists(SEG_CSV) else []
-    efforts = _read_csv(SEG_EFF_CSV) if os.path.exists(SEG_EFF_CSV) else []
+    # Excluded segments (nerd_common.segments) never reach a card.
+    segs = drop_excluded(_read_csv(SEG_CSV)) if os.path.exists(SEG_CSV) else []
+    efforts = drop_excluded(_read_csv(SEG_EFF_CSV)) if os.path.exists(SEG_EFF_CSV) else []
     runlog = _read_runlog()
 
     with open(GEAR_JSON, encoding="utf-8") as f:

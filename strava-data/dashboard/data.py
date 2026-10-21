@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 from nerd_common.format import fmt_pace, mmss
 from nerd_common.format import maybe_float as mf
+from nerd_common.segments import drop_excluded
 
 from .config import ACT_CSV, SEG_CSV, SEG_EFF_CSV
 
@@ -16,7 +17,7 @@ def load_activities():
 
 def load_segments():
     with open(SEG_CSV, encoding="utf-8-sig") as f:
-        return list(csv.DictReader(f))
+        return drop_excluded(csv.DictReader(f))
 
 def sport_category(sport_type):
     if sport_type in ("Run", "TrailRun"):  return "Running"
@@ -41,7 +42,7 @@ def load_segment_efforts():
     if not os.path.exists(SEG_EFF_CSV):
         return []
     with open(SEG_EFF_CSV, encoding="utf-8-sig") as f:
-        return list(csv.DictReader(f))
+        return drop_excluded(csv.DictReader(f))
 
 def activity_dict(rows):
     """Return activities keyed by string ID."""

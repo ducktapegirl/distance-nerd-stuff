@@ -14,6 +14,7 @@ from pathlib import Path
 from dashboard.config import OUT_HTML
 from dashboard.data import load_activities
 from dashboard.charts_places import _passport_data, _away_clusters, _peaks_data
+from nerd_common.segments import EXCLUDED_SEGMENTS
 from dashboard.art_year import prepare as _art_prepare, scale_of as _art_scale_of, year_layer as _art_year_layer
 
 # ---------------------------------------------------------------------------
@@ -414,6 +415,37 @@ def check_new_art_theme_vars(rows, html):
     return True, "co/sg/tg tokens declared in both :root and :root.light"
 
 
+# ---------------------------------------------------------------------------
+# GROUP C — Excluded segments
+# ---------------------------------------------------------------------------
+
+def check_excluded_segments_absent(rows, html):
+    """
+    A segment listed in nerd_common.segments.EXCLUDED_SEGMENTS must not reach
+    any built page: not the dashboard, and not the e-paper outputs when they
+    have been built alongside it. The loaders drop those rows, so a hit here
+    means a new reader is going straight to the CSV.
+    """
+    from html import escape
+    out_dir = HTML_PATH.parent
+    pages = {HTML_PATH.name: html}
+    for name in ("feed.xml", "feed.json", "epaper.html", "epaper-all.html",
+                 "epaper_xiao.html", "epaper_xiao-all.html", "feed_xiao.xml"):
+        p = out_dir / name
+        if p.exists():
+            pages[name] = p.read_text(encoding="utf-8")
+    hits = []
+    for seg_name in EXCLUDED_SEGMENTS.values():
+        needles = {seg_name, escape(seg_name), escape(seg_name, quote=False)}
+        for page, text in pages.items():
+            if any(n in text for n in needles):
+                hits.append("%r in %s" % (seg_name, page))
+    if hits:
+        return False, "; ".join(hits)
+    return True, "%d excluded segment(s) absent from %d page(s)" % (
+        len(EXCLUDED_SEGMENTS), len(pages))
+
+
 CHECKS = [
     ("Places Hero -- HTML/JS",   check_places_no_duplicate_route),
     ("Places Hero -- HTML/JS",   check_places_terrain_pitch_baked_into_fit),
@@ -423,6 +455,7 @@ CHECKS = [
     ("Places Hero -- Trip Data", check_places_superlatives_still_true),
     ("Art -- Theme",             check_art_theme_vars),
     ("Art -- Theme",             check_new_art_theme_vars),
+    ("Segments -- Exclusions",   check_excluded_segments_absent),
 ]
 
 

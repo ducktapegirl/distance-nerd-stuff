@@ -17,6 +17,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+from nerd_common.segments import drop_excluded
+
 # Console may be cp1252 (Windows); segment names and trend arrows contain
 # unicode. Replace unencodable chars instead of crashing mid-run.
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
@@ -53,7 +55,8 @@ def load_efforts():
             f"{EFFORTS_CSV} not found. Run fetch.py first."
         )
     with open(EFFORTS_CSV, newline="", encoding="utf-8") as f:
-        efforts = list(csv.DictReader(f))
+        # Excluded segments (nerd_common.segments) never reach the summary.
+        efforts = drop_excluded(csv.DictReader(f))
 
     # Backfill sport_type from activities.csv for efforts that predate the field
     missing = any(not e.get("sport_type") for e in efforts)

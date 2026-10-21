@@ -156,12 +156,12 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
 ### D · The racing self — segments
 
 22. **[CATALOG]** **Latest PR** — segment name, time, date, effort number, and the effort count as
-    five-bar tally gates. *"Oops, I crapped my pants on Lenkeit bridge", 0:10 on effort 21.* The
+    five-bar tally gates. *A ten-second bridge sprint, 0:10 on effort 21.* The
     segment names are half the appeal; `fit_text` exists largely for them.
 23. **[CATALOG]** **PR pace** — PRs set in the last 30 / 90 / 365 days as three counters. *30 / 135 / 500.*
     Currently the footer of #22; deserves its own card.
 24. **[CATALOG]** **Home-segment leaderboard** — top 5 by effort count with best times, as a scoreboard.
-    *Canyon entrance via Salix ×36, Salix out to PV ×29, Lenkeit bridge ×21.*
+    *Canyon entrance via Salix ×36, Salix out to PV ×29.*
 25. **[CATALOG]** **Most-improving segment** — biggest negative `recent_trend` among segments with ≥5 efforts.
     *Lex Town Track, −40.7 %.*
 26. **[CATALOG]** **Most-declining segment** — the honest inverse. *Tree Y/T 1 split, +48.7 %.* Ships with a
