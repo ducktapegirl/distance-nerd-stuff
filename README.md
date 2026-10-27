@@ -41,16 +41,15 @@ published with GitHub Pages.
 ## Built by a team of robots (sort of)
 
 The Strava dashboard is my attempt at a subagent + orchestrator framework.
-It's built and maintained by a small crew of Claude agents, each with one job: 
+It's built and maintained by a small crew of Claude subagents, each with one job: 
 one decides what's interesting in the data, one designs how a new chart should 
-look, one writes the actual code, one checks the result before it ships. 
-I (a human) approve each stage along the way. It's equal parts "I wanted these
-specific charts" and "I wanted to see how far an agentic build pipeline could go." 
-Curious how it works under the hood? See [`strava-data/AGENTS.md`](strava-data/AGENTS.md).
+look, one writes the actual code, one checks the result before it ships. It's equal 
+parts "I wanted these specific charts" and "I wanted to see how far an agentic build 
+pipeline could go." Curious how it works under the hood? See [`strava-data/AGENTS.md`](strava-data/AGENTS.md).
 
 ## Filing an issue
 
-Want something fixed or added? [Open an issue](https://github.com/ducktapegirl/distance-nerd-stuff/issues/new/choose). There are three forms, and each needs the right tag:
+Want something fixed or added? [Open an issue](https://github.com/ducktapegirl/distance-nerd-stuff/issues/new/choose). There are three forms, each with different tagging and metadata to help me process input:
 
 - **Bug report** — something's broken, wrong, or looks off. This form auto-tags itself **`bug`**.
 - **New view / chart idea** — propose a question you want a dashboard to answer, or a fact
@@ -58,15 +57,15 @@ Want something fixed or added? [Open an issue](https://github.com/ducktapegirl/d
 - **General enhancement** — anything else you'd like improved that isn't a new chart or view
   (navigation, layout, exports, workflow, etc.). This form auto-tags itself **`enhancement`**.
 
-All three start by asking which page or panel you mean — either dashboard, the landing page, or
+All three start by asking which page or panel you mean: either dashboard, the landing page, or
 one of the two e-paper panels.
 
-Filing an issue with the `bug` or `enhancement` tag doesn't trigger anything by itself — only I
-can apply the `agent:ready` label, and nothing happens until I do. Once it's applied, the issue
-may get picked up and routed automatically: `bug` reports go straight to a fix, and `enhancement`
-requests go through the full design pipeline if rough or get built more directly if specific
-(based on your own "how formed is this idea?" answer on the form). You'll see progress as label changes
-(`agent:in-progress` → `agent:done`) and eventually a pull request that closes the issue.
+Filing an issue with the `bug` or `enhancement` tag doesn't trigger anything by itself. Only I can approve
+a triage action. Once I approve an issue, then it can get picked up and routed automatically: 
+`bug` reports go straight to a fix, and `enhancement` requests go through the full design pipeline if rough,
+or get built more directly if specific (based on your own "how formed is this idea?" answer on the form). 
+You'll see progress as label changes (`agent:in-progress` → `agent:done`) and eventually a pull request
+that closes the issue.
 
 ## Can I use this?
 
