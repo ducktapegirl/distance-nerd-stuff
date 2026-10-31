@@ -463,7 +463,7 @@ def year_ago_week(acts, asof):
 # label a multi-word pattern reports under.
 ANIMALS = [
     (r"coyote", "Coyote"),
-    (r"snake|rattler", "Snake"),
+    (r"rattlesnake|snake|rattler", "Snake"),
     (r"owl", "Owl"),
     (r"mule deer|deer", "Deer"),
     (r"quail", "Quail"),
@@ -477,17 +477,35 @@ ANIMALS = [
     (r"skunk", "Skunk"),
     (r"heron", "Heron"),
     (r"seal", "Seal"),
+    (r"sea lion", "Sea lion"),
     (r"dolphin", "Dolphin"),
     (r"whale", "Whale"),
     (r"fox", "Fox"),
+    (r"turtle", "Turtle"),
 ]
 
 _ANIMAL_RX = [(re.compile(rf"\b(?:{rx})s?\b", re.I), label) for rx, label in ANIMALS]
+
+# Animal words that are not sightings, deleted from the text before matching.
+# The place rule is case-sensitive on purpose: only a proper noun ("Deer
+# Canyon", "Coyote Trail") is a place, while "saw a coyote trail" is still a
+# coyote. It is built from ANIMALS so a new species is covered without an edit.
+# The phrases are one-offs: a ski hill and a figure of speech.
+_PLACE_NOUNS = ("Canyon|Trail|Mtn|Mountain|Ridge|Road|Rd|Loop|Peak|Creek|Hill|Lake|"
+                "Pond|Park|Point|Valley|Mesa")
+_TITLED = "|".join(p.title() for rx, _ in ANIMALS for p in rx.split("|"))
+NOT_SIGHTINGS = [
+    re.compile(rf"\b(?:{_TITLED})s?\s+(?:{_PLACE_NOUNS})\b"),
+    re.compile(r"\bSnow Snake\b"),
+    re.compile(r"\bsticks are snakes\b", re.I),
+]
 
 
 def animal_hits(r):
     """Species labels mentioned in one activity's name or description."""
     blob = f"{r.get('name', '')} {r.get('description', '')}"
+    for rx in NOT_SIGHTINGS:
+        blob = rx.sub(" ", blob)
     return [label for rx, label in _ANIMAL_RX if rx.search(blob)]
 
 

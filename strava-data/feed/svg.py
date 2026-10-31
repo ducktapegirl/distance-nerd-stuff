@@ -461,6 +461,26 @@ def _fox(c):
             + _stroke([(0.16, 0.60), (0.04, 0.42), (0.08, 0.22)], c, 14) + _eye(0.86, 0.44))
 
 
+def _sea_lion(c):
+    # Upright on its fore-flippers, head raised: the posture that tells it
+    # apart from the seal lying flat beside it on the scoreboard.
+    return (_fill([(0.08, 0.86), (0.20, 0.70), (0.42, 0.62), (0.56, 0.46), (0.62, 0.24),
+                   (0.70, 0.12), (0.82, 0.12), (0.92, 0.20), (0.80, 0.26), (0.74, 0.40),
+                   (0.70, 0.62), (0.62, 0.80), (0.40, 0.88)], c)
+            + _fill([(0.56, 0.66), (0.70, 0.94), (0.48, 0.94)], c)
+            + _fill([(0.08, 0.86), (0.0, 0.96), (0.18, 0.92)], c) + _eye(0.76, 0.18))
+
+
+def _turtle(c):
+    shell = _ell(0.16, 0.30, 0.80, 0.78, c)
+    rim = _fill([(0.12, 0.62), (0.84, 0.62), (0.84, 0.70), (0.12, 0.70)], c)
+    head = _ell(0.78, 0.46, 0.98, 0.64, c)
+    legs = "".join(_stroke([(x, 0.66), (x + dx, 0.86)], c, 12)
+                   for x, dx in ((0.26, -0.06), (0.68, 0.06)))
+    return shell + rim + head + legs + _stroke([(0.16, 0.62), (0.04, 0.70)], c, 8) \
+        + _eye(0.92, 0.52)
+
+
 ANIMAL_GLYPHS = {
     "Coyote": _animal(_coyote), "Deer": _animal(_deer), "Snake": _animal(_snake),
     "Owl": _animal(_owl), "Quail": _animal(_quail), "Lizard": _animal(_lizard),
@@ -469,6 +489,7 @@ ANIMAL_GLYPHS = {
     "Rabbit": _animal(_rabbit), "Tarantula": _animal(_tarantula),
     "Skunk": _animal(_skunk), "Heron": _animal(_heron), "Seal": _animal(_seal),
     "Dolphin": _animal(_dolphin), "Whale": _animal(_whale), "Fox": _animal(_fox),
+    "Sea lion": _animal(_sea_lion), "Turtle": _animal(_turtle),
 }
 
 
