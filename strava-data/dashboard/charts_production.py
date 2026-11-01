@@ -4,6 +4,7 @@ Trends/Map charts plus the running & MTB segment scatter plots."""
 import math
 from collections import defaultdict
 from datetime import datetime
+from html import escape as html_escape
 
 import plotly.graph_objects as go
 
@@ -13,7 +14,9 @@ from .config import (
     SLOWER, SPORT_COLORS, SPORT_DISPLAY, TEXT_PRIMARY, TEXT_SECONDARY,
     TEXT_TERTIARY, TITLE_FONT_FAMILY, TRAIL_RUN_COLOR,
 )
-from .data import fmt_pace, fmt_seg_time, mf, sport_category, week_start
+from .data import (
+    activity_records, fmt_pace, fmt_seg_time, mf, sport_category, week_start,
+)
 from .geometry_stats import (
     _add_regression_line, _iqr_upper_fence, _pace_ticks, _r2_annotations,
     _remove_outliers,
@@ -34,6 +37,37 @@ def _star_path(cx, cy, r_outer=4.3, r_inner=1.9, n=5):
         ang = (math.pi / n) * i - math.pi / 2
         pts.append((cx + r * math.cos(ang), cy + r * math.sin(ang)))
     return "M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in pts) + " Z"
+
+
+def _peak_path(cx, cy, half_w=4.3, h=7.0):
+    """Mountain-peak triangle centered on (cx, cy): the climb-record glyph."""
+    top, base = cy - h / 2, cy + h / 2
+    return (f"M {cx:.2f},{top:.2f} L {cx + half_w:.2f},{base:.2f} "
+            f"L {cx - half_w:.2f},{base:.2f} Z")
+
+
+def _record_marks(cx, cy, metrics):
+    """SVG glyph paths for a calendar cell's records: a star for distance, a
+    peak for climbing, side by side (smaller) when one day holds both."""
+    dist, elev = "dist" in metrics, "elev" in metrics
+    if dist and elev:
+        star = _star_path(cx - 2.6, cy, r_outer=3.0, r_inner=1.3)
+        peak = _peak_path(cx + 2.8, cy, half_w=2.6, h=4.6)
+        paths = [star, peak]
+    elif dist:
+        paths = [_star_path(cx, cy)]
+    else:
+        paths = [_peak_path(cx, cy)]
+    return "".join(f'<path class="hm-mark" pointer-events="none" d="{d}"></path>'
+                   for d in paths)
+
+
+def _mark_icon(kind):
+    """A record glyph as a tiny standalone inline SVG for the legend hint, drawn
+    with the same path helpers as the grid so the two match exactly."""
+    d = _star_path(6, 6) if kind == "dist" else _peak_path(6, 6)
+    return (f'<svg class="hm-mark-icon" viewBox="0 0 12 12" width="12" height="12" '
+            f'aria-hidden="true"><path class="hm-mark" d="{d}"></path></svg>')
 
 
 def chart_calendar(rows):
@@ -72,10 +106,14 @@ def chart_calendar(rows):
     # day (e.g. a 22 mi long run) doesn't squash everyday runs into faint cells.
     scale_cap = _iqr_upper_fence([v * KM_TO_MI for v in day_dist.values()]) \
         or max((km * KM_TO_MI for km in day_dist.values()), default=0.0)
-    # Single highest-mileage day across the whole history — starred in both
-    # Mileage and Activity Type views regardless of which mode is active.
-    max_day, max_day_km = max(day_dist.items(), key=lambda kv: kv[1])
-    max_day_mi = max_day_km * KM_TO_MI
+    # All-time per-family records (longest + most climbing for run/bike/hike),
+    # marked in both Mileage and Activity Type modes. Grouped by day; a day
+    # can hold records from more than one activity.
+    act_date = {str(r["id"]): r["start_date_local"][:10] for r in rows}
+    day_records = defaultdict(list)
+    for aid, recs in sorted(activity_records(rows).items(),
+                            key=lambda kv: (act_date[kv[0]], int(kv[0]))):
+        day_records[act_date[aid]].extend(recs)
 
     cell    = 11
     gap     = 2
@@ -115,23 +153,27 @@ def chart_calendar(rows):
                     cat_dist = day_cat_dist[ds]
                     dominant = max(cat_dist, key=cat_dist.get)
                     type_color = CAT_COLOR_HEX.get(dominant, OTHER_COLOR_HEX)
-                    is_max = (ds == max_day)
-                    title = (f"{ds} · {mi:.1f} mi "
-                             f"({cnt} {'activity' if cnt == 1 else 'activities'})"
-                             + (" · longest day" if is_max else ""))
+                    recs = day_records.get(ds, [])
+                    rec_txt = " | ".join(f"{rc['label']} · {rc['value']}" for rc in recs)
+                    acts = f"{cnt} {'activity' if cnt == 1 else 'activities'}"
+                    aria = f"{ds} · {mi:.1f} mi ({acts})" + (f" · {rec_txt}" if rec_txt else "")
+                    # No <title>: the custom hover card (template.py) replaces the
+                    # native tooltip, which would otherwise show on top of it.
+                    rec_attr = (' data-records="' + html_escape(
+                        "|".join(f"{rc['metric']}:{rc['label']} · {rc['value']}"
+                                 for rc in recs)) + '"') if recs else ""
                     cells.append(
                         f'<rect class="hm-cell" data-date="{ds}" x="{x}" y="{y}" '
                         f'width="{cell}" height="{cell}" rx="2" fill="var(--accent)" '
-                        f'fill-opacity="{op:.2f}" data-type-color="{type_color}">'
-                        f'<title>{title}</title></rect>'
+                        f'fill-opacity="{op:.2f}" data-type-color="{type_color}" '
+                        f'data-mi="{mi:.1f}" data-acts="{acts}"{rec_attr} '
+                        f'role="img" aria-label="{html_escape(aria)}"></rect>'
                     )
-                    if is_max:
-                        # Fixed (non-theme) colors so the star reads on any fill —
+                    if recs:
+                        # Fixed (non-theme) colors so the marks read on any fill —
                         # accent blue, or any sport color in Activity Type mode.
-                        cells.append(
-                            f'<path class="hm-star" pointer-events="none" '
-                            f'd="{_star_path(x + cell / 2, y + cell / 2)}"></path>'
-                        )
+                        cells.append(_record_marks(
+                            x + cell / 2, y + cell / 2, {rc["metric"] for rc in recs}))
                 else:
                     cells.append(
                         f'<rect class="hm-cell" x="{x}" y="{y}" width="{cell}" '
@@ -164,7 +206,11 @@ def chart_calendar(rows):
             </svg>
           </div>""")
 
-    star_note = f'<span class="hm-legend-star-note">★ {max_day} · {max_day_mi:.1f} mi (longest day)</span>'
+    star_note = (
+        '<span class="hm-legend-mark-note">'
+        f'{_mark_icon("dist")} distance record · {_mark_icon("elev")} climb record'
+        '<span class="hm-legend-hint"> · hover or tap a day</span></span>'
+    )
     legend_intensity = (
         '<div class="hm-legend hm-legend-intensity">'
         '<span class="hm-legend-meta">0 mi</span>'

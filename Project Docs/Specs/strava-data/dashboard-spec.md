@@ -356,6 +356,30 @@ hover (`{date} · {mi:.1f} mi ({n} activities)`). Add `.hm-*` CSS (remap to `--t
 retint. Embed: inject SVG string directly at the `chart-cal` slot (drop `fig_html`). Remove
 unused `CAL_COLORSCALE`.
 
+> **2026-11-01 — record marks replace the "longest day" star.** The single star on the day with
+> the most total miles (and its `★ date · mi (longest day)` legend note) is retired. The
+> calendar now marks each family's **all-time** record activity on two metrics:
+>
+> - **Families** (`dashboard/data.py:RECORD_FAMILIES`): Run = `Run` + `TrailRun`; Bike =
+>   `MountainBikeRide` only (the dashboard's MTB convention); Hike = `Hike` only.
+> - **Metrics:** longest `distance_km` → ★ star (`_star_path`); most `total_elevation_gain_m`
+>   → ▲ peak (`_peak_path`). A day holding both draws a smaller star and peak side by side
+>   (`_record_marks`). Zero/blank values never hold a record; ties go to the earliest activity,
+>   then the lowest id, so the build stays deterministic.
+> - **One source:** `activity_records(rows)` feeds both the calendar and the detail panel's
+>   `ACT_DATA[id].records`, so they cannot disagree.
+> - **Reason on the cell, not the legend.** Dated cells carry `data-mi`, `data-acts`,
+>   `data-records` (`metric:label · value|…`) and an `aria-label`; the per-cell `<title>` is
+>   dropped. With a **mouse**, a `.hm-tip` hover card shows date · mi · activities plus one
+>   ★/▲ line per record. **Touch** gets no hover card (`pointerType` gate): a tap opens the day
+>   panel as before, and `renderActivity()` puts `.d-record` chips above the activity name.
+> - **Legend:** both legends end in one hint — `★ distance record · ▲ climb record · hover or
+>   tap a day` — with the glyphs drawn as inline SVG from the same path helpers (not font
+>   glyphs). Marks keep fixed white-with-dark-outline colors on the grid; off the grid
+>   (legend, card, chips) they take `currentColor`.
+> - `strava-data/qa.py:check_calendar_record_marks` recomputes the records from the CSV and
+>   fails if the marked days, metrics or values drift, or the retired star reappears.
+
 **R2 — Overview: Longest Run on its own row + Longest MTB.** `compute_stats`: add
 `longest_mtb` (max mi over `mtb_rows`). Render the 4 summary cards first, then Longest Run +
 Longest MTB. `.stat-grid` `grid-template-columns: repeat(5,1fr)` → `repeat(4,1fr)` so the two
@@ -1899,7 +1923,7 @@ verified before speccing:
 ```css
 /* Calendar dimming while an activity search is active */
 .hm-grid.hm-searching .hm-cell { opacity: 0.12; transition: opacity 140ms; }
-.hm-grid.hm-searching .hm-star { opacity: 0.12; transition: opacity 140ms; }
+.hm-grid.hm-searching .hm-mark { opacity: 0.12; transition: opacity 140ms; }
 .hm-grid.hm-searching .hm-cell.hm-match { opacity: 1; }
 ```
 

@@ -446,6 +446,50 @@ def check_excluded_segments_absent(rows, html):
         len(EXCLUDED_SEGMENTS), len(pages))
 
 
+def check_calendar_record_marks(rows, html):
+    """
+    The Overview calendar marks each family's all-time longest and
+    most-climbing activity (Run+TrailRun, MountainBikeRide, Hike). Recompute
+    those from the CSV independently of dashboard.data.activity_records and
+    require that the cells carrying data-records are exactly those days, each
+    with the right metric and value, and that the retired single "longest day"
+    star is gone.
+    """
+    from html import unescape
+    fams = {"run": ("Run", "TrailRun"), "bike ride": ("MountainBikeRide",),
+            "hike": ("Hike",)}
+    want = {}   # date -> set of "metric:value"
+    for noun, types in fams.items():
+        fr = [r for r in rows if r["sport_type"] in types]
+        for metric, col in (("dist", "distance_km"), ("elev", "total_elevation_gain_m")):
+            vals = [(float(r[col] or 0), r["start_date_local"][:10], int(r["id"])) for r in fr]
+            vals = [v for v in vals if v[0] > 0]
+            if not vals:
+                continue
+            top = max(v[0] for v in vals)
+            # Ties go to the earliest activity, then the lowest id.
+            date = min((v for v in vals if v[0] == top), key=lambda v: (v[1], v[2]))[1]
+            value = (f"{top * 0.621371:.1f} mi" if metric == "dist"
+                     else f"{round(top * 3.28084):,} ft")
+            want.setdefault(date, set()).add(f"{metric}:{value}")
+    got = {}
+    for m in re.finditer(r'data-date="([\d-]+)"[^>]*?data-records="([^"]*)"', html):
+        got[m.group(1)] = {e.split(":", 1)[0] + ":" + e.rsplit(" · ", 1)[-1]
+                           for e in unescape(m.group(2)).split("|")}
+    problems = []
+    if set(got) != set(want):
+        problems.append("marked days %s, expected %s" % (sorted(got), sorted(want)))
+    for d in sorted(set(got) & set(want)):
+        if got[d] != want[d]:
+            problems.append("%s: %s != %s" % (d, sorted(got[d]), sorted(want[d])))
+    if 'class="hm-star"' in html or "(longest day)" in html:
+        problems.append("retired longest-day star still present")
+    if problems:
+        return False, "; ".join(problems)
+    n = sum(len(v) for v in want.values())
+    return True, "%d record(s) on %d day(s) match the CSV" % (n, len(want))
+
+
 CHECKS = [
     ("Places Hero -- HTML/JS",   check_places_no_duplicate_route),
     ("Places Hero -- HTML/JS",   check_places_terrain_pitch_baked_into_fit),
@@ -456,6 +500,7 @@ CHECKS = [
     ("Art -- Theme",             check_art_theme_vars),
     ("Art -- Theme",             check_new_art_theme_vars),
     ("Segments -- Exclusions",   check_excluded_segments_absent),
+    ("Overview -- Calendar",     check_calendar_record_marks),
 ]
 
 

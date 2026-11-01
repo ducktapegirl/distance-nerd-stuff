@@ -8,7 +8,7 @@ from nerd_common.format import fmt_pace, mmss
 from nerd_common.format import maybe_float as mf
 from nerd_common.segments import drop_excluded
 
-from .config import ACT_CSV, SEG_CSV, SEG_EFF_CSV
+from .config import ACT_CSV, KM_TO_MI, M_TO_FT, SEG_CSV, SEG_EFF_CSV
 
 
 def load_activities():
@@ -47,3 +47,40 @@ def load_segment_efforts():
 def activity_dict(rows):
     """Return activities keyed by string ID."""
     return {str(r["id"]): r for r in rows}
+
+
+# ─── All-time records (calendar marks + detail-panel chips) ─────────────────
+# One family per mark set. Bike is MountainBikeRide only, matching the rest of
+# the dashboard's MTB convention; Run folds TrailRun in.
+RECORD_FAMILIES = (
+    ("run",  "run",       ("Run", "TrailRun")),
+    ("bike", "bike ride", ("MountainBikeRide",)),
+    ("hike", "hike",      ("Hike",)),
+)
+
+
+def activity_records(rows):
+    """{activity_id: [record, ...]} for the all-time longest-distance and
+    most-elevation activity in each RECORD_FAMILIES family. A record is
+    {"family", "metric": "dist"|"elev", "label", "value"}. Zero/blank values
+    never hold a record; ties go to the earliest activity (then lowest id) so
+    the result is deterministic."""
+    out = {}
+    for fam, noun, types in RECORD_FAMILIES:
+        fam_rows = [r for r in rows if r.get("sport_type") in types]
+        for metric, col in (("dist", "distance_km"), ("elev", "total_elevation_gain_m")):
+            cands = [(mf(r.get(col)) or 0, r) for r in fam_rows]
+            cands = [(v, r) for v, r in cands if v > 0]
+            if not cands:
+                continue
+            # Max value; among equals, earliest start then lowest id.
+            best_v = max(v for v, _ in cands)
+            best = min((r for v, r in cands if v == best_v),
+                       key=lambda r: (r.get("start_date_local") or "", int(r["id"])))
+            if metric == "dist":
+                label, value = f"Longest {noun}", f"{best_v * KM_TO_MI:.1f} mi"
+            else:
+                label, value = f"Most climbing on a {noun}", f"{round(best_v * M_TO_FT):,} ft"
+            out.setdefault(str(best["id"]), []).append(
+                {"family": fam, "metric": metric, "label": label, "value": value})
+    return out

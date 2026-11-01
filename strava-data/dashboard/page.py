@@ -22,7 +22,7 @@ from .charts_production import (
 )
 from .config import KM_TO_MI, MAPLIBRE_CDN, MTB_EMOJI, M_TO_FT, PLOTLY_CDN, RUN_EMOJI
 from .data import (
-    activity_dict, fmt_pace, fmt_time, load_segment_efforts, mf,
+    activity_dict, activity_records, fmt_pace, fmt_time, load_segment_efforts, mf,
     sport_category,
 )
 from .geometry_stats import compute_tortuosity_map
@@ -57,6 +57,7 @@ VIEW_NAMES = [v for v, _ in NAV_VIEWS]
 def _activity_detail_json(rows):
     """Display info for the click-through detail panel, keyed by activity ID."""
     act_by_id = {}
+    records = activity_records(rows)
     for r in rows:
         km    = mf(r["distance_km"]) or 0
         hr    = mf(r["average_heartrate"])
@@ -79,6 +80,11 @@ def _activity_detail_json(rows):
             "pace":    pace_str,
             "desc":    (r.get("description") or "").strip(),
         }
+        recs = records.get(str(r["id"]))
+        if recs:
+            act_by_id[str(r["id"])]["records"] = [
+                {"metric": rc["metric"], "label": rc["label"], "value": rc["value"]}
+                for rc in recs]
     return json.dumps(act_by_id, ensure_ascii=False)
 
 

@@ -2,6 +2,8 @@
 
 import json
 
+from .charts_production import _mark_icon
+
 from .config import (
     ACCENT, ACCENT_DIM, ACCENT_GLOW, BG_BASE, BG_ELEVATED, BG_GLASS, BG_SURFACE,
     BORDER, BORDER_SUBTLE, ELEVATION_COLOR, FASTER, GRID, MAPTILER_KEY, SLOWER,
@@ -260,17 +262,36 @@ main {{
 .hm-cell[data-date] {{ cursor: pointer; }}
 .hm-month {{ fill: var(--text-tertiary); font-size: 9px; font-family: 'Geist Mono', monospace; }}
 .hm-dow   {{ fill: var(--text-tertiary); font-size: 9px; font-family: 'Geist Mono', monospace; }}
-/* Longest-day marker: fixed (non-theme) colors so it reads on any cell fill —
-   accent blue in Mileage mode, or any sport color in Activity Type mode. */
-.hm-star {{ fill: #fff; stroke: #0d1117b0; stroke-width: 0.6; pointer-events: none; }}
+/* Record marks (star = distance, peak = climb): fixed (non-theme) colors so
+   they read on any cell fill -- accent blue in Mileage mode, or any sport color
+   in Activity Type mode. */
+.hm-mark {{ fill: #fff; stroke: #0d1117b0; stroke-width: 0.6; pointer-events: none; }}
+.hm-mark-icon {{ vertical-align: -2px; }}
+/* Off the grid (legend, hover card, panel chips) the glyph takes the text color. */
+.hm-mark-icon .hm-mark {{ fill: currentColor; stroke: none; }}
+/* Calendar hover card (mouse only; touch taps open the day panel instead). */
+.hm-tip {{
+  position: fixed; z-index: 60; pointer-events: none;
+  max-width: 260px; padding: 8px 10px;
+  background: var(--bg-elevated); color: var(--text-primary);
+  border: 1px solid var(--border-subtle); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+  font-size: 12px; line-height: 1.45;
+  opacity: 0; transition: opacity 90ms;
+}}
+.hm-tip.show {{ opacity: 1; }}
+.hm-tip-date {{ font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--text-tertiary); }}
+.hm-tip-rec {{ font-weight: 600; margin-top: 3px; display: flex; gap: 6px; align-items: center; }}
 .hm-legend {{
   margin-top: 4px; margin-bottom: 14px;
-  display: flex; gap: 8px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   font-size: 10px; color: var(--text-tertiary);
   font-family: 'Geist Mono', monospace;
 }}
 .hm-legend-meta {{ color: var(--text-secondary); }}
-.hm-legend-star-note {{ color: var(--text-secondary); font-weight: 600; margin-left: 4px; }}
+.hm-legend-mark-note {{ color: var(--text-secondary); font-weight: 600; margin-left: 4px;
+  display: inline-flex; gap: 5px; align-items: center; }}
+.hm-legend-hint {{ color: var(--text-tertiary); font-weight: 400; }}
 .hm-legend-grad {{
   display: inline-block;
   width: 140px; height: 10px; border-radius: 3px;
@@ -482,6 +503,15 @@ main {{
   margin-bottom: 18px;
 }}
 .d-stats {{ display: flex; flex-wrap: wrap; gap: 10px; }}
+/* All-time record chips at the top of an activity in the detail panel. */
+.d-records {{ display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }}
+.d-record {{
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--accent-dim); color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px; font-weight: 600;
+}}
 .d-desc {{
   margin-top: 14px;
   font-size: 13px;
@@ -683,7 +713,7 @@ main {{
 
 /* Calendar dimming while an activity search is active */
 .hm-grid.hm-searching .hm-cell {{ opacity: 0.12; transition: opacity 140ms; }}
-.hm-grid.hm-searching .hm-star {{ opacity: 0.12; transition: opacity 140ms; }}
+.hm-grid.hm-searching .hm-mark {{ opacity: 0.12; transition: opacity 140ms; }}
 .hm-grid.hm-searching .hm-cell.hm-match {{ opacity: 1; }}
 
 /* ── Responsive / mobile (kept last so overrides win by source order) ── */
@@ -819,7 +849,10 @@ def build_js(act_json, geo_json, sync_ids, click_ids, heat_air_text, heat_app_te
     hr_temp_js = json.dumps(hr_temp_meta)
     heatsun_temp_js = json.dumps(heatsun_temp_text)
     heatsun_uv_js = json.dumps(heatsun_uv_text)
+    rec_icons_js = json.dumps({"dist": _mark_icon("dist"), "elev": _mark_icon("elev")})
     return f"""
+// Record glyphs (star = distance, peak = climb), same paths as the calendar.
+var REC_ICONS = {rec_icons_js};
 var ACT_DATA  = {act_json};
 var GEO_DATA  = {geo_json};
 // MapTiler key for the detail mini-map basemap (Glow only). Empty -> the mini-map
@@ -848,6 +881,12 @@ function closeDetail() {{
 }}
 function renderActivity(a) {{
   var html = '';
+  if (a.records && a.records.length) {{
+    html += '<div class="d-records">' + a.records.map(function(r) {{
+      return '<span class="d-record">' + (REC_ICONS[r.metric] || '') +
+             esc(r.label) + ' \u00b7 ' + esc(r.value) + '</span>';
+    }}).join('') + '</div>';
+  }}
   html += '<div class="d-name">' + esc(a.name) + '</div>';
   html += '<div class="d-date">' + a.date + ' · ' + esc(a.sport) + '</div>';
   html += '<div class="d-stats">';
@@ -1469,6 +1508,43 @@ function syncRange(sourceId, ed) {{
   document.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {{
     c.addEventListener('click', function() {{ showDay(c.getAttribute('data-date')); }});
   }});
+
+  // Calendar hover card -- mouse only. Touch is left alone so a tap still
+  // opens the day panel, which shows the same record chips.
+  (function() {{
+    var tip = document.createElement('div');
+    tip.className = 'hm-tip';
+    tip.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(tip);
+    function hide() {{ tip.classList.remove('show'); }}
+    function show(c) {{
+      var html = '<div class="hm-tip-date">' + esc(c.getAttribute('data-date')) +
+                 ' \u00b7 ' + esc(c.getAttribute('data-mi')) + ' mi \u00b7 ' +
+                 esc(c.getAttribute('data-acts')) + '</div>';
+      var recs = c.getAttribute('data-records');
+      if (recs) recs.split('|').forEach(function(r) {{
+        var i = r.indexOf(':');
+        html += '<div class="hm-tip-rec">' + (REC_ICONS[r.slice(0, i)] || '') +
+                esc(r.slice(i + 1)) + '</div>';
+      }});
+      tip.innerHTML = html;
+      var b = c.getBoundingClientRect();
+      tip.classList.add('show');
+      var w = tip.offsetWidth, h = tip.offsetHeight;
+      var x = Math.min(Math.max(8, b.left + b.width / 2 - w / 2), window.innerWidth - w - 8);
+      var y = b.top - h - 8;
+      if (y < 8) y = b.bottom + 8;
+      tip.style.left = x + 'px';
+      tip.style.top = y + 'px';
+    }}
+    document.querySelectorAll('.hm-cell[data-date]').forEach(function(c) {{
+      c.addEventListener('pointerenter', function(e) {{
+        if (e.pointerType === 'mouse') show(c);
+      }});
+      c.addEventListener('pointerleave', hide);
+    }});
+    window.addEventListener('scroll', hide, true);
+  }})();
 
   // Close detail panel on backdrop click or Escape
   var bd = document.getElementById('detail-backdrop');
