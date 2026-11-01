@@ -280,6 +280,14 @@ against the real data; the numbers quoted are live as of the 2026-08-30 fetch.
     always writes the same poem. Templates naming an animal drop out unless that activity actually
     recorded a sighting, and templates counting miles drop out for a zero-distance session — the
     card should not invent a hawk it did not see.
+    The same rule covers the sport and the hour. The sport's word comes from `metrics._HAIKU_SPORT`,
+    a mapping the athlete picked one sport at a time (downhill skiing and snowboarding are both a
+    "ride"; an unknown sport is a "sesh"). A generic Workout is a "lift" only when its title or
+    notes mention weights. "Morning", "midday" or "evening" follows the start time, and "before
+    dawn" needs a start before 7:00. The hour filter runs after the seeded rotation, so a poem
+    whose hour was already right keeps its words. Walks and hikes draw `svg.glyph_walker`, a
+    striding figure with a trekking pole, instead of the runner. Fixed 2026-11-01 after a
+    Halloween walk printed as "The run was easy … mild morning".
 
 ### K · Meta and data-nerd
 

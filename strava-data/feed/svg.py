@@ -188,6 +188,26 @@ def glyph_runner(x, y, size, color=BLACK):
     return _g(body, x, y, size, color)
 
 
+def glyph_walker(x, y, size, color=BLACK):
+    """Walks and hikes: one striding figure for both.
+
+    What separates it from ``glyph_runner`` is that both feet are on the
+    ground: a long stride, front heel planted, back foot pushing off from the
+    toes. The trekking pole makes it an outing rather than a stroll. The pole
+    is 7 units, not thinner, so it still clears the 3 px floor at 44 px.
+    """
+    body = (
+        f'<circle cx="54" cy="13" r="10" fill="{color}" stroke="none"/>'
+        '<path d="M51 26 L43 54" stroke-width="9"/>'
+        '<path d="M48 33 L58 45 L69 40" stroke-width="8"/>'
+        '<path d="M47 34 L37 46 L29 52" stroke-width="8"/>'
+        '<path d="M43 54 L56 70 L63 87 L72 87" stroke-width="9"/>'
+        '<path d="M43 54 L35 72 L22 85" stroke-width="9"/>'
+        '<path d="M69 40 L82 88" stroke-width="7"/>'
+    )
+    return _g(body, x, y, size, color)
+
+
 def glyph_bike(x, y, size, color=BLACK):
     body = (
         '<circle cx="21" cy="68" r="19" stroke-width="7"/>'
@@ -241,7 +261,7 @@ def glyph_mountain(x, y, size, color=BLACK, filled=True, fill_frac=None,
     return _g(body, x, y, size, color)
 
 
-GLYPHS = {"run": glyph_runner, "bike": glyph_bike,
+GLYPHS = {"run": glyph_runner, "walk": glyph_walker, "bike": glyph_bike,
           "shoe": glyph_shoe, "mountain": glyph_mountain}
 
 
