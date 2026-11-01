@@ -48,18 +48,20 @@ def _peak_path(cx, cy, half_w=4.3, h=7.0):
 
 def _record_marks(cx, cy, metrics):
     """SVG glyph paths for a calendar cell's records: a star for distance, a
-    peak for climbing, side by side (smaller) when one day holds both."""
+    peak for climbing. A day holding both gets one combined mark -- a peak that
+    fills the cell with a dark star cut into it -- because two half-size glyphs
+    side by side are unreadable at 11 px."""
     dist, elev = "dist" in metrics, "elev" in metrics
     if dist and elev:
-        star = _star_path(cx - 2.6, cy, r_outer=3.0, r_inner=1.3)
-        peak = _peak_path(cx + 2.8, cy, half_w=2.6, h=4.6)
-        paths = [star, peak]
+        paths = [("hm-mark", _peak_path(cx, cy + 0.3, half_w=5.0, h=8.6)),
+                 ("hm-mark hm-mark-inset",
+                  _star_path(cx, cy + 1.6, r_outer=2.5, r_inner=1.1))]
     elif dist:
-        paths = [_star_path(cx, cy)]
+        paths = [("hm-mark", _star_path(cx, cy))]
     else:
-        paths = [_peak_path(cx, cy)]
-    return "".join(f'<path class="hm-mark" pointer-events="none" d="{d}"></path>'
-                   for d in paths)
+        paths = [("hm-mark", _peak_path(cx, cy))]
+    return "".join(f'<path class="{cls}" pointer-events="none" d="{d}"></path>'
+                   for cls, d in paths)
 
 
 def _mark_icon(kind):

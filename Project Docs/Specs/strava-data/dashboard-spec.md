@@ -363,8 +363,11 @@ unused `CAL_COLORSCALE`.
 > - **Families** (`dashboard/data.py:RECORD_FAMILIES`): Run = `Run` + `TrailRun`; Bike =
 >   `MountainBikeRide` only (the dashboard's MTB convention); Hike = `Hike` only.
 > - **Metrics:** longest `distance_km` → ★ star (`_star_path`); most `total_elevation_gain_m`
->   → ▲ peak (`_peak_path`). A day holding both draws a smaller star and peak side by side
->   (`_record_marks`). Zero/blank values never hold a record; ties go to the earliest activity,
+>   → ▲ peak (`_peak_path`). A day holding both gets one combined mark (`_record_marks`): a
+>   peak that fills the cell with a dark star (`.hm-mark-inset`, `#0d1117`) cut into it.
+>   Chosen over side-by-side, stacked, summit-star and same-size overlay after rendering all
+>   five at 11 px — the half-size variants were unreadable, and the same-size overlay read
+>   as a plain star. Zero/blank values never hold a record; ties go to the earliest activity,
 >   then the lowest id, so the build stays deterministic.
 > - **One source:** `activity_records(rows)` feeds both the calendar and the detail panel's
 >   `ACT_DATA[id].records`, so they cannot disagree.

@@ -266,6 +266,8 @@ main {{
    they read on any cell fill -- accent blue in Mileage mode, or any sport color
    in Activity Type mode. */
 .hm-mark {{ fill: #fff; stroke: #0d1117b0; stroke-width: 0.6; pointer-events: none; }}
+/* Both records on one day: the star is cut into the peak in dark ink. */
+.hm-mark.hm-mark-inset {{ fill: #0d1117; stroke: none; }}
 .hm-mark-icon {{ vertical-align: -2px; }}
 /* Off the grid (legend, hover card, panel chips) the glyph takes the text color. */
 .hm-mark-icon .hm-mark {{ fill: currentColor; stroke: none; }}
