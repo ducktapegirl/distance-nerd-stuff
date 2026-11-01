@@ -800,7 +800,7 @@ _VOWELS = "aeiouy"
 _SYLLABLE_LEXICON = {
     "thirteen": 2, "fourteen": 2, "fifteen": 2, "sixteen": 2, "seventeen": 3,
     "eighteen": 2, "nineteen": 2, "going": 2, "being": 2, "doing": 2,
-    "hour": 1, "quail": 1, "coyote": 3, "roadrunner": 3,
+    "hour": 1, "quail": 1, "coyote": 3, "roadrunner": 3, "evening": 2,
 }
 
 
@@ -865,6 +865,45 @@ def _temp_word(f):
 _SUFFER_WORDS = [(30, "easy"), (60, "steady"), (100, "hard"), (150, "brutal"),
                  (10 ** 9, "savage")]
 
+# The word a poem uses for the sport, chosen by the athlete one sport at a time
+# (2026-11-01). Short on purpose: every entry is one or two syllables, so the
+# same templates scan whatever the sport. Anything missing - a sport Strava adds
+# later - is a "sesh", never a "run": the old fallback called a Halloween walk
+# a run.
+_HAIKU_SPORT = {
+    "Run": "run", "TrailRun": "run", "Walk": "walk", "Hike": "hike",
+    "Ride": "ride", "MountainBikeRide": "ride", "EBikeRide": "ride",
+    "AlpineSki": "ride", "Snowboard": "ride", "NordicSki": "ski",
+    "RockClimbing": "climb", "IceSkate": "skate", "StandUpPaddling": "float",
+    "Pickleball": "game", "Pilates": "class", "WeightTraining": "workout",
+}
+_HAIKU_SPORT_DEFAULT = "sesh"
+
+# A generic "Workout" is a "lift" only when its own title or notes say weights
+# were involved. "squats" is left out on purpose: Ring Fit has plenty of those.
+_LIFT_EVIDENCE = re.compile(
+    r"\b(lift(s|ing)?|dumbb?ells?|barbells?|kettlebells?|weights?|deadlifts?|"
+    r"bench|curls?)\b", re.I)
+
+
+def _haiku_sport(act):
+    st = act.get("sport_type")
+    if st == "Workout":
+        text = f"{act.get('name') or ''} {act.get('description') or ''}"
+        return "lift" if _LIFT_EVIDENCE.search(text) else _HAIKU_SPORT_DEFAULT
+    return _HAIKU_SPORT.get(st, _HAIKU_SPORT_DEFAULT)
+
+
+def _time_of_day(act):
+    """``(word, hour)`` from the start time, or ``(None, None)`` if unknown.
+
+    Every word is two syllables, so a template scans the same at any hour."""
+    dt = act.get("_dt")
+    if dt is None:
+        return None, None
+    h = dt.hour
+    return ("morning" if h < 12 else "midday" if h < 17 else "evening"), h
+
 # Three banks of templates. Each is written at several fixed-word lengths on
 # purpose: the substituted words vary from one to four syllables ("hot" vs
 # "savage", "six" vs "seventeen", "owl" vs "tarantula"), so a bank of one
@@ -872,7 +911,7 @@ _SUFFER_WORDS = [(30, "easy"), (60, "steady"), (100, "hard"), (150, "brutal"),
 # today. Several in each bank use no variable at all and always fit.
 _LINE1 = [
     "{Temp} light on the trail", "{Temp} air, moving legs", "{Temp} wind, and the dust",
-    "{Temp} morning, and dust", "{Temp} sun on the road", "The trail is {suffer}",
+    "{Temp} {tod}, and dust", "{Temp} sun on the road", "The trail is {suffer}",
     "The {sport} was {suffer}", "The {suffer} {sport} ends", "A {suffer} {sport} home",
     "{Number} miles before dawn", "{Number} miles of {sport}", "{Number} miles in the {temp}",
     "{Number} {sport} miles logged", "Out for {number} miles now",
@@ -882,7 +921,7 @@ _LINE1 = [
 _LINE2 = [
     "{temp} wind and the sound of breath", "a {temp} wind, and the long road",
     "the {temp} air, the same old road", "the road, the {temp} wind, the light",
-    "{temp} morning, then the long climb", "nothing but the {temp} wind now",
+    "{temp} {tod}, then the long climb", "nothing but the {temp} wind now",
     "the light goes gold on the hills", "the hills give nothing away",
     "the legs remember the climb", "one long shadow on the road",
     "breathing, and the road, and dust", "{number} miles of {suffer} breathing",
@@ -919,8 +958,8 @@ def haiku(act, sightings=None):
     temp = _temp_word(temp_c * 9 / 5 + 32 if temp_c is not None else None) or "still"
     suffer = mf(act.get("suffer_score"))
     suffer_word = next(w for lim, w in _SUFFER_WORDS if (suffer or 0) < lim)
-    sport = ("trail run" if act["sport_type"] == "TrailRun" else
-             "ride" if act["sport_type"] in BIKE_TYPES else "run")
+    sport = _haiku_sport(act)
+    tod, hour = _time_of_day(act)
     # Only this activity's own sightings. With none, the {noun} templates drop
     # out entirely rather than defaulting to a plausible animal: the card would
     # otherwise claim a hawk that nobody saw.
@@ -929,7 +968,7 @@ def haiku(act, sightings=None):
     seed = int(act["id"]) if str(act["id"]).isdigit() else abs(hash(act["id"]))
     ctx = {"sport": sport, "Sport": sport.capitalize(),
            "temp": temp, "Temp": temp.capitalize(),
-           "suffer": suffer_word,
+           "suffer": suffer_word, "tod": tod or "",
            "number": _number_word(mi), "Number": _number_word(mi).capitalize(),
            "noun": nouns[seed % len(nouns)].lower() if nouns else ""}
 
@@ -940,11 +979,18 @@ def haiku(act, sightings=None):
                   # A gym session has no miles; "Zero run miles logged" is a
                   # worse line than simply not counting them.
                   and (mi >= 0.5 or "{number}" not in t.lower())]
-        rendered = [_article(t.format(**ctx)) for t in usable]
         # Rotate the bank by the seed, then take the first line that scans.
         # A different offset per line keeps the three from moving in lockstep.
         off = (seed // (10 ** i)) % len(usable)
-        order = rendered[off:] + rendered[:off]
+        order = usable[off:] + usable[:off]
+        # Lines that name the hour survive only when the hour agrees; with no
+        # start time they drop out rather than guess "morning". Filtered after
+        # the rotation, not before, so the offset - and with it every poem
+        # whose hour was never wrong - stays what it was.
+        order = [t for t in order
+                 if (tod or "{tod}" not in t)
+                 and ("before dawn" not in t or (hour is not None and hour < 7))]
+        order = [_article(t.format(**ctx)) for t in order]
         fits = [s for s in order if syllables(s) == target]
         lines.append(fits[0] if fits else
                      min(order, key=lambda s: abs(syllables(s) - target)))

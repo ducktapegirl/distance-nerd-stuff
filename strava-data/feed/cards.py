@@ -83,8 +83,10 @@ def _day_row(r):
 
 
 def _sport_glyph(sport):
-    if sport in ("Run", "TrailRun", "Walk", "Hike"):
+    if sport in ("Run", "TrailRun"):
         return S.glyph_runner
+    if sport in ("Walk", "Hike"):
+        return S.glyph_walker
     if sport in ("MountainBikeRide", "Ride", "EBikeRide"):
         return S.glyph_bike
     return None

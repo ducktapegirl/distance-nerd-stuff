@@ -18,7 +18,7 @@ ramp and this panel has none.
 import math
 
 from ..svg import (ANIMAL_GLYPHS, esc, glyph_bike, glyph_mountain,  # noqa: F401
-                   glyph_runner, glyph_shoe)
+                   glyph_runner, glyph_shoe, glyph_walker)
 from .config import BLACK, FONT, H, MIN_STROKE, MIN_TEXT, PALETTE, W, WHITE
 
 _ALLOWED = set(PALETTE) | {"none"}
